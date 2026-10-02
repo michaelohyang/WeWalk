@@ -1,0 +1,967 @@
+<title>WeWalk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: one phone-width column. The map is the home screen; a fixed bottom tab bar switches
+   between Map, Ranks, Log a visit and Passport. Station pages and the review form slide over it. */
+:root{
+  --paper:#F4EFE6; --paper-2:#EAE2D3; --land:#EDE5D6; --water:#D7E0DD;
+  --ink:#1A1A1A; --ink-soft:#4A453E; --muted:#7A7266; --rule:#1A1A1A;
+  --tomato:#E2412E; --mustard:#E8A913; --kelly:#1E9E4A; --cobalt:#1F4FD1;
+  --on-accent:#FFFFFF; --on-mustard:#1A1A1A;
+  --card:#FBF8F2; --shadow:#1A1A1A;
+  --grain-op:.22; --grain-blend:multiply;
+  --f-display:"Archivo Black","Arial Black","Helvetica Neue",Impact,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"Space Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --line:3px; --radius:18px; --tab-h:68px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#151413; --paper-2:#1F1D1A; --land:#24211D; --water:#0F1414;
+  --ink:#F1EBDF; --ink-soft:#CFC7B8; --muted:#9C9486; --rule:#F1EBDF;
+  --tomato:#FF5A43; --mustard:#F5BC2C; --kelly:#2DBE5F; --cobalt:#5281FF;
+  --on-accent:#111111; --on-mustard:#111111;
+  --card:#1C1A18; --shadow:#000000;
+  --grain-op:.10; --grain-blend:screen; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#151413; --paper-2:#1F1D1A; --land:#24211D; --water:#0F1414;
+  --ink:#F1EBDF; --ink-soft:#CFC7B8; --muted:#9C9486; --rule:#F1EBDF;
+  --tomato:#FF5A43; --mustard:#F5BC2C; --kelly:#2DBE5F; --cobalt:#5281FF;
+  --on-accent:#111111; --on-mustard:#111111;
+  --card:#1C1A18; --shadow:#000000;
+  --grain-op:.10; --grain-blend:screen; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;opacity:var(--grain-op);mix-blend-mode:var(--grain-blend);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4  0 0 0 0 .35  0 0 0 0 .3  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--cobalt);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.mono{font-family:var(--f-mono)}
+.app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 calc(var(--tab-h) + 28px + env(safe-area-inset-bottom,0px));position:relative}
+
+/* ---------- top bar ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand h1{font-size:30px}
+.brand .sub{font:700 10px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.iconbtn{width:42px;height:42px;border-radius:50%;border:var(--line) solid var(--ink);background:var(--card);display:grid;place-items:center;flex:none}
+.iconbtn svg{width:20px;height:20px}
+.banner{font:400 12px/1.4 var(--f-mono);border:2px dashed var(--muted);border-radius:12px;padding:8px 12px;color:var(--ink-soft);margin-block:0 10px}
+
+/* ---------- chips ---------- */
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:4px 8px;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:2px solid var(--ink);background:var(--card);border-radius:999px;padding:6px 12px;font:600 13px/1 var(--f-body);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c,var(--ink));border:2px solid var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.chip[aria-pressed="true"] .dot{border-color:var(--paper)}
+.chiplabel{font:700 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-block:6px 2px}
+
+/* ---------- map ---------- */
+.mapwrap{position:relative;border:var(--line) solid var(--ink);border-radius:var(--radius);background:var(--water);overflow:hidden;box-shadow:5px 5px 0 var(--shadow);margin-block:8px 18px}
+.map{display:block;width:100%;height:auto;touch-action:manipulation}
+.map .land{pointer-events:none;fill:var(--land);stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round}
+.map .land.far{fill:var(--paper-2);stroke-dasharray:1 0}
+.map .label-geo{font:700 9px var(--f-mono);fill:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+.map .label-water{font:400 9px var(--f-mono);fill:var(--muted);letter-spacing:.3em;font-style:italic}
+.map .route{fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
+.map .route-casing{fill:none;stroke:var(--land);stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+.map .ferry{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:3 4;opacity:.6}
+.stn{cursor:pointer}
+.stn .hit{fill:transparent}
+.stn .ring{stroke:var(--ink);stroke-width:3;transition:transform .2s}
+.stn .core{fill:var(--paper)}
+.stn.unlit .ring{fill:var(--paper);stroke:var(--muted);stroke-width:2;stroke-dasharray:2.5 2.5}
+.stn.unlit .core{display:none}
+.stn.unlit text{fill:var(--muted)}
+.stn text{font:700 8.6px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3px;stroke-linejoin:round}
+.stn.dim{opacity:.18}
+.stn.sel .ring{stroke-width:4}
+.stn:hover .ring,.stn:focus-visible .ring{stroke-width:4.5}
+.stn:focus{outline:none}
+.stn .glow{fill:none;stroke:var(--mustard);stroke-width:3;opacity:0;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center}
+.stn.lit .glow{animation:glow 1.6s ease-out 2}
+.stn.lit .ring{animation:flash 1.6s ease-out 2}
+@keyframes glow{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(5.5)}}
+@keyframes flash{0%,30%{fill:var(--mustard)}}
+.maplegend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 12px;border-top:var(--line) solid var(--ink);background:var(--card);font:400 11px/1.3 var(--f-mono);color:var(--ink-soft)}
+.maplegend span{display:inline-flex;align-items:center;gap:6px}
+.maplegend i{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:var(--c)}
+.maplegend i.unlit{background:var(--paper);border:2px dashed var(--muted)}
+
+/* ---------- preview sheet ---------- */
+.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 14px + env(safe-area-inset-bottom,0px));width:min(528px,calc(100% - 32px));z-index:30;
+  background:var(--card);border:var(--line) solid var(--ink);border-radius:var(--radius);box-shadow:5px 5px 0 var(--shadow);padding:14px 14px 12px;animation:rise .22s ease-out}
+@keyframes rise{from{transform:translate(-50%,16px);opacity:0}}
+.sheet .row{display:flex;gap:12px;align-items:flex-start}
+.sheet h3{font-size:21px}
+.sheet .verdict{font:600 14px/1.35 var(--f-body);margin-block:6px 10px}
+.sheet .close{margin-left:auto}
+.meta{font:400 12px/1.35 var(--f-mono);color:var(--muted)}
+.hoodtag{display:inline-flex;align-items:center;gap:6px;font:700 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
+.hoodtag::before{content:"";width:18px;height:5px;border-radius:3px;background:var(--c)}
+
+/* score badge: a token, not a route bullet */
+.score{flex:none;width:58px;height:58px;border-radius:50%;border:var(--line) solid var(--ink);background:var(--c,var(--paper));color:var(--ink);display:grid;place-items:center;font:400 20px/1 var(--f-display)}
+.score.lg{width:84px;height:84px;font-size:30px}
+.score.none{background:var(--paper);border-style:dashed;border-color:var(--muted);color:var(--muted);font:700 11px/1.1 var(--f-mono);text-align:center}
+.score small{display:block;font:700 8px/1 var(--f-mono);letter-spacing:.1em;margin-top:2px}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:var(--line) solid var(--ink);border-radius:999px;padding:11px 18px;font:700 14px/1 var(--f-body);background:var(--card);box-shadow:3px 3px 0 var(--shadow);transition:transform .08s,box-shadow .08s;text-decoration:none;color:var(--ink)}
+.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--shadow)}
+.btn.primary{background:var(--tomato);color:var(--on-accent)}
+.btn.block{width:100%}
+.btn.ghost{box-shadow:none;border-width:2px;padding:8px 14px;font-size:13px}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.linkbtn{background:none;border:0;padding:0;font:600 13px var(--f-body);text-decoration:underline;text-underline-offset:3px;color:var(--ink-soft)}
+
+/* ---------- section headings ---------- */
+.eyebrow{font:700 11px/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.sec{margin-block:26px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.sec h2{font-size:24px}
+.card{background:var(--card);border:var(--line) solid var(--ink);border-radius:var(--radius);padding:16px}
+.empty{border:2px dashed var(--muted);border-radius:var(--radius);padding:18px;color:var(--ink-soft);font-size:14px}
+.empty b{font-family:var(--f-display);font-weight:400;display:block;font-size:18px;color:var(--ink);margin-bottom:4px}
+
+/* ---------- station page ---------- */
+.page{animation:slidein .2s ease-out}
+@keyframes slidein{from{transform:translateX(18px);opacity:0}}
+.stnhead{padding-block:6px 4px}
+.stnhead .bar{height:10px;border-radius:6px;background:var(--c);border:2px solid var(--ink);margin-block:12px 14px}
+.stnhead h1{font-size:clamp(34px,10vw,48px)}
+.stnhead .addr{font:400 13px/1.4 var(--f-mono);color:var(--ink-soft);margin-top:8px}
+.headrow{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:14px}
+.hottake{font:400 clamp(26px,7.6vw,36px)/1.08 var(--f-display);margin-block:22px 4px;text-wrap:balance}
+.hottake::before{content:"\201C"}
+.hottake::after{content:"\201D"}
+.attrib{font:400 12px var(--f-mono);color:var(--muted)}
+.ratings{display:grid;gap:2px;padding:6px 14px}
+.rate{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;padding-block:9px;border-bottom:2px dotted var(--muted)}
+.rate:last-child{border-bottom:0}
+.rate .ic{width:30px;height:30px;color:var(--ink)}
+.rate .lbl{font:600 14px/1.2 var(--f-body);min-width:0}
+.rate .lbl small{display:block;font:400 11px/1.3 var(--f-mono);color:var(--muted)}
+.pips{display:flex;gap:4px}
+.pips i{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);background:transparent}
+.pips i.on{background:var(--c)}
+.pips i.half{background:linear-gradient(90deg,var(--c) 50%,transparent 50%)}
+.rate .num{font:700 13px var(--f-mono);font-variant-numeric:tabular-nums;width:30px;text-align:right}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{border:2px solid var(--ink);border-radius:8px;padding:4px 9px;font:600 12px/1.2 var(--f-body);background:var(--paper)}
+.tag b{font-family:var(--f-mono);font-weight:700;margin-left:4px}
+.review{display:grid;gap:8px;padding-block:14px;border-bottom:2px solid var(--ink)}
+.review:last-child{border-bottom:0}
+.review .who{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.review .who b{font:400 16px var(--f-display)}
+.review p{margin:0;max-width:62ch}
+.review .ht{font:700 15px/1.3 var(--f-body)}
+.photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.photos figure{margin:0;aspect-ratio:1;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--paper-2);max-width:100%}
+.photos img{width:100%;height:100%;object-fit:cover;display:block}
+.log{list-style:none;margin:0;padding:0;position:relative}
+.log::before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:4px;background:var(--c);border-radius:2px}
+.log li{position:relative;padding:0 0 16px 32px}
+.log li::before{content:"";position:absolute;left:2px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--paper);border:3px solid var(--ink)}
+.log .d{font:700 12px var(--f-mono)}
+.log p{margin:2px 0 0}
+.inlineform{display:grid;gap:8px;margin-top:6px}
+.inlineform .two{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px}
+
+/* ---------- inputs ---------- */
+.field{display:grid;gap:6px}
+.field>span{font:700 11px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.inp{width:100%;border:2px solid var(--ink);border-radius:12px;background:var(--card);padding:11px 12px;font-size:16px;min-width:0}
+textarea.inp{resize:vertical;min-height:84px}
+.inp::placeholder{color:var(--muted)}
+
+/* ---------- review form ---------- */
+.form{display:grid;gap:18px}
+.form .grp{display:grid;gap:10px}
+.tap{display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 10px;align-items:center;padding:12px;border:2px solid var(--ink);border-radius:16px;background:var(--card)}
+.tap .ic{width:34px;height:34px;grid-row:span 2}
+.tap .top2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.tap .top2 b{font:600 15px var(--f-body)}
+.tap .quip{font:400 12px/1.3 var(--f-mono);color:var(--muted);text-align:right;min-width:0}
+.tokens{display:flex;gap:8px}
+.tokens button{flex:1;min-width:0;height:40px;border-radius:12px;border:2px solid var(--ink);background:var(--paper);font:700 15px var(--f-mono);transition:transform .1s}
+.tokens button.on{background:var(--c);color:var(--ink)}
+.tokens button:active{transform:scale(.92)}
+.tokens button.skip{flex:none;width:auto;padding-inline:10px;font:600 11px var(--f-body);color:var(--muted);border-style:dashed}
+.tagpick{display:flex;flex-wrap:wrap;gap:8px}
+.tagpick button{border:2px solid var(--ink);border-radius:999px;padding:7px 12px;background:var(--card);font:600 13px var(--f-body)}
+.tagpick button[aria-pressed="true"]{background:var(--cobalt);color:var(--on-accent);border-color:var(--ink)}
+.formhead{display:flex;align-items:center;gap:12px;padding-block:12px 4px}
+.formhead h1{font-size:28px}
+.stickybar{position:sticky;bottom:calc(var(--tab-h) + 12px + env(safe-area-inset-bottom,0px));z-index:5;padding-top:8px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:2px solid var(--ink)}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.err{color:var(--tomato);font:700 13px var(--f-body)}
+
+/* ---------- ranks ---------- */
+.spot{position:relative;background:var(--mustard);color:var(--on-mustard);border:var(--line) solid var(--ink);border-radius:var(--radius);padding:18px 16px;box-shadow:5px 5px 0 var(--shadow);overflow:hidden}
+.spot .eyebrow{color:var(--on-mustard);opacity:.8}
+.spot h2{font-size:clamp(28px,8vw,38px);margin-block:8px 6px}
+.spot .q{font:600 16px/1.35 var(--f-body);margin:10px 0 14px;max-width:34ch}
+.spot .meta{color:var(--on-mustard);opacity:.75}
+.spot .score{position:absolute;right:14px;top:14px;background:var(--paper);color:var(--ink)}
+.spot .btn{background:var(--paper);color:var(--ink)}
+.rows{display:grid}
+.rk{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding-block:12px;border-bottom:2px solid var(--ink);background:none;border-left:0;border-right:0;border-top:0;text-align:left;width:100%}
+.rk .n{font:400 26px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.rk .nm{font:700 15px/1.2 var(--f-body)}
+.rk .sub{font:400 11px/1.3 var(--f-mono);color:var(--muted)}
+.rk .meter{display:flex;gap:3px;margin-top:6px}
+.rk .meter i{height:8px;flex:1;max-width:26px;border-radius:2px;border:1.5px solid var(--ink);background:transparent}
+.rk .meter i.on{background:var(--c)}
+.rk .v{font:700 18px var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* ---------- passport ---------- */
+.pphead{background:var(--cobalt);color:var(--on-accent);border:var(--line) solid var(--ink);border-radius:var(--radius);padding:18px 16px;box-shadow:5px 5px 0 var(--shadow)}
+.pphead .eyebrow{color:var(--on-accent);opacity:.85}
+.pphead .big{font:400 clamp(48px,15vw,68px)/1 var(--f-display);margin-block:8px 2px;font-variant-numeric:tabular-nums}
+.pphead .big span{opacity:.6;font-size:.55em}
+.pphead p{margin:0;font-size:14px}
+.ppline{display:flex;align-items:center;margin-top:14px;gap:0}
+.ppline i{flex:1;height:5px;background:var(--on-accent);opacity:.35}
+.ppline b{width:12px;height:12px;border-radius:50%;border:2.5px solid var(--on-accent);flex:none;background:transparent}
+.ppline b.on{background:var(--on-accent)}
+.stamps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;margin-top:4px}
+.stamp{background:none;border:0;padding:0;display:grid;gap:4px;justify-items:center;text-align:center;color:var(--ink)}
+.stamp svg{width:100%;max-width:120px;height:auto;overflow:visible}
+.stamp .cap{font:600 11px/1.2 var(--f-body);max-width:100%;overflow-wrap:anywhere}
+.stamp.empty-slot .cap{color:var(--muted)}
+.stamp.thunk svg{animation:thunk .55s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes thunk{0%{transform:scale(1.9) rotate(-14deg);opacity:0}55%{transform:scale(.92) rotate(var(--rot,0deg));opacity:1}75%{transform:scale(1.04) rotate(var(--rot,0deg))}100%{transform:scale(1) rotate(var(--rot,0deg))}}
+
+/* ---------- tab bar ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));pointer-events:none}
+.tabs nav{pointer-events:auto;max-width:528px;margin:0 auto;height:var(--tab-h);background:var(--ink);border-radius:999px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;padding-inline:6px;box-shadow:0 6px 0 rgba(0,0,0,.18)}
+.tabs button{background:none;border:0;color:var(--paper);display:grid;justify-items:center;gap:3px;font:600 10px/1 var(--f-body);opacity:.62;padding:6px 0}
+.tabs button svg{width:22px;height:22px}
+.tabs button[aria-current="page"]{opacity:1}
+.tabs button[aria-current="page"] svg{color:var(--mustard)}
+.tabs .plus{width:56px;height:56px;border-radius:50%;background:var(--tomato);color:var(--on-accent);opacity:1;justify-self:center;border:3px solid var(--paper);display:grid;place-items:center;margin-top:-20px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+.tabs .plus svg{width:26px;height:26px;color:var(--on-accent)}
+
+/* ---------- toast & modal ---------- */
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:999px;font:600 14px/1.2 var(--f-body);box-shadow:4px 4px 0 var(--mustard);animation:drop .25s ease-out;max-width:calc(100% - 32px);text-align:center}
+@keyframes drop{from{transform:translate(-50%,-14px);opacity:0}}
+.confirm{display:grid;gap:10px;margin-top:10px;padding:12px;border:2px dashed var(--tomato);border-radius:14px}
+.confirm .btns{display:flex;gap:8px;flex-wrap:wrap}
+.foot{margin-top:30px;font:400 11px/1.5 var(--f-mono);color:var(--muted);text-align:center}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+</style>
+
+<div class="app" id="app"></div>
+<div id="sheet-root"></div>
+<div class="tabs"><nav id="tabs" aria-label="Main"></nav></div>
+<div id="toast-root" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   WeWalk: a field guide to NYC WeWorks, drawn as a transit map.
+   Shared data lives in the artifact db; falls back to this
+   device's localStorage when the db isn't available.
+   ============================================================ */
+
+// ---------- lines (our own, not the MTA's) ----------
+const LINES = {
+  midtown:  { name: "Midtown Local",        color: "var(--cobalt)" },
+  flatiron: { name: "Flatiron Shuttle",     color: "var(--mustard)" },
+  downtown: { name: "Downtown Express",     color: "var(--tomato)" },
+  brooklyn: { name: "Bridge & Tunnel Line", color: "var(--kelly)" },
+};
+const HOODS = [
+  { id: "Midtown",   line: "midtown" },
+  { id: "Flatiron",  line: "flatiron" },
+  { id: "Chelsea",   line: "flatiron" },
+  { id: "Hudson Sq", line: "downtown" },
+  { id: "FiDi",      line: "downtown" },
+  { id: "Brooklyn",  line: "brooklyn" },
+];
+const hoodLine = h => (HOODS.find(x => x.id === h) || HOODS[0]).line;
+const hoodColor = h => LINES[hoodLine(h)].color;
+
+// ---------- the starter map. x/y are schematic map coords (viewBox 360x600), side = label side ----------
+const BASE_STATIONS = [
+  { id:"750-lex",      name:"750 Lex",          address:"750 Lexington Ave, New York, NY 10022", hood:"Midtown",   x:224, y:36,  side:"r" },
+  { id:"135-e-57",     name:"135 E 57th",       address:"135 E 57th St, New York, NY 10022",     hood:"Midtown",   x:204, y:54,  side:"l" },
+  { id:"75-rock",      name:"75 Rock",          address:"75 Rockefeller Plaza, New York, NY 10019", hood:"Midtown", x:166, y:78,  side:"l" },
+  { id:"12-e-49",      name:"12 E 49th",        address:"12 E 49th St, New York, NY 10017",      hood:"Midtown",   x:190, y:96,  side:"r" },
+  { id:"575-fifth",    name:"575 Fifth",        address:"575 5th Ave, New York, NY 10017",       hood:"Midtown",   x:178, y:118, side:"l" },
+  { id:"450-lex",      name:"450 Lex",          address:"450 Lexington Ave, New York, NY 10017", hood:"Midtown",   x:212, y:132, side:"r" },
+  { id:"54-w-40",      name:"54 W 40th",        address:"54 W 40th St, New York, NY 10018",      hood:"Midtown",   x:165, y:150, side:"r" },
+  { id:"1460-bway",    name:"1460 Broadway",    address:"1460 Broadway, New York, NY 10036",     hood:"Midtown",   x:140, y:140, side:"l" },
+  { id:"500-7th",      name:"500 Seventh",      address:"500 7th Ave, New York, NY 10018",       hood:"Midtown",   x:132, y:172, side:"l" },
+  { id:"401-park-s",   name:"401 Park S",       address:"401 Park Ave S, New York, NY 10016",    hood:"Flatiron",  x:200, y:214, side:"r" },
+  { id:"120-e-23",     name:"120 E 23rd",       address:"120 E 23rd St, New York, NY 10010",     hood:"Flatiron",  x:196, y:238, side:"r" },
+  { id:"18-w-18",      name:"18 W 18th",        address:"18 W 18th St, New York, NY 10011",      hood:"Flatiron",  x:168, y:254, side:"l" },
+  { id:"115-w-18",     name:"115 W 18th",       address:"115 W 18th St, New York, NY 10011",     hood:"Chelsea",   x:146, y:230, side:"l" },
+  { id:"33-irving",    name:"33 Irving",        address:"33 Irving Pl, New York, NY 10003",      hood:"Flatiron",  x:194, y:274, side:"r" },
+  { id:"154-w-14",     name:"154 W 14th",       address:"154 W 14th St, New York, NY 10011",     hood:"Chelsea",   x:136, y:282, side:"l" },
+  { id:"175-varick",   name:"175 Varick",       address:"175 Varick St, New York, NY 10014",     hood:"Hudson Sq", x:132, y:330, side:"l" },
+  { id:"205-hudson",   name:"205 Hudson",       address:"205 Hudson St, New York, NY 10013",     hood:"Hudson Sq", x:130, y:362, side:"l" },
+  { id:"222-bway",     name:"222 Broadway",     address:"222 Broadway, New York, NY 10038",      hood:"FiDi",      x:162, y:404, side:"r" },
+  { id:"110-wall",     name:"110 Wall",         address:"110 Wall St, New York, NY 10005",       hood:"FiDi",      x:184, y:440, side:"r" },
+  { id:"85-broad",     name:"85 Broad",         address:"85 Broad St, New York, NY 10004",       hood:"FiDi",      x:160, y:462, side:"r" },
+  { id:"25-bway",      name:"25 Broadway",      address:"25 Broadway, New York, NY 10004",       hood:"FiDi",      x:140, y:474, side:"l" },
+  { id:"wburg-s5",     name:"Williamsburg",     address:"109 S 5th St, Brooklyn, NY 11249",      hood:"Brooklyn",  x:318, y:336, side:"l" },
+  { id:"dock-72",      name:"Dock 72",          address:"Dock 72, Brooklyn Navy Yard, Brooklyn, NY 11205", hood:"Brooklyn", x:298, y:412, side:"r" },
+  { id:"dumbo-heights",name:"Dumbo Heights",    address:"81 Prospect St, Brooklyn, NY 11201",    hood:"Brooklyn",  x:266, y:452, side:"r" },
+  { id:"195-montague", name:"195 Montague",     address:"195 Montague St, Brooklyn, NY 11201",   hood:"Brooklyn",  x:256, y:498, side:"r" },
+];
+
+// ---------- rating categories ----------
+const ICON = {
+  coffee:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h16v8a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z"/><path d="M22 14h2.5a3.5 3.5 0 0 1 0 7H22"/><path d="M11 4c-1 1.5 1 2.5 0 4M16 3.5c-1 1.5 1 2.5 0 4.5"/></svg>',
+  wifi:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 12.5a17 17 0 0 1 24 0"/><path d="M8.5 17a10.5 10.5 0 0 1 15 0"/><path d="M12.8 21.4a4.6 4.6 0 0 1 6.4 0"/><circle cx="16" cy="25.5" r="1.6" fill="currentColor"/></svg>',
+  booths:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><rect x="7" y="3.5" width="18" height="25" rx="3"/><path d="M7 9h18"/><path d="M13 15.5c0 4 2 6 6 6l1.5-2-2.4-1.6-1.1 1.2c-1-.5-1.6-1.1-2-2l1.2-1.1L14.6 13z"/></svg>',
+  light:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="16" cy="16" r="5.5"/><path d="M16 3v3.5M16 25.5V29M3 16h3.5M25.5 16H29M6.8 6.8l2.5 2.5M22.7 22.7l2.5 2.5M6.8 25.2l2.5-2.5M22.7 9.3l2.5-2.5"/></svg>',
+  noise:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5h5l6-5v17l-6-5H5z"/><path d="M21 12.5l6 7M27 12.5l-6 7"/></svg>',
+  seating:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4.5h12a1 1 0 0 1 1 1v11H8v-11a1 1 0 0 1 1-1z"/><path d="M5.5 16.5h21v4h-21z"/><path d="M8 20.5v7M24 20.5v7"/></svg>',
+  bathrooms:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h7v9H6z"/><path d="M4.5 13h17a6 6 0 0 1-6 7h-5a6 6 0 0 1-6-7z"/><path d="M10 20l-1.5 8h10L17 20"/></svg>',
+  lunch:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15h24"/><path d="M5 15a11 7 0 0 1 22 0"/><path d="M4.5 19.5c2 1.4 3.5-1.4 5.5 0s3.5-1.4 5.5 0 3.5-1.4 5.5 0 3.5-1.4 6 0"/><path d="M5.5 24h21a0 0 0 0 1 0 0 3 3 0 0 1-3 3h-15a3 3 0 0 1-3-3z"/></svg>',
+  vibe:'<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M16 3l3.2 8.6L28 13l-6.8 5.8L23.4 28 16 23.2 8.6 28l2.2-9.2L4 13l8.8-1.4z"/></svg>',
+};
+const CATS = [
+  { k:"coffee",    label:"Coffee",          hint:"5 = worth the commute", quips:["Brown water. Tragic.","Drinkable if desperate","It's coffee. Fine.","Actually good","I'd walk 20 blocks"] },
+  { k:"wifi",      label:"Wi-Fi",           hint:"5 = 4K Zoom, no lag",   quips:["Tethering to my phone","Drops every Zoom","Gets the job done","Fast. Reliable.","Faster than my apartment"] },
+  { k:"booths",    label:"Phone booths",    hint:"5 = always one free",   quips:["Took my call in a stairwell","Waitlist energy","Can usually snag one","Plenty, mostly clean","A booth for every mood"] },
+  { k:"light",     label:"Natural light",   hint:"5 = plant-thriving",    quips:["Basically a bunker","One window, far away","Decent by the windows","Bright and lovely","Vitamin D included"] },
+  { k:"noise",     label:"Noise level",     hint:"5 = library quiet",     quips:["Sales team on speaker","Loud but survivable","Normal office hum","Pretty chill","Could hear a pin drop"] },
+  { k:"seating",   label:"Seating comfort", hint:"5 = my back is happy",  quips:["Bench of regret","Stools. Just stools.","Mixed bag","Good chairs, good desks","Ergonomic heaven"] },
+  { k:"bathrooms", label:"Bathrooms",       hint:"5 = hotel lobby",       quips:["Bring hand sanitizer","Always a line","Clean enough","Nice, honestly","Spa-level. I lingered."] },
+  { k:"lunch",     label:"Lunch nearby",    hint:"5 = embarrassment of riches", quips:["Sad desk salad only","A Pret and a prayer","Some solid options","Great block for lunch","Food heaven, can't pick"] },
+  { k:"vibe",      label:"Overall vibe",    hint:"5 = I'd move in",       quips:["Never again","Meh","Would come back","Big fan","My new home base"] },
+];
+const TAGS = ["good for deep work","good for calls","great rooftop","crowded by 10am","good coffee bar","quiet floor","good for meetings","dog-friendly","near the train","booths always full","AC set to arctic","free snacks era"];
+
+// ---------- utils ----------
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const todayISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset()*6e4).toISOString().slice(0,10); };
+const fmtDate = iso => { if (!iso) return ""; const [y,m,d] = iso.split("-").map(Number); return new Date(y, m-1, d).toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" }); };
+const ls = { get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const tierColor = v => v == null ? "var(--paper)" : v >= 4.3 ? "var(--kelly)" : v >= 3.5 ? "var(--cobalt)" : v >= 2.7 ? "var(--mustard)" : "var(--tomato)";
+const fmtScore = v => v == null ? "–" : v.toFixed(1);
+
+// ---------- store: artifact db when available, else this device ----------
+const COLLS = ["reviews", "visits", "stations", "retired"];
+const Store = {
+  mode: "connecting", db: null, canWrite: true,
+  async init(){
+    const c = window.claude;
+    if (c && typeof c.use === "function") {
+      try {
+        const [db, user] = await Promise.all([c.use("db"), c.use("user")]);
+        if (db) {
+          this.db = db; this.mode = "shared";
+          if (user) {
+            try { const id = await user.id(); if (id) S.me.id = id; } catch {}
+            try { const w = await user.can("data.write"); if (w === false) this.canWrite = false; } catch {}
+          }
+          return;
+        }
+      } catch {}
+    }
+    this.mode = "local";
+  },
+  watch(coll, cb, where){
+    if (this.mode === "shared") {
+      let q = this.db.collection(coll);
+      if (where) q = q.where(where[0], "==", where[1]);
+      return q.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), e => { console.warn(coll, e); toast("Lost the connection to the shared logbook. Reload to reconnect."); });
+    }
+    const emit = () => { let rows = Object.entries(ls.get("wewalk:" + coll, {})).map(([id, v]) => ({ id, ...v })); if (where) rows = rows.filter(r => r[where[0]] === where[1]); cb(rows); };
+    const h = () => emit(); this._local = this._local || new Set(); this._local.add(h);
+    queueMicrotask(emit);
+    return () => this._local.delete(h);
+  },
+  async set(coll, id, data){
+    if (this.mode === "shared") return this.db.collection(coll).doc(id).set(data);
+    const all = ls.get("wewalk:" + coll, {}); all[id] = data; ls.set("wewalk:" + coll, all);
+    (this._local || []).forEach(h => h());
+  },
+  async del(coll, id){
+    if (this.mode === "shared") return this.db.collection(coll).doc(id).delete();
+    const all = ls.get("wewalk:" + coll, {}); delete all[id]; ls.set("wewalk:" + coll, all);
+    (this._local || []).forEach(h => h());
+  },
+};
+
+// ---------- state ----------
+const S = {
+  reviews: [], visits: [], custom: [], retired: [], photos: [],
+  view: "map", stationId: null, sel: null,
+  hood: null, tag: null, sort: "overall",
+  editing: null, draft: null, confirm: null,
+  justLit: null, justStamped: null,
+  me: { id: ls.get("wewalk:me", null) || (() => { const i = "local-" + rid(); ls.set("wewalk:me", i); return i; })(), name: ls.get("wewalk:name", "") },
+  loaded: false,
+};
+let photoUnsub = null;
+
+// ---------- derived ----------
+function stations(){
+  const gone = new Set(S.retired.map(r => r.id));
+  return [...BASE_STATIONS, ...S.custom].filter(s => !gone.has(s.id));
+}
+const stationById = id => [...BASE_STATIONS, ...S.custom].find(s => s.id === id);
+function stats(id){
+  const rs = S.reviews.filter(r => r.stationId === id).sort((a,b) => (b.visitedOn||"").localeCompare(a.visitedOn||"") || (b.createdAt||0) - (a.createdAt||0));
+  const vs = S.visits.filter(v => v.stationId === id);
+  const cat = {};
+  for (const c of CATS) { const xs = rs.map(r => r.scores?.[c.k]).filter(n => typeof n === "number"); cat[c.k] = xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null; }
+  const have = Object.values(cat).filter(v => v != null);
+  const overall = have.length ? have.reduce((a,b)=>a+b,0)/have.length : null;
+  const dates = [...rs.map(r => r.visitedOn), ...vs.map(v => v.date)].filter(Boolean).sort();
+  const tagCount = {};
+  rs.forEach(r => (r.tags||[]).forEach(t => tagCount[t] = (tagCount[t]||0) + 1));
+  const hot = rs.find(r => r.hotTake && r.hotTake.trim());
+  return { reviews: rs, visits: vs, cat, overall, visited: dates.length > 0, first: dates[0], last: dates[dates.length-1], tagCount, hot, dates };
+}
+function allTags(){
+  const set = new Set(TAGS); S.reviews.forEach(r => (r.tags||[]).forEach(t => set.add(t)));
+  const used = new Set(S.reviews.flatMap(r => r.tags || []));
+  return [...set].filter(t => used.has(t));
+}
+function stationOfMonth(){
+  const ym = todayISO().slice(0,7);
+  const scored = stations().map(s => ({ s, st: stats(s.id) })).filter(x => x.st.overall != null);
+  if (!scored.length) return null;
+  const thisMonth = scored.filter(x => x.st.dates.some(d => d.startsWith(ym)));
+  const pool = thisMonth.length ? thisMonth : scored;
+  pool.sort((a,b) => b.st.overall - a.st.overall || b.st.reviews.length - a.st.reviews.length);
+  return { ...pool[0], fresh: thisMonth.length > 0 };
+}
+
+// ---------- icons for chrome ----------
+const UI = {
+  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c4-1 3-7 8-8s4-6 8-7"/><circle cx="4" cy="19" r="2.4" fill="currentColor"/><circle cx="12" cy="11" r="2.4" fill="currentColor"/><circle cx="20" cy="4" r="2.4" fill="currentColor"/></svg>',
+  ranks:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M3 20h18"/><path d="M9.5 20V8h5v12M3.5 20v-7h5v7M15.5 20v-10h5v10"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  pass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><circle cx="12" cy="10.5" r="3.6"/><path d="M8.5 17h7"/></svg>',
+  crew:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16 4.8a3.4 3.4 0 0 1 0 6.4M18.5 14.2A6.2 6.2 0 0 1 21.2 20"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+};
+
+// ---------- render: tabs ----------
+function renderTabs(){
+  const cur = S.view === "station" ? "map" : S.view;
+  const t = (v, icon, label) => `<button type="button" data-tab="${v}" ${cur===v?'aria-current="page"':''}>${UI[icon]}<span>${label}</span></button>`;
+  $("#tabs").innerHTML = t("map","map","Map") + t("ranks","ranks","Ranks") +
+    `<button type="button" class="plus" data-tab="review" aria-label="Log a visit">${UI.plus}</button>` +
+    t("passport","pass","Passport") + t("crew","crew","Crew");
+}
+
+// ---------- render: map ----------
+function mapSVG(){
+  const list = stations();
+  const st = Object.fromEntries(list.map(s => [s.id, stats(s.id)]));
+  const routes = Object.keys(LINES).map(line => {
+    const pts = list.filter(s => hoodLine(s.hood) === line && !s.custom).sort((a,b) => line === "brooklyn" ? a.y - b.y : a.y - b.y);
+    if (pts.length < 2) return "";
+    const d = "M" + pts.map(p => `${p.x} ${p.y}`).join(" L");
+    return `<path class="route-casing" d="${d}"/><path class="route" d="${d}" stroke="${LINES[line].color}"/>`;
+  }).join("");
+  const matches = s => (!S.hood || s.hood === S.hood) && (!S.tag || st[s.id].tagCount[S.tag]);
+  const markers = list.map(s => {
+    const x = st[s.id], lit = x.visited;
+    const r = lit ? (x.overall != null ? 6 + x.overall * 1.3 : 7) : 5.5;
+    const fill = lit ? tierColor(x.overall) : "var(--paper)";
+    const tx = s.side === "l" ? -(r + 5) : r + 5;
+    const cls = ["stn", lit ? "" : "unlit", matches(s) ? "" : "dim", S.sel === s.id ? "sel" : "", S.justLit === s.id ? "lit" : ""].join(" ");
+    return `<g class="${cls}" data-stn="${esc(s.id)}" transform="translate(${s.x} ${s.y})" tabindex="0" role="button" aria-label="${esc(s.name)}, ${lit ? "score " + fmtScore(x.overall) : "not visited yet"}">
+      <circle class="hit" r="16"/><circle class="glow" r="6"/>
+      <circle class="ring" r="${r.toFixed(1)}" fill="${fill}"/>${lit ? `<circle class="core" r="2.2"/>` : ""}
+      <text x="${tx}" y="3" text-anchor="${s.side === "l" ? "end" : "start"}">${esc(s.name)}</text></g>`;
+  }).join("");
+  return `<svg class="map" viewBox="0 0 360 600" role="img" aria-label="Schematic map of Manhattan and Brooklyn with WeWork stations">
+    <defs><filter id="wobble" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="5"/></filter></defs>
+    <g filter="url(#wobble)">
+      <path class="land far" d="M-10 -10 L52 -10 L58 120 L54 260 L46 420 L36 610 L-10 610 Z"/>
+      <path class="land far" d="M286 -10 L370 -10 L370 214 L338 236 L304 178 L284 96 Z"/>
+      <path class="land" d="M92 -10 L252 -10 L246 60 L238 130 L232 200 L224 262 L214 322 L206 382 L205 420 L196 455 L178 486 L154 502 L134 492 L124 466 L114 420 L107 370 L104 320 L109 270 L104 200 L99 130 L94 60 Z"/>
+      <path class="land" d="M370 232 L332 262 L302 300 L287 350 L281 392 L256 420 L236 446 L232 482 L240 522 L222 562 L208 610 L370 610 Z"/>
+      <path class="land far" d="M258 34 L266 30 L272 104 L264 112 Z"/>
+      <path class="land far" d="M172 532 L198 522 L210 538 L192 556 L172 550 Z"/>
+    </g>
+    <text class="label-geo" x="22" y="300" transform="rotate(-90 22 300)" text-anchor="middle">New Jersey · no comment</text>
+    <text class="label-water" x="76" y="420" transform="rotate(-84 76 420)" text-anchor="middle">HUDSON</text>
+    <text class="label-water" x="238" y="336" transform="rotate(-76 238 336)" text-anchor="middle">EAST RIVER</text>
+    <text class="label-geo" x="330" y="120" text-anchor="middle">Queens</text>
+    <text class="label-geo" x="318" y="560" text-anchor="middle">Brooklyn</text>
+    <text class="label-geo" x="174" y="16" text-anchor="middle">↑ Uptown, uncharted</text>
+    <text class="label-geo" x="190" y="574" text-anchor="middle">Gov. Isl.</text>
+    <path class="ferry" d="M190 462 Q 228 470 258 462"/>
+    ${routes}${markers}
+  </svg>`;
+}
+function renderMap(){
+  const tags = allTags();
+  const hoodChips = HOODS.map(h => `<button type="button" class="chip" data-hood="${esc(h.id)}" aria-pressed="${S.hood===h.id}" style="--c:${LINES[h.line].color}"><span class="dot"></span>${esc(h.id)}</button>`).join("");
+  const tagChips = tags.length ? tags.map(t => `<button type="button" class="chip" data-tagf="${esc(t)}" aria-pressed="${S.tag===t}">${esc(t)}</button>`).join("") : `<span class="meta" style="padding:6px 0">Tags show up here once people start reviewing.</span>`;
+  const n = stations().filter(s => stats(s.id).visited).length;
+  return `<section class="page">
+    <div class="chiplabel">Neighborhood</div><div class="chips">${hoodChips}</div>
+    <div class="chiplabel">Best for</div><div class="chips">${tagChips}</div>
+    <div class="mapwrap">${mapSVG()}
+      <div class="maplegend">
+        <span><i style="--c:var(--kelly)"></i>4.3+ elite</span><span><i style="--c:var(--cobalt)"></i>3.5+ solid</span>
+        <span><i style="--c:var(--mustard)"></i>2.7+ it's fine</span><span><i style="--c:var(--tomato)"></i>below: pray</span>
+        <span><i class="unlit"></i>unlit, unvisited</span><span>bigger dot = higher score</span>
+      </div>
+    </div>
+    <p class="meta">${n} of ${stations().length} stations lit. ${n === 0 ? "The whole map is dark. Somebody go get a coffee and judge it." : "Tap a station for the gossip."}</p>
+    <p><button type="button" class="linkbtn" data-act="add-station">Missing a WeWork? Add a station</button></p>
+    ${S.confirm === "add-station" ? addStationForm() : ""}
+  </section>`;
+}
+function addStationForm(){
+  return `<form class="card inlineform" id="addstn" style="margin-top:8px">
+    <b style="font-family:var(--f-display);font-weight:400;font-size:18px">New station</b>
+    <label class="field"><span>Name on the map</span><input class="inp" id="ns-name" required maxlength="22" placeholder="e.g. 1 Penn"></label>
+    <label class="field"><span>Address</span><input class="inp" id="ns-addr" required maxlength="120" placeholder="Street, borough, ZIP"></label>
+    <label class="field"><span>Neighborhood</span><select class="inp" id="ns-hood">${HOODS.map(h => `<option>${esc(h.id)}</option>`).join("")}</select></label>
+    <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Add to map</button><button class="btn ghost" type="button" data-act="cancel">Cancel</button></div>
+  </form>`;
+}
+
+// ---------- preview sheet ----------
+function renderSheet(){
+  const root = $("#sheet-root");
+  if (S.view !== "map" || !S.sel) { root.innerHTML = ""; return; }
+  const s = stationById(S.sel); if (!s) { root.innerHTML = ""; return; }
+  const x = stats(s.id);
+  const verdict = x.hot ? x.hot.hotTake : x.visited ? "Visited, but nobody's ranted yet." : "Unlit station. Nobody from the crew has been yet.";
+  root.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(s.name)} preview">
+    <div class="row">
+      ${scoreBadge(x.overall, x.visited)}
+      <div style="min-width:0;flex:1">
+        <span class="hoodtag" style="--c:${hoodColor(s.hood)}">${esc(s.hood)}</span>
+        <h3 style="margin-top:6px">${esc(s.name)}</h3>
+      </div>
+      <button class="iconbtn close" type="button" data-act="close-sheet" aria-label="Close preview" style="width:36px;height:36px;border-width:2px">${UI.x}</button>
+    </div>
+    <p class="verdict">${esc(verdict)}</p>
+    <div style="display:flex;gap:8px"><button class="btn primary" type="button" data-open="${esc(s.id)}" style="flex:1">Open station</button>
+    <button class="btn" type="button" data-review="${esc(s.id)}">Review</button></div>
+  </div>`;
+}
+function scoreBadge(v, visited, lg){
+  if (v == null) return `<div class="score none ${lg?"lg":""}">${visited ? "NO<br>SCORE" : "UN-<br>LIT"}</div>`;
+  return `<div class="score ${lg?"lg":""}" style="--c:${tierColor(v)}">${fmtScore(v)}</div>`;
+}
+
+// ---------- render: station page ----------
+function pips(v){
+  let h = ""; for (let i = 1; i <= 5; i++) h += `<i class="${v == null ? "" : v >= i - .25 ? "on" : v >= i - .75 ? "half" : ""}"></i>`; return `<span class="pips">${h}</span>`;
+}
+function renderStation(){
+  const s = stationById(S.stationId);
+  if (!s) return `<div class="empty"><b>Station not found.</b>It may have been retired. <button class="linkbtn" data-tab="map">Back to the map</button></div>`;
+  const x = stats(s.id), c = hoodColor(s.hood);
+  const tags = Object.entries(x.tagCount).sort((a,b) => b[1]-a[1]);
+  const mine = r => r.authorId && r.authorId === S.me.id;
+  const log = [...x.visits.map(v => ({ d: v.date, by: v.by, text: v.note, kind: "note", id: v.id, authorId: v.authorId })),
+               ...x.reviews.map(r => ({ d: r.visitedOn, by: r.by, text: "Filed a review" + (r.scores?.vibe ? `, vibe ${r.scores.vibe}/5` : ""), kind: "review" }))]
+              .sort((a,b) => (b.d||"").localeCompare(a.d||""));
+  return `<article class="page" style="--c:${c}">
+    <div class="top" style="padding-bottom:0"><button class="iconbtn" type="button" data-tab="map" aria-label="Back to map">${UI.back}</button>
+      <span class="hoodtag" style="--c:${c}">${esc(LINES[hoodLine(s.hood)].name)}</span></div>
+    <header class="stnhead">
+      <div class="bar"></div>
+      <span class="eyebrow">${esc(s.hood)}</span>
+      <h1 style="margin-top:6px">${esc(s.name)}</h1>
+      <div class="addr">${esc(s.address)}<br>${x.last ? "Last visit · " + esc(fmtDate(x.last)) : "Last visit · never (yet)"}</div>
+      <div class="headrow">
+        <div class="meta">${x.reviews.length} review${x.reviews.length===1?"":"s"} · ${x.visits.length} visit note${x.visits.length===1?"":"s"}</div>
+        ${scoreBadge(x.overall, x.visited, true)}
+      </div>
+    </header>
+    ${x.hot ? `<p class="hottake">${esc(x.hot.hotTake)}</p><div class="attrib">Hot take by ${esc(x.hot.by || "anonymous")}</div>` : ""}
+    <div style="margin-top:20px"><button class="btn primary block" type="button" data-review="${esc(s.id)}">${x.reviews.length ? "Add your review" : "Be the first to judge it"}</button></div>
+
+    <div class="sec"><h2>The scorecard</h2><span class="eyebrow">avg of ${x.reviews.length}</span></div>
+    ${x.reviews.length ? `<div class="card ratings">${CATS.map(cat => `<div class="rate" style="--c:${tierColor(x.cat[cat.k])}">
+        <span class="ic">${ICON[cat.k]}</span><span class="lbl">${esc(cat.label)}<small>${esc(cat.hint)}</small></span>
+        <span style="display:flex;gap:8px;align-items:center">${pips(x.cat[cat.k])}<span class="num">${fmtScore(x.cat[cat.k])}</span></span></div>`).join("")}</div>`
+      : `<div class="empty"><b>No scores yet.</b>The coffee is unrated and the phone booths are unjudged. Go fix that.</div>`}
+
+    ${tags.length ? `<div class="sec"><h2>Known for</h2></div><div class="tags">${tags.map(([t,n]) => `<span class="tag">${esc(t)}${n>1?`<b>×${n}</b>`:""}</span>`).join("")}</div>` : ""}
+
+    <div class="sec"><h2>Reviews</h2></div>
+    ${x.reviews.length ? `<div class="card" style="padding-block:2px">${x.reviews.map(r => `<div class="review">
+        <div class="who"><b>${esc(r.by || "anonymous")}</b><span class="meta">${esc(fmtDate(r.visitedOn))}</span></div>
+        ${r.hotTake ? `<div class="ht">“${esc(r.hotTake)}”</div>` : ""}
+        ${r.text ? `<p>${esc(r.text)}</p>` : ""}
+        ${(r.tags||[]).length ? `<div class="tags">${r.tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : ""}
+        <div class="meta">${CATS.filter(c => r.scores?.[c.k]).map(c => `${esc(c.label)} ${r.scores[c.k]}`).join(" · ")}</div>
+        ${mine(r) && Store.canWrite ? `<div style="display:flex;gap:14px"><button class="linkbtn" type="button" data-edit="${esc(r.id)}">Edit</button><button class="linkbtn" type="button" data-delrev="${esc(r.id)}">Delete</button></div>` : ""}
+        ${S.confirm === "del:" + r.id ? `<div class="confirm"><b>Delete this review for good?</b><div class="btns"><button class="btn primary ghost" type="button" data-delrev-yes="${esc(r.id)}">Delete it</button><button class="btn ghost" type="button" data-act="cancel">Keep it</button></div></div>` : ""}
+      </div>`).join("")}</div>` : `<div class="empty"><b>Crickets.</b>No reviews. The first one gets to set the narrative.</div>`}
+
+    <div class="sec"><h2>Photos</h2>${Store.canWrite ? `<label class="btn ghost filebtn">Add photo<input type="file" id="ph-add" accept="image/*" multiple></label>` : ""}</div>
+    ${S.photos.length ? `<div class="photos">${S.photos.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(p => `<figure title="${esc("Photo by " + (p.by || "anonymous"))}"><img src="${esc(p.data)}" alt="Photo of ${esc(s.name)} by ${esc(p.by || "anonymous")}" loading="lazy"></figure>`).join("")}</div>`
+      : `<div class="empty">No photos. Snap the lobby, the coffee machine, or the one good chair.</div>`}
+
+    <div class="sec"><h2>Visit log</h2></div>
+    ${log.length ? `<ul class="log">${log.map(l => `<li><span class="d">${esc(fmtDate(l.d))}</span> <span class="meta">· ${esc(l.by || "anonymous")}</span><p>${esc(l.text || "")}</p></li>`).join("")}</ul>` : `<p class="meta">Nobody's checked in yet.</p>`}
+    ${Store.canWrite ? `<form class="card inlineform" id="visitform">
+      <b style="font-family:var(--f-display);font-weight:400;font-size:17px">Quick check-in</b>
+      <textarea class="inp" id="v-note" maxlength="400" rows="2" required placeholder="Fourth floor was dead quiet till the 11am all-hands. Oat milk was out again."></textarea>
+      <div class="two"><input class="inp" id="v-name" maxlength="30" required placeholder="Your name" value="${esc(S.me.name)}"><input class="inp" id="v-date" type="date" required value="${todayISO()}"></div>
+      <button class="btn" type="submit">Log the visit</button></form>` : ""}
+
+    <div style="margin-top:28px">${S.confirm === "retire" ? `<div class="confirm"><b>Retire ${esc(s.name)} from the map?</b><span class="meta">Use this if it closed or the address is wrong. Reviews stay in the logbook.</span><div class="btns"><button class="btn primary ghost" type="button" data-act="retire-yes">Retire station</button><button class="btn ghost" type="button" data-act="cancel">Never mind</button></div></div>`
+      : Store.canWrite ? `<button class="linkbtn" type="button" data-act="retire">Closed or wrong address? Retire this station</button>` : ""}</div>
+  </article>`;
+}
+
+// ---------- render: review form ----------
+function newDraft(stationId, review){
+  if (review) return { id: review.id, stationId: review.stationId, scores: { ...(review.scores||{}) }, tags: [...(review.tags||[])], text: review.text || "", hotTake: review.hotTake || "", visitedOn: review.visitedOn || todayISO(), by: review.by || S.me.name, photos: [], createdAt: review.createdAt };
+  return { id: null, stationId: stationId || ls.get("wewalk:lastStation", ""), scores: {}, tags: [], text: "", hotTake: "", visitedOn: todayISO(), by: S.me.name, photos: [] };
+}
+function renderForm(){
+  const d = S.draft;
+  if (!Store.canWrite) return `<div class="empty" style="margin-top:20px"><b>Read-only pass.</b>You can browse, but this link doesn't let you write. Ask whoever shared it to make you a Contributor.</div>`;
+  const opts = stations().slice().sort((a,b) => a.name.localeCompare(b.name)).map(s => `<option value="${esc(s.id)}" ${d.stationId===s.id?"selected":""}>${esc(s.name)} · ${esc(s.hood)}</option>`).join("");
+  return `<section class="page">
+    <div class="formhead"><button class="iconbtn" type="button" data-act="form-back" aria-label="Back">${UI.back}</button><div><span class="eyebrow">${d.id ? "Edit your review" : "Field report"}</span><h1>${d.id ? "Rewrite history" : "Log a visit"}</h1></div></div>
+    <form class="form" id="reviewform" novalidate>
+      <div class="grp">
+        <label class="field"><span>Station</span><select class="inp" id="f-station" required><option value="">Pick a building…</option>${opts}</select></label>
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px">
+          <label class="field"><span>You are</span><input class="inp" id="f-by" maxlength="30" required placeholder="Sal from accounting" value="${esc(d.by)}"></label>
+          <label class="field"><span>Visited</span><input class="inp" id="f-date" type="date" required value="${esc(d.visitedOn)}"></label>
+        </div>
+      </div>
+      <div class="grp">
+        <div class="sec" style="margin:0"><h2 style="font-size:20px">Rate it</h2><span class="eyebrow">tap 1–5, skip what you didn't try</span></div>
+        ${CATS.map(c => { const v = d.scores[c.k]; return `<div class="tap" data-cat="${c.k}" style="--c:${v ? tierColor(v) : "var(--paper)"}">
+          <span class="ic">${ICON[c.k]}</span>
+          <div class="top2"><b>${esc(c.label)}</b><span class="quip" id="q-${c.k}">${v ? esc(c.quips[v-1]) : esc(c.hint)}</span></div>
+          <div class="tokens" role="radiogroup" aria-label="${esc(c.label)} score">${[1,2,3,4,5].map(n => `<button type="button" role="radio" aria-checked="${v===n}" data-score="${n}" class="${v && n <= v ? "on" : ""}">${n}</button>`).join("")}</div>
+        </div>`; }).join("")}
+      </div>
+      <label class="field"><span>Hot take (one sentence, go big)</span><input class="inp" id="f-hot" maxlength="120" placeholder="The phone booths here are a hostage situation." value="${esc(d.hotTake)}"></label>
+      <label class="field"><span>The review</span><textarea class="inp" id="f-text" maxlength="1200" rows="4" placeholder="Got here at 9:40 and every window seat was already claimed by a guy with three monitors. Cold brew's legit though. Lunch: walk two blocks to the halal cart, thank me later.">${esc(d.text)}</textarea></label>
+      <div class="grp"><span class="eyebrow">Tags</span><div class="tagpick">${TAGS.map(t => `<button type="button" data-tagpick="${esc(t)}" aria-pressed="${d.tags.includes(t)}">${esc(t)}</button>`).join("")}</div></div>
+      ${d.id ? "" : `<div class="grp"><span class="eyebrow">Photos (optional)</span>
+        <div class="thumbs" id="thumbs">${d.photos.map(p => `<img src="${esc(p)}" alt="Photo to upload">`).join("")}</div>
+        <label class="btn ghost filebtn" style="justify-self:start">Add photos<input type="file" id="f-photos" accept="image/*" multiple></label></div>`}
+      <p class="err" id="f-err" hidden></p>
+      <div class="stickybar"><button class="btn primary block" type="submit" id="f-submit">${d.id ? "Save changes" : "Punch it in"}</button></div>
+    </form>
+  </section>`;
+}
+
+// ---------- render: ranks ----------
+function renderRanks(){
+  const som = stationOfMonth();
+  const key = S.sort;
+  const rows = stations().map(s => { const x = stats(s.id); return { s, x, v: key === "overall" ? x.overall : x.cat[key] }; })
+    .filter(r => r.v != null).sort((a,b) => b.v - a.v || b.x.reviews.length - a.x.reviews.length);
+  const unrated = stations().length - stations().filter(s => stats(s.id).overall != null).length;
+  const sortChips = [{ k:"overall", label:"Overall" }, ...CATS].map(c => `<button type="button" class="chip" data-sort="${c.k}" aria-pressed="${key===c.k}">${esc(c.label)}</button>`).join("");
+  const catLabel = key === "overall" ? "overall" : CATS.find(c => c.k === key).label.toLowerCase();
+  const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
+  return `<section class="page">
+    <div class="sec" style="margin-top:6px"><h2>Station of the Month</h2></div>
+    ${som ? `<div class="spot">
+        ${scoreBadge(som.st.overall, true)}
+        <span class="eyebrow">${som.fresh ? esc(monthName) + " champion" : "All-time champ (nobody went anywhere in " + esc(monthName) + ")"}</span>
+        <h2 style="padding-right:70px">${esc(som.s.name)}</h2>
+        <div class="meta">${esc(som.s.hood)} · ${som.st.reviews.length} review${som.st.reviews.length===1?"":"s"}</div>
+        ${som.st.hot ? `<p class="q">“${esc(som.st.hot.hotTake)}” <span style="font-weight:400">· ${esc(som.st.hot.by || "anon")}</span></p>` : `<p class="q">Top marks, zero words. Classic.</p>`}
+        <button class="btn" type="button" data-open="${esc(som.s.id)}">Visit the station</button></div>`
+      : `<div class="empty"><b>The trophy's still in the box.</b>Rate one building and it wins by default. That's democracy.</div>`}
+    <div class="sec"><h2>Rankings</h2><span class="eyebrow">by ${esc(catLabel)}</span></div>
+    <div class="chips">${sortChips}</div>
+    ${rows.length ? `<div class="rows">${rows.map((r, i) => `<button type="button" class="rk" data-open="${esc(r.s.id)}" style="--c:${tierColor(r.v)}">
+        <span class="n">${i+1}</span>
+        <span style="min-width:0"><span class="nm">${esc(r.s.name)}</span><br><span class="sub"><span class="hoodtag" style="--c:${hoodColor(r.s.hood)};font-size:10px">${esc(r.s.hood)}</span> · ${r.x.reviews.length} review${r.x.reviews.length===1?"":"s"}</span>
+          <span class="meter">${[1,2,3,4,5].map(n => `<i class="${r.v >= n - .5 ? "on" : ""}"></i>`).join("")}</span></span>
+        <span class="v">${fmtScore(r.v)}</span></button>`).join("")}</div>`
+      : `<div class="empty"><b>No scores for ${esc(catLabel)} yet.</b>Someone has to taste the coffee first.</div>`}
+    ${rows.length && unrated ? `<p class="meta" style="margin-top:12px">${unrated} station${unrated===1?"":"s"} still unrated. Field trip?</p>` : ""}
+  </section>`;
+}
+
+// ---------- render: passport ----------
+const STAMP_SHAPES = [
+  (c) => `<circle cx="60" cy="60" r="50" fill="none" stroke="${c}" stroke-width="4"/><circle cx="60" cy="60" r="42" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="3 3"/>`,
+  (c) => `<rect x="12" y="20" width="96" height="80" rx="14" fill="none" stroke="${c}" stroke-width="4"/><rect x="19" y="27" width="82" height="66" rx="9" fill="none" stroke="${c}" stroke-width="1.6"/>`,
+  (c) => `<polygon points="60,8 106,34 106,86 60,112 14,86 14,34" fill="none" stroke="${c}" stroke-width="4" stroke-linejoin="round"/><polygon points="60,18 97,39 97,81 60,102 23,81 23,39" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`,
+  (c) => { let d = ""; for (let i = 0; i < 24; i++) { const a = i/24*Math.PI*2, r = i % 2 ? 46 : 52; d += (i ? "L" : "M") + (60 + r*Math.cos(a)).toFixed(1) + " " + (60 + r*Math.sin(a)).toFixed(1); } return `<path d="${d}Z" fill="none" stroke="${c}" stroke-width="3.4" stroke-linejoin="round"/><circle cx="60" cy="60" r="38" fill="none" stroke="${c}" stroke-width="1.6"/>`; },
+];
+function stampSVG(s, x){
+  const h = hash(s.id), c = hoodColor(s.hood), shape = STAMP_SHAPES[h % STAMP_SHAPES.length](c);
+  const rot = ((h >> 4) % 17) - 8;
+  const nm = s.name.length > 13 ? s.name.slice(0, 12) + "…" : s.name;
+  const date = x.first ? fmtDate(x.first).toUpperCase() : "";
+  return `<svg viewBox="0 0 120 120" style="--rot:${rot}deg;transform:rotate(${rot}deg)" aria-hidden="true">
+    <g opacity=".92">${shape}
+    <text x="60" y="44" text-anchor="middle" font-family="Space Mono, monospace" font-size="8" font-weight="700" letter-spacing="1.5" fill="${c}">WEWALK · NYC</text>
+    <text x="60" y="66" text-anchor="middle" font-family="Archivo Black, Arial Black, sans-serif" font-size="${nm.length > 10 ? 11 : 13.5}" fill="${c}">${esc(nm.toUpperCase())}</text>
+    <text x="60" y="84" text-anchor="middle" font-family="Space Mono, monospace" font-size="7.5" fill="${c}">${esc(date)}</text></g></svg>`;
+}
+function renderPassport(){
+  const list = stations().map(s => ({ s, x: stats(s.id) }));
+  const got = list.filter(r => r.x.visited).sort((a,b) => (a.x.first||"").localeCompare(b.x.first||""));
+  const not = list.filter(r => !r.x.visited);
+  const pct = list.length ? Math.round(got.length / list.length * 100) : 0;
+  const quip = pct === 0 ? "A blank passport. Crisp. Unbothered. Embarrassing." : pct < 25 ? "Barely out of the lobby. Keep going." : pct < 50 ? "A respectable commuter. Your MetroCard is sweating." : pct < 100 ? "Seasoned. You have opinions about elevator banks." : "Every station. Touch grass, then go again.";
+  return `<section class="page">
+    <div class="pphead" style="margin-top:6px">
+      <span class="eyebrow">The crew's passport</span>
+      <div class="big">${String(got.length).padStart(2,"0")}<span> / ${list.length}</span></div>
+      <p>${esc(quip)}</p>
+      <div class="ppline">${list.map((r, i) => `${i ? "<i></i>" : ""}<b class="${i < got.length ? "on" : ""}"></b>`).join("")}</div>
+    </div>
+    <div class="sec"><h2>Stamps</h2><span class="eyebrow">${pct}% of NYC</span></div>
+    ${got.length ? `<div class="stamps">${got.map(r => `<button type="button" class="stamp ${S.justStamped === r.s.id ? "thunk" : ""}" data-open="${esc(r.s.id)}" aria-label="${esc(r.s.name)} stamp, first visit ${esc(fmtDate(r.x.first))}">${stampSVG(r.s, r.x)}<span class="cap">${esc(r.s.name)}</span></button>`).join("")}</div>`
+      : `<div class="empty"><b>No stamps yet.</b>Log your first visit and we'll thunk one in.</div>`}
+    ${not.length ? `<div class="sec"><h2>Still out there</h2><span class="eyebrow">${not.length} to go</span></div>
+      <div class="stamps">${not.map(r => `<button type="button" class="stamp empty-slot" data-open="${esc(r.s.id)}" aria-label="${esc(r.s.name)}, not visited"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--muted)" stroke-width="2.4" stroke-dasharray="5 5"/><text x="60" y="68" text-anchor="middle" font-family="Archivo Black, Arial Black, sans-serif" font-size="24" fill="var(--muted)">?</text></svg><span class="cap">${esc(r.s.name)}</span></button>`).join("")}</div>` : ""}
+  </section>`;
+}
+
+// ---------- render: crew ----------
+function renderCrew(){
+  const by = {};
+  for (const r of S.reviews) { const k = (r.by || "anonymous").trim(); (by[k] = by[k] || { reviews: 0, visits: 0, stns: new Set(), hot: null }); by[k].reviews++; by[k].stns.add(r.stationId); if (r.hotTake && !by[k].hot) by[k].hot = r.hotTake; }
+  for (const v of S.visits) { const k = (v.by || "anonymous").trim(); (by[k] = by[k] || { reviews: 0, visits: 0, stns: new Set(), hot: null }); by[k].visits++; by[k].stns.add(v.stationId); }
+  const crew = Object.entries(by).sort((a,b) => b[1].stns.size - a[1].stns.size || b[1].reviews - a[1].reviews);
+  return `<section class="page">
+    <div class="sec" style="margin-top:6px"><h2>Your name tag</h2></div>
+    <form class="card inlineform" id="nameform">
+      <label class="field"><span>Display name</span><input class="inp" id="me-name" maxlength="30" placeholder="Dana who hates open floor plans" value="${esc(S.me.name)}"></label>
+      <span class="meta">No accounts, no passwords. This name goes on your reviews. Saved on this device.</span>
+      <button class="btn" type="submit" style="justify-self:start">Save name</button>
+    </form>
+    <div class="sec"><h2>The crew</h2><span class="eyebrow">${crew.length} reviewer${crew.length===1?"":"s"}</span></div>
+    ${crew.length ? `<div class="rows">${crew.map(([n, c], i) => `<div class="rk" style="cursor:default"><span class="n">${i+1}</span>
+        <span style="min-width:0"><span class="nm">${esc(n)}</span><br><span class="sub">${c.stns.size} station${c.stns.size===1?"":"s"} · ${c.reviews} review${c.reviews===1?"":"s"} · ${c.visits} check-in${c.visits===1?"":"s"}</span>
+        ${c.hot ? `<br><span class="sub" style="color:var(--ink-soft)">“${esc(c.hot)}”</span>` : ""}</span><span class="v">${c.stns.size}</span></div>`).join("")}</div>`
+      : `<div class="empty"><b>Nobody's on the board.</b>Post one review and you're the undisputed number one.</div>`}
+    <div class="sec"><h2>Theme</h2></div>
+    <div class="chips">${["system","light","dark"].map(t => `<button type="button" class="chip" data-theme-set="${t}" aria-pressed="${(ls.get("wewalk:theme","system"))===t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}</div>
+  </section>`;
+}
+
+// ---------- main render ----------
+function render(){
+  const app = $("#app");
+  const banner = Store.mode === "local" ? `<div class="banner">Offline notebook: reviews save on this device only. Open the shared link to post for the whole crew.</div>`
+    : !Store.canWrite && Store.mode === "shared" ? `<div class="banner">Read-only pass. Ask whoever shared this to make you a Contributor so you can post.</div>` : "";
+  const top = S.view === "station" || S.view === "review" ? "" : `<header class="top">
+      <div class="brand"><svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><path d="M4 30 C 12 28, 10 12, 19 12 S 28 8, 34 6" fill="none" stroke="var(--tomato)" stroke-width="4" stroke-linecap="round"/><circle cx="4.5" cy="30" r="3.6" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.6"/><circle cx="19" cy="12" r="3.6" fill="var(--mustard)" stroke="var(--ink)" stroke-width="2.6"/><circle cx="33.5" cy="6.5" r="3.6" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.6"/></svg>
+        <div style="min-width:0"><h1>WeWalk</h1><div class="sub">NYC coworking, field-tested</div></div></div>
+      <button class="iconbtn" type="button" data-act="theme" aria-label="Toggle dark mode">${UI.moon}</button></header>`;
+  let body = "";
+  if (S.view === "map") body = renderMap();
+  else if (S.view === "station") body = renderStation();
+  else if (S.view === "review") body = renderForm();
+  else if (S.view === "ranks") body = renderRanks();
+  else if (S.view === "passport") body = renderPassport();
+  else if (S.view === "crew") body = renderCrew();
+  // keep focused field + caret when re-rendering under live updates
+  const act = document.activeElement, fid = act && act.id, sel = fid && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
+  const keep = render.lastView === S.view ? [...app.querySelectorAll("input[id]:not([type=file]),textarea[id],select[id]")].map(el => [el.id, el.value]) : [];
+  render.lastView = S.view;
+  app.innerHTML = top + banner + body + `<div class="foot">Unofficial. Not affiliated with WeWork or the MTA. Just opinions.</div>`;
+  for (const [id, v] of keep) { const el = document.getElementById(id); if (el && el.value !== v) el.value = v; }
+  if (fid) { const el = document.getElementById(fid); if (el) { el.focus({ preventScroll: true }); if (sel) try { el.setSelectionRange(...sel); } catch {} } }
+  renderTabs(); renderSheet();
+}
+
+// ---------- navigation ----------
+function go(view, opts = {}){
+  if (photoUnsub) { photoUnsub(); photoUnsub = null; S.photos = []; }
+  S.view = view; S.confirm = null;
+  if (view !== "map") S.sel = null;
+  if (view === "station") {
+    S.stationId = opts.id;
+    photoUnsub = Store.watch("photos", rows => { S.photos = rows; if (S.view === "station") render(); }, ["stationId", opts.id]);
+  }
+  if (view === "review") S.draft = newDraft(opts.stationId, opts.review);
+  render(); window.scrollTo({ top: 0 });
+  if (view === "passport" && S.justStamped) setTimeout(() => { S.justStamped = null; }, 900);
+}
+
+// ---------- events ----------
+document.addEventListener("click", e => {
+  const t = e.target.closest("button,[data-stn]"); if (!t) { return; }
+  const d = t.dataset;
+  if (d.stn) { S.sel = S.sel === d.stn ? null : d.stn; render(); return; }
+  if (d.tab) { if (d.tab === "review") go("review", { stationId: S.view === "station" ? S.stationId : S.sel }); else go(d.tab); return; }
+  if (d.open) { go("station", { id: d.open }); return; }
+  if (d.review) { go("review", { stationId: d.review }); return; }
+  if (d.hood) { S.hood = S.hood === d.hood ? null : d.hood; render(); return; }
+  if (d.tagf) { S.tag = S.tag === d.tagf ? null : d.tagf; render(); return; }
+  if (d.sort) { S.sort = d.sort; render(); return; }
+  if (d.edit) { const r = S.reviews.find(x => x.id === d.edit); if (r) go("review", { review: r }); return; }
+  if (d.delrev) { S.confirm = "del:" + d.delrev; render(); return; }
+  if (d.delrevYes) { Store.del("reviews", d.delrevYes).then(() => toast("Review deleted.")).catch(() => toast("Couldn't delete that. Try again.")); S.confirm = null; return; }
+  if (d.themeSet) { setTheme(d.themeSet); render(); return; }
+  if (d.tagpick) { const i = S.draft.tags.indexOf(d.tagpick); i < 0 ? S.draft.tags.push(d.tagpick) : S.draft.tags.splice(i, 1); t.setAttribute("aria-pressed", i < 0); return; }
+  if (d.score) {
+    const row = t.closest("[data-cat]"), k = row.dataset.cat, n = +d.score, cat = CATS.find(c => c.k === k);
+    if (S.draft.scores[k] === n) delete S.draft.scores[k]; else S.draft.scores[k] = n;
+    const v = S.draft.scores[k];
+    row.style.setProperty("--c", v ? tierColor(v) : "var(--paper)");
+    row.querySelectorAll("[data-score]").forEach(b => { const m = +b.dataset.score; b.classList.toggle("on", !!v && m <= v); b.setAttribute("aria-checked", v === m); });
+    $("#q-" + k).textContent = v ? cat.quips[v-1] : cat.hint;
+    if (navigator.vibrate) try { navigator.vibrate(8); } catch {}
+    return;
+  }
+  switch (d.act) {
+    case "close-sheet": S.sel = null; render(); break;
+    case "form-back": go(S.draft?.stationId && S.draft.id ? "station" : "map", { id: S.draft?.stationId }); break;
+    case "theme": { const dark = isDark(); setTheme(dark ? "light" : "dark"); break; }
+    case "add-station": S.confirm = S.confirm === "add-station" ? null : "add-station"; render(); setTimeout(() => $("#ns-name")?.focus(), 0); break;
+    case "cancel": S.confirm = null; render(); break;
+    case "retire": S.confirm = "retire"; render(); break;
+    case "retire-yes": Store.set("retired", S.stationId, { by: S.me.name || "", at: Date.now() }).then(() => { toast("Station retired."); go("map"); }).catch(() => toast("Couldn't retire it. Try again.")); break;
+  }
+});
+document.addEventListener("keydown", e => {
+  const g = e.target.closest && e.target.closest("[data-stn]");
+  if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); g.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
+  if (e.key === "Escape" && S.sel) { S.sel = null; render(); }
+});
+document.addEventListener("input", e => {
+  if (S.view !== "review" || !S.draft) return;
+  const m = { "f-by": "by", "f-date": "visitedOn", "f-hot": "hotTake", "f-text": "text", "f-station": "stationId" }[e.target.id];
+  if (m) S.draft[m] = e.target.value;
+});
+document.addEventListener("change", async e => {
+  if (e.target.id === "f-station") S.draft.stationId = e.target.value;
+  if (e.target.id === "f-photos") {
+    const files = [...e.target.files].slice(0, 4 - S.draft.photos.length);
+    for (const f of files) { try { S.draft.photos.push(await shrink(f)); } catch { toast("That photo wouldn't load. Try a JPEG or PNG."); } }
+    $("#thumbs").innerHTML = S.draft.photos.map(p => `<img src="${p}" alt="Photo to upload">`).join("");
+  }
+  if (e.target.id === "ph-add") {
+    const files = [...e.target.files].slice(0, 4);
+    for (const f of files) {
+      try { await Store.set("photos", rid(), { stationId: S.stationId, data: await shrink(f), by: S.me.name || "anonymous", authorId: S.me.id, createdAt: Date.now() }); }
+      catch (err) { toast(err && err.code === "quota_exceeded" ? "The photo shelf is full. Delete a few before adding more." : "Couldn't upload that photo."); }
+    }
+    if (files.length) toast("Photo pinned to the corkboard.");
+  }
+});
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === "reviewform") return saveReview();
+  if (f.id === "visitform") {
+    const note = $("#v-note").value.trim(), by = $("#v-name").value.trim(), date = $("#v-date").value;
+    if (!note || !by || !date) { toast("Add a note, your name and a date."); return; }
+    rememberName(by);
+    const wasVisited = stats(S.stationId).visited;
+    try { await Store.set("visits", rid(), { stationId: S.stationId, note, by, date, authorId: S.me.id, createdAt: Date.now() }); }
+    catch { toast("That didn't save. Check your connection and try again."); return; }
+    celebrate(S.stationId, wasVisited, "Checked in.");
+  }
+  if (f.id === "nameform") { rememberName($("#me-name").value.trim()); toast("Name tag updated."); render(); }
+  if (f.id === "addstn") {
+    const name = $("#ns-name").value.trim(), address = $("#ns-addr").value.trim(), hood = $("#ns-hood").value;
+    if (!name || !address) return;
+    const pos = placeNear(hood);
+    const id = "c-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 24) + "-" + rid().slice(0, 4);
+    try { await Store.set("stations", id, { name, address, hood, x: pos.x, y: pos.y, side: pos.x > 200 ? "r" : "l", custom: true, by: S.me.name || "", createdAt: Date.now() }); S.confirm = null; toast(name + " added to the map, unlit for now."); }
+    catch { toast("Couldn't add the station. Try again."); }
+  }
+});
+function rememberName(n){ if (!n) return; S.me.name = n; ls.set("wewalk:name", n); }
+function placeNear(hood){
+  const same = stations().filter(s => s.hood === hood);
+  const cx = same.reduce((a,s)=>a+s.x,0)/(same.length||1) || 170, cy = same.reduce((a,s)=>a+s.y,0)/(same.length||1) || 250;
+  for (let i = 0; i < 40; i++) {
+    const a = i * 2.4, r = 14 + i * 2.2, x = Math.round(cx + Math.cos(a)*r), y = Math.round(cy + Math.sin(a)*r);
+    if (stations().every(s => Math.hypot(s.x - x, s.y - y) > 16)) return { x, y };
+  }
+  return { x: Math.round(cx + 12), y: Math.round(cy + 12) };
+}
+async function saveReview(){
+  const d = S.draft, err = $("#f-err");
+  const show = m => { err.textContent = m; err.hidden = false; err.scrollIntoView({ block: "center", behavior: "smooth" }); };
+  d.stationId = $("#f-station").value; d.by = $("#f-by").value.trim(); d.visitedOn = $("#f-date").value;
+  d.hotTake = $("#f-hot").value.trim(); d.text = $("#f-text").value.trim();
+  if (!d.stationId) return show("Pick which building you're judging.");
+  if (!d.by) return show("Add your name so people know whose fault this is.");
+  if (!d.visitedOn) return show("Add the date you visited.");
+  if (!Object.keys(d.scores).length) return show("Rate at least one thing. Even just the vibe.");
+  err.hidden = true;
+  const btn = $("#f-submit"); btn.disabled = true; btn.textContent = "Saving…";
+  rememberName(d.by); ls.set("wewalk:lastStation", d.stationId);
+  const wasVisited = stats(d.stationId).visited;
+  const id = d.id || rid();
+  const doc = { stationId: d.stationId, by: d.by, authorId: S.me.id, visitedOn: d.visitedOn, scores: d.scores, tags: d.tags, text: d.text, hotTake: d.hotTake, createdAt: d.createdAt || Date.now(), updatedAt: Date.now() };
+  try {
+    await Store.set("reviews", id, doc);
+    for (const p of d.photos) { try { await Store.set("photos", rid(), { stationId: d.stationId, data: p, by: d.by, authorId: S.me.id, createdAt: Date.now() }); } catch {} }
+  } catch (e) {
+    btn.disabled = false; btn.textContent = d.id ? "Save changes" : "Punch it in";
+    return show(e && e.code === "invalid_argument" ? "This link is read-only for you. Ask for Contributor access." : "That didn't save. Check your connection and try again.");
+  }
+  if (d.id) { toast("Review updated."); go("station", { id: d.stationId }); return; }
+  celebrate(d.stationId, wasVisited, "Review filed.");
+}
+function celebrate(id, wasVisited, msg){
+  const s = stationById(id);
+  S.justLit = id; S.sel = id;
+  if (!wasVisited) S.justStamped = id;
+  go("map"); S.sel = id; render();
+  toast(wasVisited ? `${msg} ${s.name} glows a little brighter.` : `${msg} ${s.name} is lit. New passport stamp!`);
+  setTimeout(() => { if (S.justLit === id) { S.justLit = null; } }, 3400);
+  const el = document.querySelector(`[data-stn="${CSS.escape(id)}"]`); if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+// downscale a photo so it fits comfortably in a shared document
+function shrink(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const tryAt = (max, q) => { const k = Math.min(1, max / Math.max(img.width, img.height)); const c = document.createElement("canvas"); c.width = Math.round(img.width*k); c.height = Math.round(img.height*k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", q); };
+      let out = tryAt(1000, .72); if (out.length > 200000) out = tryAt(760, .62); if (out.length > 200000) out = tryAt(560, .55);
+      URL.revokeObjectURL(url); res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad image")); };
+    img.src = url;
+  });
+}
+let toastTimer;
+function toast(msg){ const r = $("#toast-root"); r.innerHTML = `<div class="toast">${esc(msg)}</div>`; clearTimeout(toastTimer); toastTimer = setTimeout(() => r.innerHTML = "", 3200); }
+
+// ---------- theme ----------
+function isDark(){ const t = document.documentElement.dataset.theme; return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+function setTheme(t){ if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; ls.set("wewalk:theme", t); }
+(() => { const t = ls.get("wewalk:theme", "system"); if (t !== "system") document.documentElement.dataset.theme = t; })();
+
+// ---------- boot ----------
+render();
+Store.init().then(() => {
+  const set = k => rows => { S[k] = rows; S.loaded = true; if (S.view !== "review") render(); else renderTabs(); };
+  Store.watch("reviews", set("reviews"));
+  Store.watch("visits", set("visits"));
+  Store.watch("stations", rows => { S.custom = rows.map(r => ({ ...r, custom: true })); if (S.view !== "review") render(); });
+  Store.watch("retired", set("retired"));
+  render();
+});
+</script>
