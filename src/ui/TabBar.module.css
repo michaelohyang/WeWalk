@@ -46,3 +46,26 @@
   display: grid;
   place-items: center;
 }
+.content {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+.pending {
+  color: var(--fg);
+}
+.pending svg {
+  color: var(--brand);
+  animation: tap 0.8s ease-in-out infinite;
+}
+@keyframes tap {
+  50% {
+    transform: scale(0.88);
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pending svg {
+    animation: none;
+  }
+}

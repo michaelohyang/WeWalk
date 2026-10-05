@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./Icon";
 import styles from "./TabBar.module.css";
@@ -35,8 +35,7 @@ export function TabBar() {
       className={styles.tab}
       aria-current={t.match(path) ? "page" : undefined}
     >
-      <Icon name={t.icon} size={23} />
-      <span>{t.label}</span>
+      <TabContent icon={t.icon} label={t.label} />
     </Link>
   );
   return (
@@ -53,5 +52,16 @@ export function TabBar() {
         {TABS.slice(2).map(tab)}
       </div>
     </nav>
+  );
+}
+
+/** The tapped tab lights up right away while its screen loads (no waiting on the server). */
+function TabContent({ icon, label }: { icon: IconName; label: string }) {
+  const { pending } = useLinkStatus();
+  return (
+    <span className={pending ? `${styles.content} ${styles.pending}` : styles.content}>
+      <Icon name={icon} size={23} />
+      <span>{label}</span>
+    </span>
   );
 }

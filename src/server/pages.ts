@@ -2,6 +2,7 @@ import "server-only";
 import type { AreaKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
+import { crewData } from "./crew-cache";
 import { getSession } from "./session";
 import { peekLink } from "./services/auth";
 import {
@@ -22,38 +23,38 @@ import {
 export async function loadExplore() {
   const session = await getSession();
   if (!session) return null;
-  return exploreView(await getDb(), session);
+  return exploreView(await crewData(), session);
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */
 export async function loadStation(id: string) {
   const session = await getSession();
   if (!session) return undefined;
-  return stationView(await getDb(), session, id);
+  return stationView(await crewData(), session, id);
 }
 
 export async function loadRanks(key: RankKey, area: AreaKey | null) {
   const session = await getSession();
   if (!session) return null;
-  return ranksView(await getDb(), session, key, area, new Date());
+  return ranksView(await crewData(), session, key, area, new Date());
 }
 
 export async function loadPassport() {
   const session = await getSession();
   if (!session) return null;
-  return passportView(await getDb(), session);
+  return passportView(await crewData(), session);
 }
 
 export async function loadCrew() {
   const session = await getSession();
   if (!session) return null;
-  return crewView(await getDb(), session);
+  return crewView(await crewData(), await getDb(), session);
 }
 
 export async function loadRate(stationId: string | undefined) {
   const session = await getSession();
   if (!session) return null;
-  return rateView(await getDb(), session, stationId);
+  return rateView(await crewData(), session, stationId);
 }
 
 /** The pairing page: who the link signs in as (null if it's dead), and who's signed in now. */

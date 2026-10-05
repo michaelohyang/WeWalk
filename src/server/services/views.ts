@@ -16,7 +16,7 @@ import { personOverall, scoreStation } from "@/domain/scoring";
 import type { Tag } from "@/domain/tags";
 import type { Db } from "../db/client";
 import { listDevices, type Session } from "./auth";
-import { loadCrew, type CrewData, type Station } from "./crew";
+import type { CrewData, Station } from "./crew";
 
 /*
  * View models: exactly what each screen shows, as plain serializable data. Pages stay dumb;
@@ -88,8 +88,7 @@ export interface ExploreView {
   favorites: string[];
 }
 
-export async function exploreView(db: Db, session: Session): Promise<ExploreView> {
-  const crew = await loadCrew(db);
+export async function exploreView(crew: CrewData, session: Session): Promise<ExploreView> {
   const { cards: stations, summaries } = cards(crew, session.member.id);
   const scores = new Map([...summaries].map(([id, s]) => [id, s.score]));
   const ranked = rankStations(crew.stations, scores, "overall");
@@ -139,11 +138,10 @@ export interface StationView {
 }
 
 export async function stationView(
-  db: Db,
+  crew: CrewData,
   session: Session,
   id: string,
 ): Promise<StationView | null> {
-  const crew = await loadCrew(db);
   const station = cards(crew, session.member.id).cards.find((c) => c.id === id);
   if (!station) return null;
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
@@ -207,13 +205,12 @@ export interface RanksView {
 
 /** Rankings by `key`, optionally within one area. Station of the Month is always crew-wide. */
 export async function ranksView(
-  db: Db,
+  crew: CrewData,
   session: Session,
   key: RankKey,
   area: AreaKey | null,
   now: Date,
 ): Promise<RanksView> {
-  const crew = await loadCrew(db);
   const { cards: all, summaries } = cards(crew, session.member.id);
   const inArea = crew.stations.filter((s) => !area || s.area === area);
   const byId = new Map(all.map((c) => [c.id, c]));
@@ -241,8 +238,7 @@ export interface PassportView {
   total: number;
 }
 
-export async function passportView(db: Db, session: Session): Promise<PassportView> {
-  const crew = await loadCrew(db);
+export async function passportView(crew: CrewData, session: Session): Promise<PassportView> {
   const { cards: all } = cards(crew, session.member.id);
   const byId = new Map(all.map((c) => [c.id, c]));
   const p = passportFor(session.member.id, crew.stations, [...crew.reviews, ...crew.checkins]);
@@ -273,8 +269,8 @@ export interface CrewView {
   }[];
 }
 
-export async function crewView(db: Db, session: Session): Promise<CrewView> {
-  const [crew, devices] = await Promise.all([loadCrew(db), listDevices(db, session)]);
+export async function crewView(crew: CrewData, db: Db, session: Session): Promise<CrewView> {
+  const devices = await listDevices(db, session);
   const board = crew.members.map((m) => {
     const rs = crew.reviews.filter((r) => r.memberId === m.id);
     const cs = crew.checkins.filter((c) => c.memberId === m.id);
@@ -333,11 +329,10 @@ export interface RateView {
 }
 
 export async function rateView(
-  db: Db,
+  crew: CrewData,
   session: Session,
   stationId: string | undefined,
 ): Promise<RateView> {
-  const crew = await loadCrew(db);
   const station = crew.stations.find((s) => s.id === stationId);
   const mine =
     station &&
