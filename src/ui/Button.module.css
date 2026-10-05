@@ -1,0 +1,40 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.md {
+  min-height: 46px;
+  padding-inline: 20px;
+  font-size: 15px;
+}
+.sm {
+  min-height: 44px;
+  padding-inline: 16px;
+  font-size: 13.5px;
+}
+.plain {
+  background: var(--surface);
+  color: var(--fg);
+}
+.primary {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+.dark {
+  background: var(--fg);
+  color: var(--bg);
+}
+.light {
+  background: var(--bg);
+  color: var(--fg);
+}

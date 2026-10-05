@@ -71,7 +71,7 @@ export function route<P>(handler: (ctx: Ctx, params: P) => Promise<Response>) {
   return async (req: NextRequest, context: { params: Promise<P> }): Promise<Response> => {
     try {
       assertSameOrigin(req);
-      return await handler({ req, db: getDb(), now: new Date() }, await context.params);
+      return await handler({ req, db: await getDb(), now: new Date() }, await context.params);
     } catch (e) {
       if (e instanceof AppError) return errorResponse(e);
       console.error(e);

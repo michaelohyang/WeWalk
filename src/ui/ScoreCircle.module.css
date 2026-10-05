@@ -1,0 +1,47 @@
+.circle {
+  --sz: 44px;
+  flex: none;
+  width: var(--sz);
+  height: var(--sz);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2.5px solid var(--c);
+  color: var(--ink, var(--c));
+  background: color-mix(in srgb, var(--c) 9%, transparent);
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.sm {
+  --sz: 34px;
+  font-size: 12.5px;
+  border-width: 2px;
+}
+.lg {
+  --sz: 76px;
+  font-size: 26px;
+  border-width: 3.5px;
+}
+.great {
+  --c: var(--s-great);
+  --ink: var(--s-great-ink);
+}
+.good {
+  --c: var(--s-good);
+  --ink: var(--s-good-ink);
+}
+.ok {
+  --c: var(--s-ok);
+  --ink: var(--s-ok-ink);
+}
+.bad {
+  --c: var(--s-bad);
+  --ink: var(--s-bad-ink);
+}
+.none {
+  --c: var(--muted);
+  border-style: dashed;
+  background: none;
+  font-size: 13px;
+}

@@ -1,0 +1,113 @@
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border-radius: var(--r-lg);
+  background: var(--brand-soft);
+}
+.ring {
+  width: 96px;
+  height: 96px;
+  flex: none;
+}
+.track {
+  fill: none;
+  stroke: var(--surface-2);
+  stroke-width: 10;
+}
+.progress {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+.pct {
+  font: 800 20px var(--font);
+  fill: var(--fg);
+}
+.big {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.big span {
+  color: var(--fg-2);
+  font-size: 18px;
+  font-weight: 700;
+}
+.summary p {
+  margin: 6px 0 0;
+  color: var(--fg-2);
+  font-size: 14px;
+}
+.summary .crew {
+  font-weight: 700;
+  font-size: 13px;
+}
+.stamps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.stamp {
+  border-radius: 20px;
+  padding: 14px 8px 12px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--fg);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--c) 11%, var(--card));
+  height: 100%;
+}
+.seal {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--c) 62%, #000); /* AA for white text in both themes */
+  color: #fff;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: -0.04em;
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, #fff 35%, transparent),
+    inset 0 0 0 5px var(--c);
+}
+.name {
+  font-weight: 700;
+  font-size: 12.5px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.date {
+  font-size: 11px;
+  color: var(--fg-2);
+  margin-top: -6px;
+}
+.slot {
+  background: none;
+  border: 1.5px dashed var(--line);
+}
+.slot .seal {
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: none;
+}
+.crewBeen {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand);
+  margin-top: -6px;
+}
+.slot .name {
+  color: var(--fg-2);
+  font-weight: 600;
+}

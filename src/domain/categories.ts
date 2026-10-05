@@ -5,6 +5,7 @@
 export const CATEGORIES = [
   {
     key: "coffee",
+    rankTitle: "Best coffee",
     label: "Coffee",
     hint: "5 = worth the commute",
     quips: [
@@ -17,6 +18,7 @@ export const CATEGORIES = [
   },
   {
     key: "wifi",
+    rankTitle: "Best Wi-Fi",
     label: "Wi-Fi",
     hint: "5 = 4K Zoom, no lag",
     quips: [
@@ -29,6 +31,7 @@ export const CATEGORIES = [
   },
   {
     key: "booths",
+    rankTitle: "Best phone booths",
     label: "Phone booths",
     hint: "5 = always one free",
     quips: [
@@ -41,6 +44,7 @@ export const CATEGORIES = [
   },
   {
     key: "light",
+    rankTitle: "Most natural light",
     label: "Natural light",
     hint: "5 = plant-thriving",
     quips: [
@@ -53,6 +57,7 @@ export const CATEGORIES = [
   },
   {
     key: "noise",
+    rankTitle: "Quietest",
     label: "Noise level",
     hint: "5 = library quiet",
     quips: [
@@ -65,6 +70,7 @@ export const CATEGORIES = [
   },
   {
     key: "seating",
+    rankTitle: "Comfiest seats",
     label: "Seating comfort",
     hint: "5 = my back is happy",
     quips: [
@@ -77,6 +83,7 @@ export const CATEGORIES = [
   },
   {
     key: "bathrooms",
+    rankTitle: "Best bathrooms",
     label: "Bathrooms",
     hint: "5 = hotel lobby",
     quips: [
@@ -89,6 +96,7 @@ export const CATEGORIES = [
   },
   {
     key: "lunch",
+    rankTitle: "Best lunch nearby",
     label: "Lunch nearby",
     hint: "5 = embarrassment of riches",
     quips: [
@@ -101,6 +109,7 @@ export const CATEGORIES = [
   },
   {
     key: "vibe",
+    rankTitle: "Best vibes",
     label: "Overall vibe",
     hint: "5 = I'd move in",
     quips: ["Never again", "Meh", "Would come back", "Big fan", "My new home base"],
@@ -110,6 +119,8 @@ export const CATEGORIES = [
 export interface Category {
   key: string;
   label: string;
+  /** Heading for the ranking by this category. */
+  rankTitle: string;
   hint: string;
   quips: readonly [string, string, string, string, string];
 }

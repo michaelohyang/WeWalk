@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "./client";
 import { checkins, members, reviews, stations } from "./schema";
-import { STATIONS } from "./seed/stations";
+import { STATIONS } from "@/domain/stations";
 import { createTestDb, resetTestDb } from "./testing";
 
 let db: Db;

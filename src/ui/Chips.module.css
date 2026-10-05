@@ -1,0 +1,69 @@
+.row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-inline: -16px;
+  padding: 10px 16px 4px;
+}
+.row::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  flex: none;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 0 14px;
+  min-height: 40px;
+  font-weight: 600;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  color: var(--fg);
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip[aria-current="true"] {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 3px;
+  gap: 3px;
+  margin-block: 12px 4px;
+}
+.seg a,
+.seg button {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  border-radius: 9px;
+  min-height: 38px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.seg a[aria-current="true"],
+.seg button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}

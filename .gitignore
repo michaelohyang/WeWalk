@@ -21,6 +21,9 @@ blob-report/
 # vercel
 .vercel/
 
+# local PGlite database (DATABASE_URL=pglite:.data/dev)
+.data/
+
 # misc
 .DS_Store
 *.log

@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/figtree";
 import "@/ui/global.css";
+import { THEME_BOOT_SCRIPT } from "@/ui/ThemeSwitch";
 
 export const metadata: Metadata = {
-  title: "WeWalk",
+  title: { default: "WeWalk", template: "%s · WeWalk" },
   description: "NYC WeWorks, rated by people who care too much.",
 };
 
@@ -19,7 +20,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    // The boot script may set data-theme before React hydrates.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );

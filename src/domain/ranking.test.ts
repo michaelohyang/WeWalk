@@ -73,3 +73,20 @@ describe("ties use the displayed score, not float noise", () => {
     expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["b", "a"]);
   });
 });
+
+describe("category ties", () => {
+  it("count the people who rated that category, not all reviews", () => {
+    const scores = new Map([
+      // Three reviews, but only one rated coffee (4)
+      [
+        "a",
+        scoreStation([{ scores: { coffee: 4 } }, { scores: { vibe: 5 } }, { scores: { vibe: 5 } }]),
+      ],
+      // Two reviews, both rated coffee (4)
+      ["b", scoreStation([{ scores: { coffee: 4 } }, { scores: { coffee: 4 } }])],
+    ]);
+    const ranked = rankStations(stations, scores, "coffee");
+    expect(ranked.map((r) => r.stationId)).toEqual(["b", "a"]);
+    expect(ranked.map((r) => r.reviewCount)).toEqual([2, 1]);
+  });
+});
