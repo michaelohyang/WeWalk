@@ -1,263 +1,266 @@
 <title>WeWalk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap">
 <style>
-/* Layout: one phone-width column. The map is the home screen; a fixed bottom tab bar switches
-   between Map, Ranks, Log a visit and Passport. Station pages and the review form slide over it. */
+/* Layout: a clean, list-first phone app. White canvas, soft grey tiles, one teal brand color,
+   and 0–10 score circles that carry all the color. Fixed bottom tab bar; pages stack in one column. */
 :root{
-  --paper:#F4EFE6; --paper-2:#EAE2D3; --land:#EDE5D6; --water:#D7E0DD;
-  --ink:#1A1A1A; --ink-soft:#4A453E; --muted:#7A7266; --rule:#1A1A1A;
-  --tomato:#E2412E; --mustard:#E8A913; --kelly:#1E9E4A; --cobalt:#1F4FD1;
-  --on-accent:#FFFFFF; --on-mustard:#1A1A1A;
-  --card:#FBF8F2; --shadow:#1A1A1A;
-  --grain-op:.22; --grain-blend:multiply;
-  --f-display:"Archivo Black","Arial Black","Helvetica Neue",Impact,sans-serif;
-  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  --f-mono:"Space Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
-  --line:3px; --radius:18px; --tab-h:68px;
+  --bg:#FFFFFF; --surface:#F4F5F4; --surface-2:#EBEDEC; --card:#FFFFFF;
+  --fg:#111413; --fg-2:#5B6260; --muted:#969D9A; --line:#E6E8E7;
+  --brand:#0D8A72; --brand-ink:#FFFFFF; --brand-soft:#E2F3EE;
+  --s-great:#139E55; --s-good:#6FAE1E; --s-ok:#EE9A0A; --s-bad:#E5484D;
+  --h-mid:#3E63DD; --h-flat:#8E4EC6; --h-down:#D6409F; --h-bk:#0A97B0;
+  --water:#E5EEF2; --land:#FBFBFA; --land-far:#EEF0EF;
+  --shadow:0 1px 2px rgba(16,24,22,.06),0 8px 24px rgba(16,24,22,.08);
+  --f:"Figtree",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r-lg:24px; --r-md:16px; --tab-h:64px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --paper:#151413; --paper-2:#1F1D1A; --land:#24211D; --water:#0F1414;
-  --ink:#F1EBDF; --ink-soft:#CFC7B8; --muted:#9C9486; --rule:#F1EBDF;
-  --tomato:#FF5A43; --mustard:#F5BC2C; --kelly:#2DBE5F; --cobalt:#5281FF;
-  --on-accent:#111111; --on-mustard:#111111;
-  --card:#1C1A18; --shadow:#000000;
-  --grain-op:.10; --grain-blend:screen; color-scheme:dark;
+  --bg:#0C0E0E; --surface:#171A1A; --surface-2:#202424; --card:#131616;
+  --fg:#F1F3F2; --fg-2:#A8AFAD; --muted:#6C7472; --line:#252A29;
+  --brand:#2DBA98; --brand-ink:#04120E; --brand-soft:#11302A;
+  --s-great:#30C46F; --s-good:#94CC3D; --s-ok:#F5AE2E; --s-bad:#FF6369;
+  --h-mid:#6E8BF0; --h-flat:#B07EE3; --h-down:#EC69B8; --h-bk:#2DB7CF;
+  --water:#0F181C; --land:#191D1D; --land-far:#141717;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45); color-scheme:dark;
 }}
 :root[data-theme="dark"]{
-  --paper:#151413; --paper-2:#1F1D1A; --land:#24211D; --water:#0F1414;
-  --ink:#F1EBDF; --ink-soft:#CFC7B8; --muted:#9C9486; --rule:#F1EBDF;
-  --tomato:#FF5A43; --mustard:#F5BC2C; --kelly:#2DBE5F; --cobalt:#5281FF;
-  --on-accent:#111111; --on-mustard:#111111;
-  --card:#1C1A18; --shadow:#000000;
-  --grain-op:.10; --grain-blend:screen; color-scheme:dark;
+  --bg:#0C0E0E; --surface:#171A1A; --surface-2:#202424; --card:#131616;
+  --fg:#F1F3F2; --fg-2:#A8AFAD; --muted:#6C7472; --line:#252A29;
+  --brand:#2DBA98; --brand-ink:#04120E; --brand-soft:#11302A;
+  --s-great:#30C46F; --s-good:#94CC3D; --s-ok:#F5AE2E; --s-bad:#FF6369;
+  --h-mid:#6E8BF0; --h-flat:#B07EE3; --h-down:#EC69B8; --h-bk:#2DB7CF;
+  --water:#0F181C; --land:#191D1D; --land-far:#141717;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45); color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;opacity:var(--grain-op);mix-blend-mode:var(--grain-blend);
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4  0 0 0 0 .35  0 0 0 0 .3  0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 15px/1.45 var(--f);-webkit-font-smoothing:antialiased;overflow-x:hidden;font-variant-numeric:tabular-nums}
 button,input,textarea,select{font:inherit;color:inherit}
-button{cursor:pointer}
-:focus-visible{outline:3px solid var(--cobalt);outline-offset:2px}
-h1,h2,h3{font-family:var(--f-display);font-weight:400;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:-.01em}
-.mono{font-family:var(--f-mono)}
-.app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 calc(var(--tab-h) + 28px + env(safe-area-inset-bottom,0px));position:relative}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.025em;line-height:1.08;text-wrap:balance}
+.app{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:0 calc(var(--tab-h) + 32px + env(safe-area-inset-bottom,0px))}
+.muted{color:var(--muted)}
+.sub{color:var(--fg-2);font-size:13px}
 
-/* ---------- top bar ---------- */
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 10px}
-.brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand h1{font-size:30px}
-.brand .sub{font:700 10px/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.iconbtn{width:42px;height:42px;border-radius:50%;border:var(--line) solid var(--ink);background:var(--card);display:grid;place-items:center;flex:none}
-.iconbtn svg{width:20px;height:20px}
-.banner{font:400 12px/1.4 var(--f-mono);border:2px dashed var(--muted);border-radius:12px;padding:8px 12px;color:var(--ink-soft);margin-block:0 10px}
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:18px 14px}
+.top h1{font-size:30px;font-weight:900;letter-spacing:-.04em}
+.top h1 span{color:var(--brand)}
+.round{width:40px;height:40px;border-radius:50%;border:0;background:var(--surface);display:grid;place-items:center;flex:none;color:var(--fg)}
+.round svg{width:20px;height:20px}
+.banner{font-size:12.5px;background:var(--surface);color:var(--fg-2);border-radius:12px;padding:9px 12px;margin-block:0 12px}
+
+/* ---------- search + segmented ---------- */
+.search{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:14px;padding-inline:14px;height:46px}
+.search svg{width:18px;height:18px;color:var(--muted);flex:none}
+.search input{border:0;background:none;outline:none;flex:1;min-width:0;font-size:16px}
+.search input::placeholder{color:var(--muted)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface);border-radius:12px;padding:3px;gap:3px;margin-block:12px 4px}
+.seg button{border:0;background:none;border-radius:9px;padding:8px 0;font-weight:700;font-size:14px;color:var(--fg-2)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 
 /* ---------- chips ---------- */
-.chips{display:flex;gap:8px;overflow-x:auto;padding-block:4px 8px;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding:10px 16px 4px}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;border:2px solid var(--ink);background:var(--card);border-radius:999px;padding:6px 12px;font:600 13px/1 var(--f-body);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
-.chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c,var(--ink));border:2px solid var(--ink)}
-.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-.chip[aria-pressed="true"] .dot{border-color:var(--paper)}
-.chiplabel{font:700 10px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-block:6px 2px}
+.chip{flex:none;border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:7px 13px;font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:var(--fg)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--fg))}
+.chip[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+
+/* ---------- score circle ---------- */
+.sc{--sz:44px;flex:none;width:var(--sz);height:var(--sz);border-radius:50%;display:grid;place-items:center;border:2.5px solid var(--c);color:var(--c);
+  background:color-mix(in srgb,var(--c) 9%,transparent);font-weight:800;font-size:15px;letter-spacing:-.02em}
+.sc.sm{--sz:34px;font-size:12.5px;border-width:2px}
+.sc.lg{--sz:76px;font-size:26px;border-width:3.5px}
+.sc.none{--c:var(--muted);border-style:dashed;background:none;font-size:13px}
 
 /* ---------- map ---------- */
-.mapwrap{position:relative;border:var(--line) solid var(--ink);border-radius:var(--radius);background:var(--water);overflow:hidden;box-shadow:5px 5px 0 var(--shadow);margin-block:8px 18px}
-.map{display:block;width:100%;height:auto;touch-action:manipulation}
-.map .land{pointer-events:none;fill:var(--land);stroke:var(--ink);stroke-width:2.5;stroke-linejoin:round}
-.map .land.far{fill:var(--paper-2);stroke-dasharray:1 0}
-.map .label-geo{font:700 9px var(--f-mono);fill:var(--muted);letter-spacing:.14em;text-transform:uppercase}
-.map .label-water{font:400 9px var(--f-mono);fill:var(--muted);letter-spacing:.3em;font-style:italic}
-.map .route{fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}
-.map .route-casing{fill:none;stroke:var(--land);stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
-.map .ferry{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:3 4;opacity:.6}
+.mapcard{position:relative;border-radius:var(--r-lg);background:var(--water);overflow:hidden;margin-top:12px}
+.map{display:block;width:100%;height:auto}
+.map .land{fill:var(--land);pointer-events:none}
+.map .land.far{fill:var(--land-far)}
+.map .street{stroke:var(--line);stroke-width:1;fill:none;pointer-events:none}
+.map .geo{font:700 8px var(--f);fill:var(--muted);letter-spacing:.16em;text-transform:uppercase}
+.map .water-l{font:600 8px var(--f);fill:var(--muted);letter-spacing:.32em;opacity:.8}
 .stn{cursor:pointer}
-.stn .hit{fill:transparent}
-.stn .ring{stroke:var(--ink);stroke-width:3;transition:transform .2s}
-.stn .core{fill:var(--paper)}
-.stn.unlit .ring{fill:var(--paper);stroke:var(--muted);stroke-width:2;stroke-dasharray:2.5 2.5}
-.stn.unlit .core{display:none}
-.stn.unlit text{fill:var(--muted)}
-.stn text{font:700 8.6px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--land);stroke-width:3px;stroke-linejoin:round}
-.stn.dim{opacity:.18}
-.stn.sel .ring{stroke-width:4}
-.stn:hover .ring,.stn:focus-visible .ring{stroke-width:4.5}
 .stn:focus{outline:none}
-.stn .glow{fill:none;stroke:var(--mustard);stroke-width:3;opacity:0;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center}
-.stn.lit .glow{animation:glow 1.6s ease-out 2}
-.stn.lit .ring{animation:flash 1.6s ease-out 2}
-@keyframes glow{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(5.5)}}
-@keyframes flash{0%,30%{fill:var(--mustard)}}
-.maplegend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 12px;border-top:var(--line) solid var(--ink);background:var(--card);font:400 11px/1.3 var(--f-mono);color:var(--ink-soft)}
-.maplegend span{display:inline-flex;align-items:center;gap:6px}
-.maplegend i{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:var(--c)}
-.maplegend i.unlit{background:var(--paper);border:2px dashed var(--muted)}
+.stn .hit{fill:transparent}
+.stn .pill{stroke:var(--land);stroke-width:2}
+.stn .pv{font:800 10px var(--f);fill:#FFFFFF;pointer-events:none;letter-spacing:-.02em}
+.stn .dot{fill:var(--muted);stroke:var(--land);stroke-width:2}
+.stn .nm{font:600 8.4px var(--f);fill:var(--fg-2);paint-order:stroke;stroke:var(--land);stroke-width:3px;stroke-linejoin:round}
+.stn.unlit .nm{fill:var(--muted);font-weight:500}
+.stn.dim{opacity:.15}
+.stn.sel .pill,.stn:focus-visible .pill{stroke:var(--fg);stroke-width:2.5}
+.stn.sel .dot,.stn:focus-visible .dot{fill:var(--fg)}
+.stn .glow{fill:none;stroke:var(--brand);stroke-width:2.5;opacity:0;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center}
+.stn.lit .glow{animation:glow 1.5s ease-out 2}
+@keyframes glow{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(3.4)}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:12px 2px 0;font-size:12px;color:var(--fg-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%;background:var(--c)}
 
-/* ---------- preview sheet ---------- */
-.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 14px + env(safe-area-inset-bottom,0px));width:min(528px,calc(100% - 32px));z-index:30;
-  background:var(--card);border:var(--line) solid var(--ink);border-radius:var(--radius);box-shadow:5px 5px 0 var(--shadow);padding:14px 14px 12px;animation:rise .22s ease-out}
-@keyframes rise{from{transform:translate(-50%,16px);opacity:0}}
-.sheet .row{display:flex;gap:12px;align-items:flex-start}
-.sheet h3{font-size:21px}
-.sheet .verdict{font:600 14px/1.35 var(--f-body);margin-block:6px 10px}
-.sheet .close{margin-left:auto}
-.meta{font:400 12px/1.35 var(--f-mono);color:var(--muted)}
-.hoodtag{display:inline-flex;align-items:center;gap:6px;font:700 11px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase}
-.hoodtag::before{content:"";width:18px;height:5px;border-radius:3px;background:var(--c)}
+/* ---------- rows (lists everywhere) ---------- */
+.list{display:grid}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding-block:12px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;width:100%;color:var(--fg)}
+.row:last-child{border-bottom:0}
+.row .t{font-weight:700;font-size:15.5px;letter-spacing:-.01em;line-height:1.25}
+.row .m{font-size:12.5px;color:var(--fg-2);margin-top:2px;display:flex;flex-wrap:wrap;gap:0 6px;align-items:center}
+.row .rk{width:24px;text-align:center;font-weight:800;font-size:16px;color:var(--muted)}
+.row .rk.top{color:var(--brand)}
+.tile{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;font-weight:800;font-size:14px;letter-spacing:-.03em;
+  background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}
+.hood{display:inline-flex;align-items:center;gap:5px}
+.hood::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.been{color:var(--brand);font-weight:700}
 
-/* score badge: a token, not a route bullet */
-.score{flex:none;width:58px;height:58px;border-radius:50%;border:var(--line) solid var(--ink);background:var(--c,var(--paper));color:var(--ink);display:grid;place-items:center;font:400 20px/1 var(--f-display)}
-.score.lg{width:84px;height:84px;font-size:30px}
-.score.none{background:var(--paper);border-style:dashed;border-color:var(--muted);color:var(--muted);font:700 11px/1.1 var(--f-mono);text-align:center}
-.score small{display:block;font:700 8px/1 var(--f-mono);letter-spacing:.1em;margin-top:2px}
+/* ---------- sections + cards ---------- */
+.sec{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-block:28px 8px}
+.sec h2{font-size:20px}
+.sec .sub{font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:16px}
+.empty{background:var(--surface);border-radius:var(--r-md);padding:18px;color:var(--fg-2);font-size:14px}
+.empty b{display:block;color:var(--fg);font-size:16px;font-weight:800;margin-bottom:3px;letter-spacing:-.01em}
+.empty .btn{margin-top:12px}
 
 /* ---------- buttons ---------- */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:var(--line) solid var(--ink);border-radius:999px;padding:11px 18px;font:700 14px/1 var(--f-body);background:var(--card);box-shadow:3px 3px 0 var(--shadow);transition:transform .08s,box-shadow .08s;text-decoration:none;color:var(--ink)}
-.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--shadow)}
-.btn.primary{background:var(--tomato);color:var(--on-accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:12px 20px;font-weight:700;font-size:15px;background:var(--surface);color:var(--fg);transition:transform .1s,filter .15s;text-decoration:none}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--brand);color:var(--brand-ink)}
+.btn.dark{background:var(--fg);color:var(--bg)}
 .btn.block{width:100%}
-.btn.ghost{box-shadow:none;border-width:2px;padding:8px 14px;font-size:13px}
+.btn.sm{padding:8px 14px;font-size:13.5px}
 .btn[disabled]{opacity:.5;pointer-events:none}
-.linkbtn{background:none;border:0;padding:0;font:600 13px var(--f-body);text-decoration:underline;text-underline-offset:3px;color:var(--ink-soft)}
+.btn svg{width:18px;height:18px}
+.link{background:none;border:0;padding:0;font-weight:600;font-size:13.5px;color:var(--fg-2);text-decoration:underline;text-underline-offset:3px}
+.link.brand{color:var(--brand);text-decoration:none}
 
-/* ---------- section headings ---------- */
-.eyebrow{font:700 11px/1 var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.sec{margin-block:26px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.sec h2{font-size:24px}
-.card{background:var(--card);border:var(--line) solid var(--ink);border-radius:var(--radius);padding:16px}
-.empty{border:2px dashed var(--muted);border-radius:var(--radius);padding:18px;color:var(--ink-soft);font-size:14px}
-.empty b{font-family:var(--f-display);font-weight:400;display:block;font-size:18px;color:var(--ink);margin-bottom:4px}
+/* ---------- preview sheet ---------- */
+.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 12px + env(safe-area-inset-bottom,0px));width:min(528px,calc(100% - 24px));z-index:30;
+  background:var(--card);border-radius:22px;box-shadow:var(--shadow);border:1px solid var(--line);padding:16px;animation:rise .22s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{transform:translate(-50%,20px);opacity:0}}
+.sheet .hd{display:flex;gap:12px;align-items:center}
+.sheet h3{font-size:19px}
+.sheet .q{font-weight:600;font-size:15px;line-height:1.35;margin-block:12px 14px;color:var(--fg)}
+.sheet .acts{display:grid;grid-template-columns:1fr auto;gap:8px}
 
 /* ---------- station page ---------- */
-.page{animation:slidein .2s ease-out}
-@keyframes slidein{from{transform:translateX(18px);opacity:0}}
-.stnhead{padding-block:6px 4px}
-.stnhead .bar{height:10px;border-radius:6px;background:var(--c);border:2px solid var(--ink);margin-block:12px 14px}
-.stnhead h1{font-size:clamp(34px,10vw,48px)}
-.stnhead .addr{font:400 13px/1.4 var(--f-mono);color:var(--ink-soft);margin-top:8px}
-.headrow{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-top:14px}
-.hottake{font:400 clamp(26px,7.6vw,36px)/1.08 var(--f-display);margin-block:22px 4px;text-wrap:balance}
-.hottake::before{content:"\201C"}
-.hottake::after{content:"\201D"}
-.attrib{font:400 12px var(--f-mono);color:var(--muted)}
-.ratings{display:grid;gap:2px;padding:6px 14px}
-.rate{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;align-items:center;padding-block:9px;border-bottom:2px dotted var(--muted)}
+.page{animation:fade .2s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+.navbar{display:flex;justify-content:space-between;align-items:center;padding-block:14px 6px}
+.hero h1{font-size:clamp(30px,8.6vw,40px);font-weight:900;letter-spacing:-.04em;margin-top:8px}
+.hero .addr{color:var(--fg-2);font-size:14px;margin-top:6px}
+.scorebox{display:flex;align-items:center;gap:16px;margin-top:18px;padding:16px;background:var(--surface);border-radius:var(--r-lg)}
+.scorebox .lbl{font-weight:800;font-size:18px;letter-spacing:-.02em}
+.acts2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.hot{margin-top:22px;padding:20px 18px;border-radius:var(--r-lg);background:var(--fg);color:var(--bg)}
+.hot .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
+.hot p{margin:8px 0 10px;font-size:clamp(22px,6.2vw,28px);font-weight:900;line-height:1.12;letter-spacing:-.03em;text-wrap:balance}
+.hot .by{font-size:13px;opacity:.7}
+.rate{display:grid;grid-template-columns:38px minmax(0,1fr) 92px 34px;gap:12px;align-items:center;padding-block:10px;border-bottom:1px solid var(--line)}
 .rate:last-child{border-bottom:0}
-.rate .ic{width:30px;height:30px;color:var(--ink)}
-.rate .lbl{font:600 14px/1.2 var(--f-body);min-width:0}
-.rate .lbl small{display:block;font:400 11px/1.3 var(--f-mono);color:var(--muted)}
-.pips{display:flex;gap:4px}
-.pips i{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);background:transparent}
-.pips i.on{background:var(--c)}
-.pips i.half{background:linear-gradient(90deg,var(--c) 50%,transparent 50%)}
-.rate .num{font:700 13px var(--f-mono);font-variant-numeric:tabular-nums;width:30px;text-align:right}
+.ic{width:38px;height:38px;border-radius:11px;background:var(--surface);display:grid;place-items:center;color:var(--fg-2)}
+.ic svg{width:20px;height:20px}
+.rate .l{font-weight:700;font-size:14.5px;line-height:1.2}
+.rate .l small{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+.bar{height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--c)}
+.rate .v{font-weight:800;font-size:14px;text-align:right;color:var(--c)}
 .tags{display:flex;flex-wrap:wrap;gap:6px}
-.tag{border:2px solid var(--ink);border-radius:8px;padding:4px 9px;font:600 12px/1.2 var(--f-body);background:var(--paper)}
-.tag b{font-family:var(--f-mono);font-weight:700;margin-left:4px}
-.review{display:grid;gap:8px;padding-block:14px;border-bottom:2px solid var(--ink)}
-.review:last-child{border-bottom:0}
-.review .who{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-.review .who b{font:400 16px var(--f-display)}
-.review p{margin:0;max-width:62ch}
-.review .ht{font:700 15px/1.3 var(--f-body)}
-.photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.photos figure{margin:0;aspect-ratio:1;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--paper-2);max-width:100%}
+.tag{background:var(--surface);border-radius:999px;padding:6px 11px;font-weight:600;font-size:13px;color:var(--fg)}
+.tag b{color:var(--muted);margin-left:3px}
+.post{display:grid;gap:8px;padding-block:16px;border-bottom:1px solid var(--line)}
+.post:last-child{border-bottom:0}
+.post .hd{display:flex;align-items:center;gap:10px}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;color:#fff;background:var(--c);flex:none}
+.post .who{font-weight:700;font-size:15px}
+.post .ht{font-weight:800;font-size:16.5px;letter-spacing:-.015em;line-height:1.3}
+.post p{margin:0;color:var(--fg);max-width:62ch}
+.post .sc.sm{margin-left:auto}
+.photos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.photos figure{margin:0;aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--surface);max-width:100%}
 .photos img{width:100%;height:100%;object-fit:cover;display:block}
-.log{list-style:none;margin:0;padding:0;position:relative}
-.log::before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:4px;background:var(--c);border-radius:2px}
-.log li{position:relative;padding:0 0 16px 32px}
-.log li::before{content:"";position:absolute;left:2px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--paper);border:3px solid var(--ink)}
-.log .d{font:700 12px var(--f-mono)}
-.log p{margin:2px 0 0}
-.inlineform{display:grid;gap:8px;margin-top:6px}
-.inlineform .two{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px}
+.log{list-style:none;margin:0;padding:0}
+.log li{display:grid;grid-template-columns:12px minmax(0,1fr);gap:12px;padding-bottom:14px;position:relative}
+.log li::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--brand);margin-top:5px}
+.log li:not(:last-child)::after{content:"";position:absolute;left:4px;top:19px;bottom:0;width:2px;background:var(--line)}
+.log .d{font-weight:700;font-size:13.5px}
+.log p{margin:2px 0 0;color:var(--fg-2);font-size:14px}
 
-/* ---------- inputs ---------- */
+/* ---------- inputs + form ---------- */
 .field{display:grid;gap:6px}
-.field>span{font:700 11px/1 var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
-.inp{width:100%;border:2px solid var(--ink);border-radius:12px;background:var(--card);padding:11px 12px;font-size:16px;min-width:0}
-textarea.inp{resize:vertical;min-height:84px}
+.field>span{font-weight:700;font-size:13px;color:var(--fg-2)}
+.inp{width:100%;border:1.5px solid transparent;border-radius:14px;background:var(--surface);padding:12px 14px;font-size:16px;min-width:0;outline:none}
+.inp:focus{border-color:var(--brand);background:var(--card)}
+textarea.inp{resize:vertical;min-height:90px}
 .inp::placeholder{color:var(--muted)}
-
-/* ---------- review form ---------- */
-.form{display:grid;gap:18px}
-.form .grp{display:grid;gap:10px}
-.tap{display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 10px;align-items:center;padding:12px;border:2px solid var(--ink);border-radius:16px;background:var(--card)}
-.tap .ic{width:34px;height:34px;grid-row:span 2}
-.tap .top2{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
-.tap .top2 b{font:600 15px var(--f-body)}
-.tap .quip{font:400 12px/1.3 var(--f-mono);color:var(--muted);text-align:right;min-width:0}
-.tokens{display:flex;gap:8px}
-.tokens button{flex:1;min-width:0;height:40px;border-radius:12px;border:2px solid var(--ink);background:var(--paper);font:700 15px var(--f-mono);transition:transform .1s}
-.tokens button.on{background:var(--c);color:var(--ink)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) 152px;gap:8px}
+.form{display:grid;gap:20px;margin-top:20px}
+.grp{display:grid;gap:10px}
+.tap{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px 12px;align-items:center;padding:14px;border-radius:var(--r-md);background:var(--card);border:1px solid var(--line)}
+.tap .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;min-width:0}
+.tap .hd b{font-weight:700;font-size:15px}
+.tap .quip{font-size:12.5px;color:var(--muted);text-align:right;min-width:0}
+.tap.set .quip{color:var(--c);font-weight:700}
+.tokens{grid-column:1 / -1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.tokens button{height:42px;border-radius:12px;border:0;background:var(--surface);font-weight:800;font-size:15px;color:var(--fg-2);transition:transform .1s,background .15s}
+.tokens button.on{background:var(--c);color:#fff}
 .tokens button:active{transform:scale(.92)}
-.tokens button.skip{flex:none;width:auto;padding-inline:10px;font:600 11px var(--f-body);color:var(--muted);border-style:dashed}
 .tagpick{display:flex;flex-wrap:wrap;gap:8px}
-.tagpick button{border:2px solid var(--ink);border-radius:999px;padding:7px 12px;background:var(--card);font:600 13px var(--f-body)}
-.tagpick button[aria-pressed="true"]{background:var(--cobalt);color:var(--on-accent);border-color:var(--ink)}
-.formhead{display:flex;align-items:center;gap:12px;padding-block:12px 4px}
-.formhead h1{font-size:28px}
-.stickybar{position:sticky;bottom:calc(var(--tab-h) + 12px + env(safe-area-inset-bottom,0px));z-index:5;padding-top:8px}
+.tagpick button{border:1.5px solid var(--line);border-radius:999px;padding:8px 13px;background:var(--card);font-weight:600;font-size:13.5px}
+.tagpick button[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand);color:var(--brand)}
+.stickybar{position:sticky;bottom:calc(var(--tab-h) + 12px + env(safe-area-inset-bottom,0px));z-index:5;padding-top:6px}
+.stickybar .btn{box-shadow:var(--shadow)}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap}
-.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:2px solid var(--ink)}
+.thumbs img{width:64px;height:64px;object-fit:cover;border-radius:12px}
 .filebtn{position:relative;overflow:hidden}
 .filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.err{color:var(--tomato);font:700 13px var(--f-body)}
+.err{color:var(--s-bad);font-weight:700;font-size:14px;margin:0}
 
 /* ---------- ranks ---------- */
-.spot{position:relative;background:var(--mustard);color:var(--on-mustard);border:var(--line) solid var(--ink);border-radius:var(--radius);padding:18px 16px;box-shadow:5px 5px 0 var(--shadow);overflow:hidden}
-.spot .eyebrow{color:var(--on-mustard);opacity:.8}
-.spot h2{font-size:clamp(28px,8vw,38px);margin-block:8px 6px}
-.spot .q{font:600 16px/1.35 var(--f-body);margin:10px 0 14px;max-width:34ch}
-.spot .meta{color:var(--on-mustard);opacity:.75}
-.spot .score{position:absolute;right:14px;top:14px;background:var(--paper);color:var(--ink)}
-.spot .btn{background:var(--paper);color:var(--ink)}
-.rows{display:grid}
-.rk{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding-block:12px;border-bottom:2px solid var(--ink);background:none;border-left:0;border-right:0;border-top:0;text-align:left;width:100%}
-.rk .n{font:400 26px/1 var(--f-display);font-variant-numeric:tabular-nums}
-.rk .nm{font:700 15px/1.2 var(--f-body)}
-.rk .sub{font:400 11px/1.3 var(--f-mono);color:var(--muted)}
-.rk .meter{display:flex;gap:3px;margin-top:6px}
-.rk .meter i{height:8px;flex:1;max-width:26px;border-radius:2px;border:1.5px solid var(--ink);background:transparent}
-.rk .meter i.on{background:var(--c)}
-.rk .v{font:700 18px var(--f-mono);font-variant-numeric:tabular-nums}
+.spot{border-radius:var(--r-lg);padding:20px 18px;background:var(--fg);color:var(--bg);display:grid;gap:4px;position:relative}
+.spot .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.6;padding-right:86px}
+.spot h2{font-size:clamp(26px,7.6vw,34px);font-weight:900;letter-spacing:-.04em;padding-right:86px;margin-top:6px}
+.spot .m{font-size:13px;opacity:.7}
+.spot .q{font-size:16px;font-weight:600;line-height:1.35;margin:12px 0 14px;max-width:36ch}
+.spot .sc{position:absolute;right:18px;top:18px}
+.spot .btn{justify-self:start;background:var(--bg);color:var(--fg)}
 
 /* ---------- passport ---------- */
-.pphead{background:var(--cobalt);color:var(--on-accent);border:var(--line) solid var(--ink);border-radius:var(--radius);padding:18px 16px;box-shadow:5px 5px 0 var(--shadow)}
-.pphead .eyebrow{color:var(--on-accent);opacity:.85}
-.pphead .big{font:400 clamp(48px,15vw,68px)/1 var(--f-display);margin-block:8px 2px;font-variant-numeric:tabular-nums}
-.pphead .big span{opacity:.6;font-size:.55em}
-.pphead p{margin:0;font-size:14px}
-.ppline{display:flex;align-items:center;margin-top:14px;gap:0}
-.ppline i{flex:1;height:5px;background:var(--on-accent);opacity:.35}
-.ppline b{width:12px;height:12px;border-radius:50%;border:2.5px solid var(--on-accent);flex:none;background:transparent}
-.ppline b.on{background:var(--on-accent)}
-.stamps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;margin-top:4px}
-.stamp{background:none;border:0;padding:0;display:grid;gap:4px;justify-items:center;text-align:center;color:var(--ink)}
-.stamp svg{width:100%;max-width:120px;height:auto;overflow:visible}
-.stamp .cap{font:600 11px/1.2 var(--f-body);max-width:100%;overflow-wrap:anywhere}
-.stamp.empty-slot .cap{color:var(--muted)}
-.stamp.thunk svg{animation:thunk .55s cubic-bezier(.2,.9,.3,1.3)}
-@keyframes thunk{0%{transform:scale(1.9) rotate(-14deg);opacity:0}55%{transform:scale(.92) rotate(var(--rot,0deg));opacity:1}75%{transform:scale(1.04) rotate(var(--rot,0deg))}100%{transform:scale(1) rotate(var(--rot,0deg))}}
+.pp{display:flex;align-items:center;gap:18px;padding:18px;border-radius:var(--r-lg);background:var(--brand-soft)}
+.pp svg{width:96px;height:96px;flex:none}
+.pp .big{font-size:30px;font-weight:900;letter-spacing:-.04em;line-height:1}
+.pp .big span{color:var(--fg-2);font-size:18px;font-weight:700}
+.pp p{margin:6px 0 0;color:var(--fg-2);font-size:14px}
+.stamps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stamp{border:0;border-radius:20px;padding:14px 8px 12px;display:grid;justify-items:center;gap:8px;text-align:center;color:var(--fg);background:color-mix(in srgb,var(--c) 11%,var(--card))}
+.stamp .seal{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#fff;font-weight:900;font-size:16px;letter-spacing:-.04em;box-shadow:inset 0 0 0 3px color-mix(in srgb,#fff 35%,transparent),inset 0 0 0 5px var(--c)}
+.stamp .n{font-weight:700;font-size:12.5px;line-height:1.2;overflow-wrap:anywhere}
+.stamp .d{font-size:11px;color:var(--fg-2);margin-top:-6px}
+.stamp.slot{background:none;border:1.5px dashed var(--line)}
+.stamp.slot .seal{background:var(--surface);color:var(--muted);box-shadow:none}
+.stamp.slot .n{color:var(--fg-2);font-weight:600}
+.stamp.thunk .seal{animation:thunk .6s cubic-bezier(.2,.9,.3,1.35)}
+@keyframes thunk{0%{transform:scale(2.2) rotate(-18deg);opacity:0}55%{transform:scale(.9) rotate(4deg);opacity:1}100%{transform:scale(1) rotate(0)}}
 
 /* ---------- tab bar ---------- */
-.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));pointer-events:none}
-.tabs nav{pointer-events:auto;max-width:528px;margin:0 auto;height:var(--tab-h);background:var(--ink);border-radius:999px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;padding-inline:6px;box-shadow:0 6px 0 rgba(0,0,0,.18)}
-.tabs button{background:none;border:0;color:var(--paper);display:grid;justify-items:center;gap:3px;font:600 10px/1 var(--f-body);opacity:.62;padding:6px 0}
-.tabs button svg{width:22px;height:22px}
-.tabs button[aria-current="page"]{opacity:1}
-.tabs button[aria-current="page"] svg{color:var(--mustard)}
-.tabs .plus{width:56px;height:56px;border-radius:50%;background:var(--tomato);color:var(--on-accent);opacity:1;justify-self:center;border:3px solid var(--paper);display:grid;place-items:center;margin-top:-20px;box-shadow:0 4px 0 rgba(0,0,0,.25)}
-.tabs .plus svg{width:26px;height:26px;color:var(--on-accent)}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:40;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs nav{max-width:560px;margin:0 auto;height:var(--tab-h);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;padding-inline:8px}
+.tabs button{background:none;border:0;color:var(--muted);display:grid;justify-items:center;gap:3px;font-weight:600;font-size:10.5px;padding:6px 0}
+.tabs button svg{width:23px;height:23px}
+.tabs button[aria-current="page"]{color:var(--fg)}
+.tabs .plus{width:48px;height:48px;border-radius:16px;background:var(--brand);color:var(--brand-ink);justify-self:center;display:grid;place-items:center;padding:0}
+.tabs .plus svg{width:24px;height:24px}
 
-/* ---------- toast & modal ---------- */
-.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:999px;font:600 14px/1.2 var(--f-body);box-shadow:4px 4px 0 var(--mustard);animation:drop .25s ease-out;max-width:calc(100% - 32px);text-align:center}
+/* ---------- toast + confirm ---------- */
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:var(--shadow);animation:drop .25s ease-out;max-width:calc(100% - 32px);text-align:center}
 @keyframes drop{from{transform:translate(-50%,-14px);opacity:0}}
-.confirm{display:grid;gap:10px;margin-top:10px;padding:12px;border:2px dashed var(--tomato);border-radius:14px}
+.confirm{display:grid;gap:10px;margin-top:10px;padding:14px;border-radius:var(--r-md);background:color-mix(in srgb,var(--s-bad) 9%,var(--card))}
 .confirm .btns{display:flex;gap:8px;flex-wrap:wrap}
-.foot{margin-top:30px;font:400 11px/1.5 var(--f-mono);color:var(--muted);text-align:center}
+.btn.danger{background:var(--s-bad);color:#fff}
+.foot{margin-top:34px;font-size:12px;color:var(--muted);text-align:center}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 </style>
 
@@ -268,17 +271,17 @@ textarea.inp{resize:vertical;min-height:84px}
 
 <script>
 /* ============================================================
-   WeWalk: a field guide to NYC WeWorks, drawn as a transit map.
+   WeWalk: NYC WeWorks, rated by people who care too much.
    Shared data lives in the artifact db; falls back to this
    device's localStorage when the db isn't available.
    ============================================================ */
 
-// ---------- lines (our own, not the MTA's) ----------
+// ---------- neighborhood groups ----------
 const LINES = {
-  midtown:  { name: "Midtown Local",        color: "var(--cobalt)" },
-  flatiron: { name: "Flatiron Shuttle",     color: "var(--mustard)" },
-  downtown: { name: "Downtown Express",     color: "var(--tomato)" },
-  brooklyn: { name: "Bridge & Tunnel Line", color: "var(--kelly)" },
+  midtown:  { name: "Midtown",  color: "var(--h-mid)" },
+  flatiron: { name: "Flatiron", color: "var(--h-flat)" },
+  downtown: { name: "Downtown", color: "var(--h-down)" },
+  brooklyn: { name: "Brooklyn", color: "var(--h-bk)" },
 };
 const HOODS = [
   { id: "Midtown",   line: "midtown" },
@@ -353,8 +356,9 @@ const fmtDate = iso => { if (!iso) return ""; const [y,m,d] = iso.split("-").map
 const ls = { get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
-const tierColor = v => v == null ? "var(--paper)" : v >= 4.3 ? "var(--kelly)" : v >= 3.5 ? "var(--cobalt)" : v >= 2.7 ? "var(--mustard)" : "var(--tomato)";
-const fmtScore = v => v == null ? "–" : v.toFixed(1);
+// scores are stored 1–5 and shown out of 10
+const tierColor = v => v == null ? "var(--muted)" : v >= 4.25 ? "var(--s-great)" : v >= 3.5 ? "var(--s-good)" : v >= 2.75 ? "var(--s-ok)" : "var(--s-bad)";
+const fmtScore = v => v == null ? "–" : (v * 2).toFixed(1);
 
 // ---------- store: artifact db when available, else this device ----------
 const COLLS = ["reviews", "visits", "stations", "retired"];
@@ -404,7 +408,7 @@ const Store = {
 const S = {
   reviews: [], visits: [], custom: [], retired: [], photos: [],
   view: "map", stationId: null, sel: null,
-  hood: null, tag: null, sort: "overall",
+  hood: null, tag: null, sort: "overall", q: "", homeMode: ls.get("wewalk:homeMode", "map"),
   editing: null, draft: null, confirm: null,
   justLit: null, justStamped: null,
   me: { id: ls.get("wewalk:me", null) || (() => { const i = "local-" + rid(); ls.set("wewalk:me", i); return i; })(), name: ls.get("wewalk:name", "") },
@@ -446,97 +450,123 @@ function stationOfMonth(){
   return { ...pool[0], fresh: thisMonth.length > 0 };
 }
 
-// ---------- icons for chrome ----------
+// ---------- chrome icons ----------
 const UI = {
-  map:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c4-1 3-7 8-8s4-6 8-7"/><circle cx="4" cy="19" r="2.4" fill="currentColor"/><circle cx="12" cy="11" r="2.4" fill="currentColor"/><circle cx="20" cy="4" r="2.4" fill="currentColor"/></svg>',
-  ranks:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M3 20h18"/><path d="M9.5 20V8h5v12M3.5 20v-7h5v7M15.5 20v-10h5v10"/></svg>',
-  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-  pass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><rect x="4.5" y="2.5" width="15" height="19" rx="2.5"/><circle cx="12" cy="10.5" r="3.6"/><path d="M8.5 17h7"/></svg>',
-  crew:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16 4.8a3.4 3.4 0 0 1 0 6.4M18.5 14.2A6.2 6.2 0 0 1 21.2 20"/></svg>',
-  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
-  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-  moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+  ranks:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.5M17 6h2.5a2.5 2.5 0 0 1-2.6 3.5"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  pass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3" width="15" height="18" rx="3"/><circle cx="12" cy="10.5" r="3.2"/><path d="M8.5 17h7"/></svg>',
+  crew:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0"/><path d="M16 4.8a3.4 3.4 0 0 1 0 6.4M18.5 14.2A6.2 6.2 0 0 1 21.2 20"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6-4.5-4.2 6.1-.7z"/></svg>',
 };
+const tierWord = v => v == null ? "Not rated" : v >= 4.25 ? "Elite" : v >= 3.5 ? "Solid" : v >= 2.75 ? "It's fine" : "Pray";
+const tileText = name => { const m = name.match(/^\d+/); if (m) return m[0]; return name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase(); };
+const AVATAR = ["var(--h-mid)","var(--h-flat)","var(--h-down)","var(--h-bk)","var(--brand)","var(--s-ok)"];
+const avatar = name => `<span class="av" style="--c:${AVATAR[hash(name || "?") % AVATAR.length]}">${esc((name || "?").trim()[0] || "?").toUpperCase()}</span>`;
+const sc = (v, size = "") => v == null ? `<span class="sc none ${size}" aria-label="Not rated">–</span>` : `<span class="sc ${size}" style="--c:${tierColor(v)}" aria-label="Score ${fmtScore(v)} out of 10">${fmtScore(v)}</span>`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const matchesQ = s => !S.q || (s.name + " " + s.address + " " + s.hood).toLowerCase().includes(S.q.toLowerCase());
+const matches = (s, x) => (!S.hood || s.hood === S.hood) && (!S.tag || x.tagCount[S.tag]) && matchesQ(s);
 
-// ---------- render: tabs ----------
+// ---------- tabs ----------
 function renderTabs(){
   const cur = S.view === "station" ? "map" : S.view;
   const t = (v, icon, label) => `<button type="button" data-tab="${v}" ${cur===v?'aria-current="page"':''}>${UI[icon]}<span>${label}</span></button>`;
-  $("#tabs").innerHTML = t("map","map","Map") + t("ranks","ranks","Ranks") +
-    `<button type="button" class="plus" data-tab="review" aria-label="Log a visit">${UI.plus}</button>` +
+  $("#tabs").innerHTML = t("map","home","Explore") + t("ranks","ranks","Ranks") +
+    `<button type="button" class="plus" data-tab="review" aria-label="Rate a station">${UI.plus}</button>` +
     t("passport","pass","Passport") + t("crew","crew","Crew");
 }
 
-// ---------- render: map ----------
+// ---------- map ----------
 function mapSVG(){
   const list = stations();
   const st = Object.fromEntries(list.map(s => [s.id, stats(s.id)]));
-  const routes = Object.keys(LINES).map(line => {
-    const pts = list.filter(s => hoodLine(s.hood) === line && !s.custom).sort((a,b) => line === "brooklyn" ? a.y - b.y : a.y - b.y);
-    if (pts.length < 2) return "";
-    const d = "M" + pts.map(p => `${p.x} ${p.y}`).join(" L");
-    return `<path class="route-casing" d="${d}"/><path class="route" d="${d}" stroke="${LINES[line].color}"/>`;
+  // unlit first so scored pins sit on top
+  const ordered = [...list].sort((a, b) => (st[a.id].visited ? 1 : 0) - (st[b.id].visited ? 1 : 0) || (S.sel === a.id) - (S.sel === b.id));
+  const markers = ordered.map(s => {
+    const x = st[s.id], lit = x.visited, scored = x.overall != null;
+    const left = s.side === "l", off = lit ? 19 : 7;
+    const cls = ["stn", lit ? "" : "unlit", matches(s, x) ? "" : "dim", S.sel === s.id ? "sel" : "", S.justLit === s.id ? "lit" : ""].join(" ");
+    const mark = lit
+      ? `<rect class="glow" x="-16" y="-10" width="32" height="20" rx="10"/><rect class="pill" x="-16" y="-10" width="32" height="20" rx="10" fill="${scored ? tierColor(x.overall) : "var(--brand)"}"/>
+         <text class="pv" y="3.6" text-anchor="middle">${scored ? fmtScore(x.overall) : "✓"}</text>`
+      : `<circle class="dot" r="4.5"/>`;
+    return `<g class="${cls}" data-stn="${esc(s.id)}" transform="translate(${s.x} ${s.y})" tabindex="0" role="button" aria-label="${esc(s.name)}, ${scored ? "score " + fmtScore(x.overall) + " out of 10" : lit ? "visited, not rated" : "not visited yet"}">
+      <circle class="hit" r="15"/>${mark}
+      <text class="nm" x="${left ? -off : off}" y="3" text-anchor="${left ? "end" : "start"}">${esc(s.name)}</text></g>`;
   }).join("");
-  const matches = s => (!S.hood || s.hood === S.hood) && (!S.tag || st[s.id].tagCount[S.tag]);
-  const markers = list.map(s => {
-    const x = st[s.id], lit = x.visited;
-    const r = lit ? (x.overall != null ? 6 + x.overall * 1.3 : 7) : 5.5;
-    const fill = lit ? tierColor(x.overall) : "var(--paper)";
-    const tx = s.side === "l" ? -(r + 5) : r + 5;
-    const cls = ["stn", lit ? "" : "unlit", matches(s) ? "" : "dim", S.sel === s.id ? "sel" : "", S.justLit === s.id ? "lit" : ""].join(" ");
-    return `<g class="${cls}" data-stn="${esc(s.id)}" transform="translate(${s.x} ${s.y})" tabindex="0" role="button" aria-label="${esc(s.name)}, ${lit ? "score " + fmtScore(x.overall) : "not visited yet"}">
-      <circle class="hit" r="16"/><circle class="glow" r="6"/>
-      <circle class="ring" r="${r.toFixed(1)}" fill="${fill}"/>${lit ? `<circle class="core" r="2.2"/>` : ""}
-      <text x="${tx}" y="3" text-anchor="${s.side === "l" ? "end" : "start"}">${esc(s.name)}</text></g>`;
-  }).join("");
-  return `<svg class="map" viewBox="0 0 360 600" role="img" aria-label="Schematic map of Manhattan and Brooklyn with WeWork stations">
-    <defs><filter id="wobble" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="5"/></filter></defs>
-    <g filter="url(#wobble)">
-      <path class="land far" d="M-10 -10 L52 -10 L58 120 L54 260 L46 420 L36 610 L-10 610 Z"/>
-      <path class="land far" d="M286 -10 L370 -10 L370 214 L338 236 L304 178 L284 96 Z"/>
-      <path class="land" d="M92 -10 L252 -10 L246 60 L238 130 L232 200 L224 262 L214 322 L206 382 L205 420 L196 455 L178 486 L154 502 L134 492 L124 466 L114 420 L107 370 L104 320 L109 270 L104 200 L99 130 L94 60 Z"/>
-      <path class="land" d="M370 232 L332 262 L302 300 L287 350 L281 392 L256 420 L236 446 L232 482 L240 522 L222 562 L208 610 L370 610 Z"/>
-      <path class="land far" d="M258 34 L266 30 L272 104 L264 112 Z"/>
-      <path class="land far" d="M172 532 L198 522 L210 538 L192 556 L172 550 Z"/>
-    </g>
-    <text class="label-geo" x="22" y="300" transform="rotate(-90 22 300)" text-anchor="middle">New Jersey · no comment</text>
-    <text class="label-water" x="76" y="420" transform="rotate(-84 76 420)" text-anchor="middle">HUDSON</text>
-    <text class="label-water" x="238" y="336" transform="rotate(-76 238 336)" text-anchor="middle">EAST RIVER</text>
-    <text class="label-geo" x="330" y="120" text-anchor="middle">Queens</text>
-    <text class="label-geo" x="318" y="560" text-anchor="middle">Brooklyn</text>
-    <text class="label-geo" x="174" y="16" text-anchor="middle">↑ Uptown, uncharted</text>
-    <text class="label-geo" x="190" y="574" text-anchor="middle">Gov. Isl.</text>
-    <path class="ferry" d="M190 462 Q 228 470 258 462"/>
-    ${routes}${markers}
+  return `<svg class="map" viewBox="0 0 360 600" role="img" aria-label="Map of Manhattan and Brooklyn with WeWork locations">
+    <path class="land far" d="M-10 -10 L52 -10 L58 120 L54 260 L46 420 L36 610 L-10 610 Z"/>
+    <path class="land far" d="M286 -10 L370 -10 L370 214 L338 236 L304 178 L284 96 Z"/>
+    <path class="land" d="M92 -10 L252 -10 L246 60 L238 130 L232 200 L224 262 L214 322 L206 382 L205 420 L196 455 L178 486 L154 502 L134 492 L124 466 L114 420 L107 370 L104 320 L109 270 L104 200 L99 130 L94 60 Z"/>
+    <path class="land" d="M370 232 L332 262 L302 300 L287 350 L281 392 L256 420 L236 446 L232 482 L240 522 L222 562 L208 610 L370 610 Z"/>
+    <path class="land far" d="M258 34 L266 30 L272 104 L264 112 Z"/>
+    <path class="land far" d="M172 532 L198 522 L210 538 L192 556 L172 550 Z"/>
+    <path class="street" d="M99 40 L246 40 M100 100 L240 100 M102 160 L235 160 M106 220 L230 220 M108 280 L222 280 M106 340 L211 340 M112 400 L205 400"/>
+    <path class="street" d="M150 -10 L170 300 L150 490 M200 -10 L196 300"/>
+    <text class="geo" x="24" y="300" transform="rotate(-90 24 300)" text-anchor="middle">New Jersey · no comment</text>
+    <text class="water-l" x="76" y="430" transform="rotate(-84 76 430)" text-anchor="middle">HUDSON</text>
+    <text class="water-l" x="240" y="336" transform="rotate(-76 240 336)" text-anchor="middle">EAST RIVER</text>
+    <text class="geo" x="330" y="120" text-anchor="middle">Queens</text>
+    <text class="geo" x="320" y="566" text-anchor="middle">Brooklyn</text>
+    <text class="geo" x="174" y="16" text-anchor="middle">Uptown ↑ uncharted</text>
+    ${markers}
   </svg>`;
 }
-function renderMap(){
+
+function filters(){
   const tags = allTags();
-  const hoodChips = HOODS.map(h => `<button type="button" class="chip" data-hood="${esc(h.id)}" aria-pressed="${S.hood===h.id}" style="--c:${LINES[h.line].color}"><span class="dot"></span>${esc(h.id)}</button>`).join("");
-  const tagChips = tags.length ? tags.map(t => `<button type="button" class="chip" data-tagf="${esc(t)}" aria-pressed="${S.tag===t}">${esc(t)}</button>`).join("") : `<span class="meta" style="padding:6px 0">Tags show up here once people start reviewing.</span>`;
-  const n = stations().filter(s => stats(s.id).visited).length;
+  const hoodChips = `<button type="button" class="chip" data-hood="" aria-pressed="${!S.hood}">All</button>` +
+    HOODS.map(h => `<button type="button" class="chip" data-hood="${esc(h.id)}" aria-pressed="${S.hood===h.id}" style="--c:${LINES[h.line].color}"><span class="dot"></span>${esc(h.id)}</button>`).join("");
+  const tagChips = tags.map(t => `<button type="button" class="chip" data-tagf="${esc(t)}" aria-pressed="${S.tag===t}">${esc(t)}</button>`).join("");
+  return `<div class="chips" aria-label="Neighborhood">${hoodChips}</div>${tags.length ? `<div class="chips" style="padding-top:2px" aria-label="Best for">${tagChips}</div>` : ""}`;
+}
+function stationRow(s, x, lead){
+  return `<button type="button" class="row" data-open="${esc(s.id)}">
+    ${lead ?? `<span class="tile" style="--c:${hoodColor(s.hood)}">${esc(tileText(s.name))}</span>`}
+    <span style="min-width:0"><span class="t">${esc(s.name)}</span>
+      <span class="m"><span class="hood" style="--c:${hoodColor(s.hood)}">${esc(s.hood)}</span>·
+        ${x.visited ? `<span class="been">Been</span>· ${plural(x.reviews.length, "review")}` : `<span>Not yet</span>`}</span></span>
+    ${sc(x.overall)}</button>`;
+}
+function renderMap(){
+  const list = stations().map(s => ({ s, x: stats(s.id) }));
+  const lit = list.filter(r => r.x.visited).length;
+  const top = list.filter(r => r.x.overall != null).sort((a,b) => b.x.overall - a.x.overall).slice(0, 3);
+  const shown = list.filter(r => matches(r.s, r.x));
+  let body;
+  if (S.homeMode === "list") {
+    const sorted = shown.sort((a,b) => (b.x.overall ?? -1) - (a.x.overall ?? -1) || a.s.name.localeCompare(b.s.name));
+    body = sorted.length ? `<div class="list" style="margin-top:6px">${sorted.map(r => stationRow(r.s, r.x)).join("")}</div>`
+      : `<div class="empty" style="margin-top:12px"><b>No matches.</b>Nothing fits those filters. Loosen up a little.</div>`;
+  } else {
+    body = `<div class="mapcard">${mapSVG()}</div>
+      <div class="legend"><span><i style="--c:var(--s-great)"></i>8.5+ elite</span><span><i style="--c:var(--s-good)"></i>7+ solid</span><span><i style="--c:var(--s-ok)"></i>5.5+ fine</span><span><i style="--c:var(--s-bad)"></i>pray</span><span><i style="--c:var(--muted)"></i>not yet</span></div>
+      <div class="sec"><h2>Crew favorites</h2><span class="sub">${lit} of ${list.length} visited</span></div>
+      ${top.length ? `<div class="list">${top.map(r => stationRow(r.s, r.x)).join("")}</div>`
+        : `<div class="empty"><b>The map's all grey.</b>Nobody's rated anything yet. Go grab a coffee, then judge it.<br><button class="btn primary sm" type="button" data-tab="review">Rate your first station</button></div>`}`;
+  }
   return `<section class="page">
-    <div class="chiplabel">Neighborhood</div><div class="chips">${hoodChips}</div>
-    <div class="chiplabel">Best for</div><div class="chips">${tagChips}</div>
-    <div class="mapwrap">${mapSVG()}
-      <div class="maplegend">
-        <span><i style="--c:var(--kelly)"></i>4.3+ elite</span><span><i style="--c:var(--cobalt)"></i>3.5+ solid</span>
-        <span><i style="--c:var(--mustard)"></i>2.7+ it's fine</span><span><i style="--c:var(--tomato)"></i>below: pray</span>
-        <span><i class="unlit"></i>unlit, unvisited</span><span>bigger dot = higher score</span>
-      </div>
-    </div>
-    <p class="meta">${n} of ${stations().length} stations lit. ${n === 0 ? "The whole map is dark. Somebody go get a coffee and judge it." : "Tap a station for the gossip."}</p>
-    <p><button type="button" class="linkbtn" data-act="add-station">Missing a WeWork? Add a station</button></p>
+    <label class="search">${UI.search}<input id="q" type="search" placeholder="Search 75 Rock, Dumbo, 18th St…" value="${esc(S.q)}" autocomplete="off" aria-label="Search stations"></label>
+    <div class="seg" role="group" aria-label="View"><button type="button" data-mode="map" aria-pressed="${S.homeMode!=="list"}">Map</button><button type="button" data-mode="list" aria-pressed="${S.homeMode==="list"}">List</button></div>
+    ${filters()}
+    ${body}
+    <p style="margin-top:18px"><button type="button" class="link" data-act="add-station">Missing a WeWork? Add it</button></p>
     ${S.confirm === "add-station" ? addStationForm() : ""}
   </section>`;
 }
 function addStationForm(){
-  return `<form class="card inlineform" id="addstn" style="margin-top:8px">
-    <b style="font-family:var(--f-display);font-weight:400;font-size:18px">New station</b>
+  return `<form class="card grp" id="addstn" style="margin-top:4px">
+    <h3 style="font-size:18px">Add a station</h3>
     <label class="field"><span>Name on the map</span><input class="inp" id="ns-name" required maxlength="22" placeholder="e.g. 1 Penn"></label>
     <label class="field"><span>Address</span><input class="inp" id="ns-addr" required maxlength="120" placeholder="Street, borough, ZIP"></label>
     <label class="field"><span>Neighborhood</span><select class="inp" id="ns-hood">${HOODS.map(h => `<option>${esc(h.id)}</option>`).join("")}</select></label>
-    <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Add to map</button><button class="btn ghost" type="button" data-act="cancel">Cancel</button></div>
+    <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Add to map</button><button class="btn" type="button" data-act="cancel">Cancel</button></div>
   </form>`;
 }
 
@@ -546,233 +576,204 @@ function renderSheet(){
   if (S.view !== "map" || !S.sel) { root.innerHTML = ""; return; }
   const s = stationById(S.sel); if (!s) { root.innerHTML = ""; return; }
   const x = stats(s.id);
-  const verdict = x.hot ? x.hot.hotTake : x.visited ? "Visited, but nobody's ranted yet." : "Unlit station. Nobody from the crew has been yet.";
+  const verdict = x.hot ? "“" + x.hot.hotTake + "”" : x.visited ? "Been here, but nobody's said anything spicy yet." : "Nobody from the crew has been here yet.";
   root.innerHTML = `<div class="sheet" role="dialog" aria-label="${esc(s.name)} preview">
-    <div class="row">
-      ${scoreBadge(x.overall, x.visited)}
-      <div style="min-width:0;flex:1">
-        <span class="hoodtag" style="--c:${hoodColor(s.hood)}">${esc(s.hood)}</span>
-        <h3 style="margin-top:6px">${esc(s.name)}</h3>
-      </div>
-      <button class="iconbtn close" type="button" data-act="close-sheet" aria-label="Close preview" style="width:36px;height:36px;border-width:2px">${UI.x}</button>
-    </div>
-    <p class="verdict">${esc(verdict)}</p>
-    <div style="display:flex;gap:8px"><button class="btn primary" type="button" data-open="${esc(s.id)}" style="flex:1">Open station</button>
-    <button class="btn" type="button" data-review="${esc(s.id)}">Review</button></div>
+    <div class="hd">${sc(x.overall)}
+      <div style="min-width:0;flex:1"><h3>${esc(s.name)}</h3><div class="sub"><span class="hood" style="--c:${hoodColor(s.hood)}">${esc(s.hood)}</span> · ${esc(tierWord(x.overall))}</div></div>
+      <button class="round" type="button" data-act="close-sheet" aria-label="Close preview" style="width:34px;height:34px">${UI.x}</button></div>
+    <p class="q">${esc(verdict)}</p>
+    <div class="acts"><button class="btn dark" type="button" data-open="${esc(s.id)}">View station</button><button class="btn primary" type="button" data-review="${esc(s.id)}">Rate</button></div>
   </div>`;
 }
-function scoreBadge(v, visited, lg){
-  if (v == null) return `<div class="score none ${lg?"lg":""}">${visited ? "NO<br>SCORE" : "UN-<br>LIT"}</div>`;
-  return `<div class="score ${lg?"lg":""}" style="--c:${tierColor(v)}">${fmtScore(v)}</div>`;
-}
 
-// ---------- render: station page ----------
-function pips(v){
-  let h = ""; for (let i = 1; i <= 5; i++) h += `<i class="${v == null ? "" : v >= i - .25 ? "on" : v >= i - .75 ? "half" : ""}"></i>`; return `<span class="pips">${h}</span>`;
-}
+// ---------- station page ----------
 function renderStation(){
   const s = stationById(S.stationId);
-  if (!s) return `<div class="empty"><b>Station not found.</b>It may have been retired. <button class="linkbtn" data-tab="map">Back to the map</button></div>`;
-  const x = stats(s.id), c = hoodColor(s.hood);
+  if (!s) return `<div class="empty" style="margin-top:20px"><b>Station not found.</b>It may have been retired. <button class="link" data-tab="map">Back to Explore</button></div>`;
+  const x = stats(s.id);
   const tags = Object.entries(x.tagCount).sort((a,b) => b[1]-a[1]);
   const mine = r => r.authorId && r.authorId === S.me.id;
-  const log = [...x.visits.map(v => ({ d: v.date, by: v.by, text: v.note, kind: "note", id: v.id, authorId: v.authorId })),
-               ...x.reviews.map(r => ({ d: r.visitedOn, by: r.by, text: "Filed a review" + (r.scores?.vibe ? `, vibe ${r.scores.vibe}/5` : ""), kind: "review" }))]
+  const avgOf = r => { const v = CATS.map(c => r.scores?.[c.k]).filter(n => typeof n === "number"); return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null; };
+  const log = [...x.visits.map(v => ({ d: v.date, by: v.by, text: v.note })),
+               ...x.reviews.map(r => ({ d: r.visitedOn, by: r.by, text: "Posted a review" }))]
               .sort((a,b) => (b.d||"").localeCompare(a.d||""));
-  return `<article class="page" style="--c:${c}">
-    <div class="top" style="padding-bottom:0"><button class="iconbtn" type="button" data-tab="map" aria-label="Back to map">${UI.back}</button>
-      <span class="hoodtag" style="--c:${c}">${esc(LINES[hoodLine(s.hood)].name)}</span></div>
-    <header class="stnhead">
-      <div class="bar"></div>
-      <span class="eyebrow">${esc(s.hood)}</span>
-      <h1 style="margin-top:6px">${esc(s.name)}</h1>
-      <div class="addr">${esc(s.address)}<br>${x.last ? "Last visit · " + esc(fmtDate(x.last)) : "Last visit · never (yet)"}</div>
-      <div class="headrow">
-        <div class="meta">${x.reviews.length} review${x.reviews.length===1?"":"s"} · ${x.visits.length} visit note${x.visits.length===1?"":"s"}</div>
-        ${scoreBadge(x.overall, x.visited, true)}
-      </div>
+  return `<article class="page">
+    <div class="navbar"><button class="round" type="button" data-tab="map" aria-label="Back">${UI.back}</button></div>
+    <header class="hero">
+      <span class="hood sub" style="--c:${hoodColor(s.hood)};font-weight:700">${esc(s.hood)}</span>
+      <h1>${esc(s.name)}</h1>
+      <div class="addr">${esc(s.address)}</div>
     </header>
-    ${x.hot ? `<p class="hottake">${esc(x.hot.hotTake)}</p><div class="attrib">Hot take by ${esc(x.hot.by || "anonymous")}</div>` : ""}
-    <div style="margin-top:20px"><button class="btn primary block" type="button" data-review="${esc(s.id)}">${x.reviews.length ? "Add your review" : "Be the first to judge it"}</button></div>
+    <div class="scorebox">${sc(x.overall, "lg")}
+      <div><div class="lbl">${esc(tierWord(x.overall))}</div>
+        <div class="sub">${x.reviews.length ? "Crew score from " + plural(x.reviews.length, "review") : "No ratings yet"}</div>
+        <div class="sub">${x.last ? "Last visit " + esc(fmtDate(x.last)) : "Never visited (yet)"}</div></div></div>
+    ${Store.canWrite ? `<div class="acts2"><button class="btn primary" type="button" data-review="${esc(s.id)}">Rate it</button><button class="btn" type="button" data-act="checkin">Check in</button></div>` : ""}
+    ${x.hot ? `<div class="hot"><span class="k">Hot take</span><p>${esc(x.hot.hotTake)}</p><span class="by">— ${esc(x.hot.by || "anonymous")}</span></div>` : ""}
 
-    <div class="sec"><h2>The scorecard</h2><span class="eyebrow">avg of ${x.reviews.length}</span></div>
-    ${x.reviews.length ? `<div class="card ratings">${CATS.map(cat => `<div class="rate" style="--c:${tierColor(x.cat[cat.k])}">
-        <span class="ic">${ICON[cat.k]}</span><span class="lbl">${esc(cat.label)}<small>${esc(cat.hint)}</small></span>
-        <span style="display:flex;gap:8px;align-items:center">${pips(x.cat[cat.k])}<span class="num">${fmtScore(x.cat[cat.k])}</span></span></div>`).join("")}</div>`
-      : `<div class="empty"><b>No scores yet.</b>The coffee is unrated and the phone booths are unjudged. Go fix that.</div>`}
+    <div class="sec"><h2>Scorecard</h2>${x.reviews.length ? `<span class="sub">out of 10</span>` : ""}</div>
+    ${x.reviews.length ? `<div>${CATS.map(cat => { const v = x.cat[cat.k]; return `<div class="rate" style="--c:${tierColor(v)}">
+        <span class="ic">${ICON[cat.k]}</span><span class="l">${esc(cat.label)}<small>${esc(cat.hint)}</small></span>
+        <span class="bar"><i style="width:${v == null ? 0 : (v/5*100).toFixed(0)}%"></i></span><span class="v">${fmtScore(v)}</span></div>`; }).join("")}</div>`
+      : `<div class="empty"><b>Unrated.</b>The coffee is unjudged and the phone booths are unaccounted for.</div>`}
 
-    ${tags.length ? `<div class="sec"><h2>Known for</h2></div><div class="tags">${tags.map(([t,n]) => `<span class="tag">${esc(t)}${n>1?`<b>×${n}</b>`:""}</span>`).join("")}</div>` : ""}
+    ${tags.length ? `<div class="sec"><h2>Known for</h2></div><div class="tags">${tags.map(([t,n]) => `<span class="tag">${esc(t)}${n>1?`<b>${n}</b>`:""}</span>`).join("")}</div>` : ""}
 
-    <div class="sec"><h2>Reviews</h2></div>
-    ${x.reviews.length ? `<div class="card" style="padding-block:2px">${x.reviews.map(r => `<div class="review">
-        <div class="who"><b>${esc(r.by || "anonymous")}</b><span class="meta">${esc(fmtDate(r.visitedOn))}</span></div>
+    <div class="sec"><h2>Reviews</h2>${x.reviews.length ? `<span class="sub">${x.reviews.length}</span>` : ""}</div>
+    ${x.reviews.length ? `<div>${x.reviews.map(r => `<div class="post">
+        <div class="hd">${avatar(r.by)}<div style="min-width:0"><div class="who">${esc(r.by || "anonymous")}</div><div class="sub">${esc(fmtDate(r.visitedOn))}</div></div>${sc(avgOf(r), "sm")}</div>
         ${r.hotTake ? `<div class="ht">“${esc(r.hotTake)}”</div>` : ""}
         ${r.text ? `<p>${esc(r.text)}</p>` : ""}
         ${(r.tags||[]).length ? `<div class="tags">${r.tags.map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>` : ""}
-        <div class="meta">${CATS.filter(c => r.scores?.[c.k]).map(c => `${esc(c.label)} ${r.scores[c.k]}`).join(" · ")}</div>
-        ${mine(r) && Store.canWrite ? `<div style="display:flex;gap:14px"><button class="linkbtn" type="button" data-edit="${esc(r.id)}">Edit</button><button class="linkbtn" type="button" data-delrev="${esc(r.id)}">Delete</button></div>` : ""}
-        ${S.confirm === "del:" + r.id ? `<div class="confirm"><b>Delete this review for good?</b><div class="btns"><button class="btn primary ghost" type="button" data-delrev-yes="${esc(r.id)}">Delete it</button><button class="btn ghost" type="button" data-act="cancel">Keep it</button></div></div>` : ""}
-      </div>`).join("")}</div>` : `<div class="empty"><b>Crickets.</b>No reviews. The first one gets to set the narrative.</div>`}
+        ${mine(r) && Store.canWrite ? `<div style="display:flex;gap:16px"><button class="link" type="button" data-edit="${esc(r.id)}">Edit</button><button class="link" type="button" data-delrev="${esc(r.id)}">Delete</button></div>` : ""}
+        ${S.confirm === "del:" + r.id ? `<div class="confirm"><b>Delete this review for good?</b><div class="btns"><button class="btn danger sm" type="button" data-delrev-yes="${esc(r.id)}">Delete</button><button class="btn sm" type="button" data-act="cancel">Keep it</button></div></div>` : ""}
+      </div>`).join("")}</div>` : `<div class="empty"><b>Crickets.</b>First review gets to set the narrative.</div>`}
 
-    <div class="sec"><h2>Photos</h2>${Store.canWrite ? `<label class="btn ghost filebtn">Add photo<input type="file" id="ph-add" accept="image/*" multiple></label>` : ""}</div>
-    ${S.photos.length ? `<div class="photos">${S.photos.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(p => `<figure title="${esc("Photo by " + (p.by || "anonymous"))}"><img src="${esc(p.data)}" alt="Photo of ${esc(s.name)} by ${esc(p.by || "anonymous")}" loading="lazy"></figure>`).join("")}</div>`
-      : `<div class="empty">No photos. Snap the lobby, the coffee machine, or the one good chair.</div>`}
+    <div class="sec"><h2>Photos</h2>${Store.canWrite ? `<label class="btn sm filebtn">Add photo<input type="file" id="ph-add" accept="image/*" multiple></label>` : ""}</div>
+    ${S.photos.length ? `<div class="photos">${S.photos.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(p => `<figure><img src="${esc(p.data)}" alt="Photo of ${esc(s.name)} by ${esc(p.by || "anonymous")}" loading="lazy"></figure>`).join("")}</div>`
+      : `<div class="empty">No photos yet. The lobby, the coffee machine, the one good chair: all fair game.</div>`}
 
     <div class="sec"><h2>Visit log</h2></div>
-    ${log.length ? `<ul class="log">${log.map(l => `<li><span class="d">${esc(fmtDate(l.d))}</span> <span class="meta">· ${esc(l.by || "anonymous")}</span><p>${esc(l.text || "")}</p></li>`).join("")}</ul>` : `<p class="meta">Nobody's checked in yet.</p>`}
-    ${Store.canWrite ? `<form class="card inlineform" id="visitform">
-      <b style="font-family:var(--f-display);font-weight:400;font-size:17px">Quick check-in</b>
-      <textarea class="inp" id="v-note" maxlength="400" rows="2" required placeholder="Fourth floor was dead quiet till the 11am all-hands. Oat milk was out again."></textarea>
-      <div class="two"><input class="inp" id="v-name" maxlength="30" required placeholder="Your name" value="${esc(S.me.name)}"><input class="inp" id="v-date" type="date" required value="${todayISO()}"></div>
-      <button class="btn" type="submit">Log the visit</button></form>` : ""}
+    ${log.length ? `<ul class="log">${log.map(l => `<li><div><span class="d">${esc(fmtDate(l.d))}</span> <span class="sub">· ${esc(l.by || "anonymous")}</span><p>${esc(l.text || "")}</p></div></li>`).join("")}</ul>` : `<p class="sub">Nobody's checked in yet.</p>`}
+    ${Store.canWrite ? `<form class="card grp" id="visitform" style="margin-top:8px">
+      <h3 style="font-size:17px">Quick check-in</h3>
+      <textarea class="inp" id="v-note" maxlength="400" rows="2" required placeholder="4th floor was dead quiet till the 11am all-hands. Oat milk was out again."></textarea>
+      <div class="two"><input class="inp" id="v-name" maxlength="30" required placeholder="Your name" value="${esc(S.me.name)}" aria-label="Your name"><input class="inp" id="v-date" type="date" required value="${todayISO()}" aria-label="Visit date"></div>
+      <button class="btn dark" type="submit">Log visit</button></form>` : ""}
 
-    <div style="margin-top:28px">${S.confirm === "retire" ? `<div class="confirm"><b>Retire ${esc(s.name)} from the map?</b><span class="meta">Use this if it closed or the address is wrong. Reviews stay in the logbook.</span><div class="btns"><button class="btn primary ghost" type="button" data-act="retire-yes">Retire station</button><button class="btn ghost" type="button" data-act="cancel">Never mind</button></div></div>`
-      : Store.canWrite ? `<button class="linkbtn" type="button" data-act="retire">Closed or wrong address? Retire this station</button>` : ""}</div>
+    <div style="margin-top:28px">${S.confirm === "retire" ? `<div class="confirm"><b>Remove ${esc(s.name)} from the map?</b><span class="sub">For closed buildings or wrong addresses. Reviews stay in the logbook.</span><div class="btns"><button class="btn danger sm" type="button" data-act="retire-yes">Remove station</button><button class="btn sm" type="button" data-act="cancel">Never mind</button></div></div>`
+      : Store.canWrite ? `<button class="link" type="button" data-act="retire">Closed or wrong address? Remove this station</button>` : ""}</div>
   </article>`;
 }
 
-// ---------- render: review form ----------
+// ---------- review form ----------
 function newDraft(stationId, review){
   if (review) return { id: review.id, stationId: review.stationId, scores: { ...(review.scores||{}) }, tags: [...(review.tags||[])], text: review.text || "", hotTake: review.hotTake || "", visitedOn: review.visitedOn || todayISO(), by: review.by || S.me.name, photos: [], createdAt: review.createdAt };
   return { id: null, stationId: stationId || ls.get("wewalk:lastStation", ""), scores: {}, tags: [], text: "", hotTake: "", visitedOn: todayISO(), by: S.me.name, photos: [] };
 }
 function renderForm(){
   const d = S.draft;
-  if (!Store.canWrite) return `<div class="empty" style="margin-top:20px"><b>Read-only pass.</b>You can browse, but this link doesn't let you write. Ask whoever shared it to make you a Contributor.</div>`;
+  if (!Store.canWrite) return `<div class="empty" style="margin-top:20px"><b>View-only link.</b>You can browse, but you can't post from this link. Ask whoever shared it to give you Contributor access.</div>`;
   const opts = stations().slice().sort((a,b) => a.name.localeCompare(b.name)).map(s => `<option value="${esc(s.id)}" ${d.stationId===s.id?"selected":""}>${esc(s.name)} · ${esc(s.hood)}</option>`).join("");
   return `<section class="page">
-    <div class="formhead"><button class="iconbtn" type="button" data-act="form-back" aria-label="Back">${UI.back}</button><div><span class="eyebrow">${d.id ? "Edit your review" : "Field report"}</span><h1>${d.id ? "Rewrite history" : "Log a visit"}</h1></div></div>
+    <div class="navbar"><button class="round" type="button" data-act="form-back" aria-label="Back">${UI.back}</button></div>
+    <h1 style="font-size:30px;font-weight:900;letter-spacing:-.04em">${d.id ? "Edit your review" : "Rate a station"}</h1>
+    <p class="sub" style="margin:6px 0 0">Tap a number for anything you tried. Skip the rest.</p>
     <form class="form" id="reviewform" novalidate>
       <div class="grp">
         <label class="field"><span>Station</span><select class="inp" id="f-station" required><option value="">Pick a building…</option>${opts}</select></label>
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px">
-          <label class="field"><span>You are</span><input class="inp" id="f-by" maxlength="30" required placeholder="Sal from accounting" value="${esc(d.by)}"></label>
+        <div class="two">
+          <label class="field"><span>Your name</span><input class="inp" id="f-by" maxlength="30" required placeholder="Sal from accounting" value="${esc(d.by)}"></label>
           <label class="field"><span>Visited</span><input class="inp" id="f-date" type="date" required value="${esc(d.visitedOn)}"></label>
         </div>
       </div>
       <div class="grp">
-        <div class="sec" style="margin:0"><h2 style="font-size:20px">Rate it</h2><span class="eyebrow">tap 1–5, skip what you didn't try</span></div>
-        ${CATS.map(c => { const v = d.scores[c.k]; return `<div class="tap" data-cat="${c.k}" style="--c:${v ? tierColor(v) : "var(--paper)"}">
+        ${CATS.map(c => { const v = d.scores[c.k]; return `<div class="tap ${v ? "set" : ""}" data-cat="${c.k}" style="--c:${v ? tierColor(v) : "var(--muted)"}">
           <span class="ic">${ICON[c.k]}</span>
-          <div class="top2"><b>${esc(c.label)}</b><span class="quip" id="q-${c.k}">${v ? esc(c.quips[v-1]) : esc(c.hint)}</span></div>
-          <div class="tokens" role="radiogroup" aria-label="${esc(c.label)} score">${[1,2,3,4,5].map(n => `<button type="button" role="radio" aria-checked="${v===n}" data-score="${n}" class="${v && n <= v ? "on" : ""}">${n}</button>`).join("")}</div>
+          <div class="hd"><b>${esc(c.label)}</b><span class="quip" id="q-${c.k}">${v ? esc(c.quips[v-1]) : esc(c.hint)}</span></div>
+          <div class="tokens" role="radiogroup" aria-label="${esc(c.label)} score">${[1,2,3,4,5].map(n => `<button type="button" role="radio" aria-checked="${v===n}" data-score="${n}" class="${v === n ? "on" : ""}">${n}</button>`).join("")}</div>
         </div>`; }).join("")}
       </div>
-      <label class="field"><span>Hot take (one sentence, go big)</span><input class="inp" id="f-hot" maxlength="120" placeholder="The phone booths here are a hostage situation." value="${esc(d.hotTake)}"></label>
-      <label class="field"><span>The review</span><textarea class="inp" id="f-text" maxlength="1200" rows="4" placeholder="Got here at 9:40 and every window seat was already claimed by a guy with three monitors. Cold brew's legit though. Lunch: walk two blocks to the halal cart, thank me later.">${esc(d.text)}</textarea></label>
-      <div class="grp"><span class="eyebrow">Tags</span><div class="tagpick">${TAGS.map(t => `<button type="button" data-tagpick="${esc(t)}" aria-pressed="${d.tags.includes(t)}">${esc(t)}</button>`).join("")}</div></div>
-      ${d.id ? "" : `<div class="grp"><span class="eyebrow">Photos (optional)</span>
+      <label class="field"><span>Hot take</span><input class="inp" id="f-hot" maxlength="120" placeholder="The phone booths here are a hostage situation." value="${esc(d.hotTake)}"></label>
+      <label class="field"><span>Review</span><textarea class="inp" id="f-text" maxlength="1200" rows="4" placeholder="Got here at 9:40 and every window seat was taken by a guy with three monitors. Cold brew's legit though. Lunch: halal cart on the corner, thank me later.">${esc(d.text)}</textarea></label>
+      <div class="grp"><span class="field"><span>Tags</span></span><div class="tagpick">${TAGS.map(t => `<button type="button" data-tagpick="${esc(t)}" aria-pressed="${d.tags.includes(t)}">${esc(t)}</button>`).join("")}</div></div>
+      ${d.id ? "" : `<div class="grp"><span class="field"><span>Photos (optional)</span></span>
         <div class="thumbs" id="thumbs">${d.photos.map(p => `<img src="${esc(p)}" alt="Photo to upload">`).join("")}</div>
-        <label class="btn ghost filebtn" style="justify-self:start">Add photos<input type="file" id="f-photos" accept="image/*" multiple></label></div>`}
+        <label class="btn sm filebtn" style="justify-self:start">Add photos<input type="file" id="f-photos" accept="image/*" multiple></label></div>`}
       <p class="err" id="f-err" hidden></p>
-      <div class="stickybar"><button class="btn primary block" type="submit" id="f-submit">${d.id ? "Save changes" : "Punch it in"}</button></div>
+      <div class="stickybar"><button class="btn primary block" type="submit" id="f-submit">${d.id ? "Save changes" : "Post review"}</button></div>
     </form>
   </section>`;
 }
 
-// ---------- render: ranks ----------
+// ---------- ranks ----------
 function renderRanks(){
   const som = stationOfMonth();
   const key = S.sort;
   const rows = stations().map(s => { const x = stats(s.id); return { s, x, v: key === "overall" ? x.overall : x.cat[key] }; })
     .filter(r => r.v != null).sort((a,b) => b.v - a.v || b.x.reviews.length - a.x.reviews.length);
-  const unrated = stations().length - stations().filter(s => stats(s.id).overall != null).length;
+  const unrated = stations().filter(s => stats(s.id).overall == null).length;
   const sortChips = [{ k:"overall", label:"Overall" }, ...CATS].map(c => `<button type="button" class="chip" data-sort="${c.k}" aria-pressed="${key===c.k}">${esc(c.label)}</button>`).join("");
   const catLabel = key === "overall" ? "overall" : CATS.find(c => c.k === key).label.toLowerCase();
   const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
   return `<section class="page">
-    <div class="sec" style="margin-top:6px"><h2>Station of the Month</h2></div>
+    <div class="top"><h1>Ranks</h1></div>
     ${som ? `<div class="spot">
-        ${scoreBadge(som.st.overall, true)}
-        <span class="eyebrow">${som.fresh ? esc(monthName) + " champion" : "All-time champ (nobody went anywhere in " + esc(monthName) + ")"}</span>
-        <h2 style="padding-right:70px">${esc(som.s.name)}</h2>
-        <div class="meta">${esc(som.s.hood)} · ${som.st.reviews.length} review${som.st.reviews.length===1?"":"s"}</div>
-        ${som.st.hot ? `<p class="q">“${esc(som.st.hot.hotTake)}” <span style="font-weight:400">· ${esc(som.st.hot.by || "anon")}</span></p>` : `<p class="q">Top marks, zero words. Classic.</p>`}
-        <button class="btn" type="button" data-open="${esc(som.s.id)}">Visit the station</button></div>`
-      : `<div class="empty"><b>The trophy's still in the box.</b>Rate one building and it wins by default. That's democracy.</div>`}
-    <div class="sec"><h2>Rankings</h2><span class="eyebrow">by ${esc(catLabel)}</span></div>
-    <div class="chips">${sortChips}</div>
-    ${rows.length ? `<div class="rows">${rows.map((r, i) => `<button type="button" class="rk" data-open="${esc(r.s.id)}" style="--c:${tierColor(r.v)}">
-        <span class="n">${i+1}</span>
-        <span style="min-width:0"><span class="nm">${esc(r.s.name)}</span><br><span class="sub"><span class="hoodtag" style="--c:${hoodColor(r.s.hood)};font-size:10px">${esc(r.s.hood)}</span> · ${r.x.reviews.length} review${r.x.reviews.length===1?"":"s"}</span>
-          <span class="meter">${[1,2,3,4,5].map(n => `<i class="${r.v >= n - .5 ? "on" : ""}"></i>`).join("")}</span></span>
-        <span class="v">${fmtScore(r.v)}</span></button>`).join("")}</div>`
-      : `<div class="empty"><b>No scores for ${esc(catLabel)} yet.</b>Someone has to taste the coffee first.</div>`}
-    ${rows.length && unrated ? `<p class="meta" style="margin-top:12px">${unrated} station${unrated===1?"":"s"} still unrated. Field trip?</p>` : ""}
+        ${sc(som.st.overall, "lg")}
+        <span class="k">${som.fresh ? "Station of the Month · " + esc(monthName) : "All-time champ · quiet " + esc(monthName)}</span>
+        <h2>${esc(som.s.name)}</h2>
+        <span class="m">${esc(som.s.hood)} · ${plural(som.st.reviews.length, "review")}</span>
+        <p class="q">${som.st.hot ? "“" + esc(som.st.hot.hotTake) + "”" : "Top marks, zero words. Classic."}</p>
+        <button class="btn sm" type="button" data-open="${esc(som.s.id)}">View station</button></div>`
+      : `<div class="empty"><b>Station of the Month: TBD</b>Rate one building and it wins by default. That's democracy.</div>`}
+    <div class="sec"><h2>Best ${key === "overall" ? "overall" : "for " + esc(catLabel)}</h2><span class="sub">${rows.length} rated</span></div>
+    <div class="chips" style="padding-top:0">${sortChips}</div>
+    ${rows.length ? `<div class="list" style="margin-top:4px">${rows.map((r, i) => `<button type="button" class="row" data-open="${esc(r.s.id)}">
+        <span class="rk ${i < 3 ? "top" : ""}">${i+1}</span>
+        <span style="min-width:0"><span class="t">${esc(r.s.name)}</span><span class="m"><span class="hood" style="--c:${hoodColor(r.s.hood)}">${esc(r.s.hood)}</span>· ${plural(r.x.reviews.length, "review")}</span></span>
+        ${sc(r.v)}</button>`).join("")}</div>`
+      : `<div class="empty"><b>No ${esc(catLabel)} scores yet.</b>Somebody has to try it first.</div>`}
+    ${rows.length && unrated ? `<p class="sub" style="margin-top:14px">${plural(unrated, "station")} still unrated. Field trip?</p>` : ""}
   </section>`;
 }
 
-// ---------- render: passport ----------
-const STAMP_SHAPES = [
-  (c) => `<circle cx="60" cy="60" r="50" fill="none" stroke="${c}" stroke-width="4"/><circle cx="60" cy="60" r="42" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="3 3"/>`,
-  (c) => `<rect x="12" y="20" width="96" height="80" rx="14" fill="none" stroke="${c}" stroke-width="4"/><rect x="19" y="27" width="82" height="66" rx="9" fill="none" stroke="${c}" stroke-width="1.6"/>`,
-  (c) => `<polygon points="60,8 106,34 106,86 60,112 14,86 14,34" fill="none" stroke="${c}" stroke-width="4" stroke-linejoin="round"/><polygon points="60,18 97,39 97,81 60,102 23,81 23,39" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`,
-  (c) => { let d = ""; for (let i = 0; i < 24; i++) { const a = i/24*Math.PI*2, r = i % 2 ? 46 : 52; d += (i ? "L" : "M") + (60 + r*Math.cos(a)).toFixed(1) + " " + (60 + r*Math.sin(a)).toFixed(1); } return `<path d="${d}Z" fill="none" stroke="${c}" stroke-width="3.4" stroke-linejoin="round"/><circle cx="60" cy="60" r="38" fill="none" stroke="${c}" stroke-width="1.6"/>`; },
-];
-function stampSVG(s, x){
-  const h = hash(s.id), c = hoodColor(s.hood), shape = STAMP_SHAPES[h % STAMP_SHAPES.length](c);
-  const rot = ((h >> 4) % 17) - 8;
-  const nm = s.name.length > 13 ? s.name.slice(0, 12) + "…" : s.name;
-  const date = x.first ? fmtDate(x.first).toUpperCase() : "";
-  return `<svg viewBox="0 0 120 120" style="--rot:${rot}deg;transform:rotate(${rot}deg)" aria-hidden="true">
-    <g opacity=".92">${shape}
-    <text x="60" y="44" text-anchor="middle" font-family="Space Mono, monospace" font-size="8" font-weight="700" letter-spacing="1.5" fill="${c}">WEWALK · NYC</text>
-    <text x="60" y="66" text-anchor="middle" font-family="Archivo Black, Arial Black, sans-serif" font-size="${nm.length > 10 ? 11 : 13.5}" fill="${c}">${esc(nm.toUpperCase())}</text>
-    <text x="60" y="84" text-anchor="middle" font-family="Space Mono, monospace" font-size="7.5" fill="${c}">${esc(date)}</text></g></svg>`;
-}
+// ---------- passport ----------
 function renderPassport(){
   const list = stations().map(s => ({ s, x: stats(s.id) }));
   const got = list.filter(r => r.x.visited).sort((a,b) => (a.x.first||"").localeCompare(b.x.first||""));
-  const not = list.filter(r => !r.x.visited);
-  const pct = list.length ? Math.round(got.length / list.length * 100) : 0;
-  const quip = pct === 0 ? "A blank passport. Crisp. Unbothered. Embarrassing." : pct < 25 ? "Barely out of the lobby. Keep going." : pct < 50 ? "A respectable commuter. Your MetroCard is sweating." : pct < 100 ? "Seasoned. You have opinions about elevator banks." : "Every station. Touch grass, then go again.";
+  const not = list.filter(r => !r.x.visited).sort((a,b) => a.s.name.localeCompare(b.s.name));
+  const frac = list.length ? got.length / list.length : 0, pct = Math.round(frac * 100);
+  const C = 2 * Math.PI * 40;
+  const quip = pct === 0 ? "Fresh passport. Not a single stamp. Bold." : pct < 25 ? "Barely out of the lobby. Keep going." : pct < 50 ? "Respectable. Your MetroCard is sweating." : pct < 100 ? "Seasoned. You have opinions about elevator banks." : "Every single one. Touch grass, then go again.";
+  const stamp = (r, slot) => `<button type="button" class="stamp ${slot ? "slot" : ""} ${S.justStamped === r.s.id ? "thunk" : ""}" data-open="${esc(r.s.id)}" style="--c:${hoodColor(r.s.hood)}" aria-label="${esc(r.s.name)}${slot ? ", not visited" : ", first visit " + esc(fmtDate(r.x.first))}">
+      <span class="seal">${slot ? "?" : esc(tileText(r.s.name))}</span><span class="n">${esc(r.s.name)}</span>${slot ? "" : `<span class="d">${esc(fmtDate(r.x.first))}</span>`}</button>`;
   return `<section class="page">
-    <div class="pphead" style="margin-top:6px">
-      <span class="eyebrow">The crew's passport</span>
-      <div class="big">${String(got.length).padStart(2,"0")}<span> / ${list.length}</span></div>
-      <p>${esc(quip)}</p>
-      <div class="ppline">${list.map((r, i) => `${i ? "<i></i>" : ""}<b class="${i < got.length ? "on" : ""}"></b>`).join("")}</div>
+    <div class="top"><h1>Passport</h1></div>
+    <div class="pp">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="var(--surface-2)" stroke-width="10"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--brand)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(C*frac).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 50 50)"/>
+        <text x="50" y="56" text-anchor="middle" font-family="Figtree, system-ui, sans-serif" font-weight="800" font-size="20" fill="var(--fg)">${pct}%</text></svg>
+      <div><div class="big">${got.length}<span> / ${list.length} stations</span></div><p>${esc(quip)}</p></div>
     </div>
-    <div class="sec"><h2>Stamps</h2><span class="eyebrow">${pct}% of NYC</span></div>
-    ${got.length ? `<div class="stamps">${got.map(r => `<button type="button" class="stamp ${S.justStamped === r.s.id ? "thunk" : ""}" data-open="${esc(r.s.id)}" aria-label="${esc(r.s.name)} stamp, first visit ${esc(fmtDate(r.x.first))}">${stampSVG(r.s, r.x)}<span class="cap">${esc(r.s.name)}</span></button>`).join("")}</div>`
-      : `<div class="empty"><b>No stamps yet.</b>Log your first visit and we'll thunk one in.</div>`}
-    ${not.length ? `<div class="sec"><h2>Still out there</h2><span class="eyebrow">${not.length} to go</span></div>
-      <div class="stamps">${not.map(r => `<button type="button" class="stamp empty-slot" data-open="${esc(r.s.id)}" aria-label="${esc(r.s.name)}, not visited"><svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--muted)" stroke-width="2.4" stroke-dasharray="5 5"/><text x="60" y="68" text-anchor="middle" font-family="Archivo Black, Arial Black, sans-serif" font-size="24" fill="var(--muted)">?</text></svg><span class="cap">${esc(r.s.name)}</span></button>`).join("")}</div>` : ""}
+    <div class="sec"><h2>Stamps</h2><span class="sub">${got.length}</span></div>
+    ${got.length ? `<div class="stamps">${got.map(r => stamp(r)).join("")}</div>` : `<div class="empty"><b>No stamps yet.</b>Log your first visit and one lands right here.</div>`}
+    ${not.length ? `<div class="sec"><h2>Still out there</h2><span class="sub">${not.length} to go</span></div><div class="stamps">${not.map(r => stamp(r, true)).join("")}</div>` : ""}
   </section>`;
 }
 
-// ---------- render: crew ----------
+// ---------- crew ----------
 function renderCrew(){
   const by = {};
-  for (const r of S.reviews) { const k = (r.by || "anonymous").trim(); (by[k] = by[k] || { reviews: 0, visits: 0, stns: new Set(), hot: null }); by[k].reviews++; by[k].stns.add(r.stationId); if (r.hotTake && !by[k].hot) by[k].hot = r.hotTake; }
-  for (const v of S.visits) { const k = (v.by || "anonymous").trim(); (by[k] = by[k] || { reviews: 0, visits: 0, stns: new Set(), hot: null }); by[k].visits++; by[k].stns.add(v.stationId); }
+  const bump = (n) => by[n] = by[n] || { reviews: 0, visits: 0, stns: new Set(), hot: null };
+  for (const r of S.reviews) { const k = (r.by || "anonymous").trim(); bump(k); by[k].reviews++; by[k].stns.add(r.stationId); if (r.hotTake && !by[k].hot) by[k].hot = r.hotTake; }
+  for (const v of S.visits) { const k = (v.by || "anonymous").trim(); bump(k); by[k].visits++; by[k].stns.add(v.stationId); }
   const crew = Object.entries(by).sort((a,b) => b[1].stns.size - a[1].stns.size || b[1].reviews - a[1].reviews);
+  const theme = ls.get("wewalk:theme", "system");
   return `<section class="page">
-    <div class="sec" style="margin-top:6px"><h2>Your name tag</h2></div>
-    <form class="card inlineform" id="nameform">
-      <label class="field"><span>Display name</span><input class="inp" id="me-name" maxlength="30" placeholder="Dana who hates open floor plans" value="${esc(S.me.name)}"></label>
-      <span class="meta">No accounts, no passwords. This name goes on your reviews. Saved on this device.</span>
-      <button class="btn" type="submit" style="justify-self:start">Save name</button>
+    <div class="top"><h1>Crew</h1></div>
+    <form class="card grp" id="nameform">
+      <div style="display:flex;gap:12px;align-items:center">${avatar(S.me.name || "?")}<div><b>${esc(S.me.name || "No name yet")}</b><div class="sub">No accounts. This name goes on your reviews.</div></div></div>
+      <div class="two" style="grid-template-columns:minmax(0,1fr) auto"><input class="inp" id="me-name" maxlength="30" placeholder="Dana who hates open floor plans" value="${esc(S.me.name)}" aria-label="Display name"><button class="btn dark" type="submit">Save</button></div>
     </form>
-    <div class="sec"><h2>The crew</h2><span class="eyebrow">${crew.length} reviewer${crew.length===1?"":"s"}</span></div>
-    ${crew.length ? `<div class="rows">${crew.map(([n, c], i) => `<div class="rk" style="cursor:default"><span class="n">${i+1}</span>
-        <span style="min-width:0"><span class="nm">${esc(n)}</span><br><span class="sub">${c.stns.size} station${c.stns.size===1?"":"s"} · ${c.reviews} review${c.reviews===1?"":"s"} · ${c.visits} check-in${c.visits===1?"":"s"}</span>
-        ${c.hot ? `<br><span class="sub" style="color:var(--ink-soft)">“${esc(c.hot)}”</span>` : ""}</span><span class="v">${c.stns.size}</span></div>`).join("")}</div>`
-      : `<div class="empty"><b>Nobody's on the board.</b>Post one review and you're the undisputed number one.</div>`}
-    <div class="sec"><h2>Theme</h2></div>
-    <div class="chips">${["system","light","dark"].map(t => `<button type="button" class="chip" data-theme-set="${t}" aria-pressed="${(ls.get("wewalk:theme","system"))===t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}</div>
+    <div class="sec"><h2>Leaderboard</h2><span class="sub">by stations visited</span></div>
+    ${crew.length ? `<div class="list">${crew.map(([n, c], i) => `<div class="row">${avatar(n)}
+        <span style="min-width:0"><span class="t">${esc(n)}</span><span class="m">${plural(c.reviews, "review")} · ${plural(c.visits, "check-in")}</span>
+        ${c.hot ? `<span class="m" style="font-style:italic">“${esc(c.hot)}”</span>` : ""}</span>
+        <span class="rk ${i === 0 ? "top" : ""}" style="width:auto">${c.stns.size}</span></div>`).join("")}</div>`
+      : `<div class="empty"><b>Leaderboard's empty.</b>Post one review and you're number one. Easiest win in New York.</div>`}
+    <div class="sec"><h2>Appearance</h2></div>
+    <div class="seg" role="group" aria-label="Theme" style="margin-top:0">${["system","light","dark"].map(t => `<button type="button" data-theme-set="${t}" aria-pressed="${theme===t}">${t[0].toUpperCase()+t.slice(1)}</button>`).join("")}</div>
   </section>`;
 }
 
 // ---------- main render ----------
 function render(){
   const app = $("#app");
-  const banner = Store.mode === "local" ? `<div class="banner">Offline notebook: reviews save on this device only. Open the shared link to post for the whole crew.</div>`
-    : !Store.canWrite && Store.mode === "shared" ? `<div class="banner">Read-only pass. Ask whoever shared this to make you a Contributor so you can post.</div>` : "";
-  const top = S.view === "station" || S.view === "review" ? "" : `<header class="top">
-      <div class="brand"><svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><path d="M4 30 C 12 28, 10 12, 19 12 S 28 8, 34 6" fill="none" stroke="var(--tomato)" stroke-width="4" stroke-linecap="round"/><circle cx="4.5" cy="30" r="3.6" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.6"/><circle cx="19" cy="12" r="3.6" fill="var(--mustard)" stroke="var(--ink)" stroke-width="2.6"/><circle cx="33.5" cy="6.5" r="3.6" fill="var(--paper)" stroke="var(--ink)" stroke-width="2.6"/></svg>
-        <div style="min-width:0"><h1>WeWalk</h1><div class="sub">NYC coworking, field-tested</div></div></div>
-      <button class="iconbtn" type="button" data-act="theme" aria-label="Toggle dark mode">${UI.moon}</button></header>`;
+  const banner = Store.mode === "local" ? `<div class="banner">Offline mode: reviews save on this device only. Open the shared link to post for the whole crew.</div>`
+    : !Store.canWrite && Store.mode === "shared" ? `<div class="banner">View-only. Ask whoever shared this for Contributor access to post.</div>` : "";
+  const top = S.view === "map" ? `<header class="top">
+      <div><h1>We<span>Walk</span></h1><div class="sub">NYC WeWorks, rated by people who care too much</div></div>
+      <button class="round" type="button" data-act="theme" aria-label="Toggle dark mode">${UI.moon}</button></header>` : "";
   let body = "";
   if (S.view === "map") body = renderMap();
   else if (S.view === "station") body = renderStation();
@@ -780,11 +781,11 @@ function render(){
   else if (S.view === "ranks") body = renderRanks();
   else if (S.view === "passport") body = renderPassport();
   else if (S.view === "crew") body = renderCrew();
-  // keep focused field + caret when re-rendering under live updates
+  // keep focused field, caret and typed values when live updates re-render
   const act = document.activeElement, fid = act && act.id, sel = fid && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
   const keep = render.lastView === S.view ? [...app.querySelectorAll("input[id]:not([type=file]),textarea[id],select[id]")].map(el => [el.id, el.value]) : [];
   render.lastView = S.view;
-  app.innerHTML = top + banner + body + `<div class="foot">Unofficial. Not affiliated with WeWork or the MTA. Just opinions.</div>`;
+  app.innerHTML = top + banner + body + `<div class="foot">Unofficial. Not affiliated with WeWork. Just opinions.</div>`;
   for (const [id, v] of keep) { const el = document.getElementById(id); if (el && el.value !== v) el.value = v; }
   if (fid) { const el = document.getElementById(fid); if (el) { el.focus({ preventScroll: true }); if (sel) try { el.setSelectionRange(...sel); } catch {} } }
   renderTabs(); renderSheet();
@@ -812,7 +813,8 @@ document.addEventListener("click", e => {
   if (d.tab) { if (d.tab === "review") go("review", { stationId: S.view === "station" ? S.stationId : S.sel }); else go(d.tab); return; }
   if (d.open) { go("station", { id: d.open }); return; }
   if (d.review) { go("review", { stationId: d.review }); return; }
-  if (d.hood) { S.hood = S.hood === d.hood ? null : d.hood; render(); return; }
+  if (d.hood !== undefined) { S.hood = d.hood && S.hood !== d.hood ? d.hood : null; render(); return; }
+  if (d.mode) { S.homeMode = d.mode; ls.set("wewalk:homeMode", d.mode); S.sel = null; render(); return; }
   if (d.tagf) { S.tag = S.tag === d.tagf ? null : d.tagf; render(); return; }
   if (d.sort) { S.sort = d.sort; render(); return; }
   if (d.edit) { const r = S.reviews.find(x => x.id === d.edit); if (r) go("review", { review: r }); return; }
@@ -824,8 +826,8 @@ document.addEventListener("click", e => {
     const row = t.closest("[data-cat]"), k = row.dataset.cat, n = +d.score, cat = CATS.find(c => c.k === k);
     if (S.draft.scores[k] === n) delete S.draft.scores[k]; else S.draft.scores[k] = n;
     const v = S.draft.scores[k];
-    row.style.setProperty("--c", v ? tierColor(v) : "var(--paper)");
-    row.querySelectorAll("[data-score]").forEach(b => { const m = +b.dataset.score; b.classList.toggle("on", !!v && m <= v); b.setAttribute("aria-checked", v === m); });
+    row.style.setProperty("--c", v ? tierColor(v) : "var(--muted)"); row.classList.toggle("set", !!v);
+    row.querySelectorAll("[data-score]").forEach(b => { const m = +b.dataset.score; b.classList.toggle("on", v === m); b.setAttribute("aria-checked", v === m); });
     $("#q-" + k).textContent = v ? cat.quips[v-1] : cat.hint;
     if (navigator.vibrate) try { navigator.vibrate(8); } catch {}
     return;
@@ -836,8 +838,9 @@ document.addEventListener("click", e => {
     case "theme": { const dark = isDark(); setTheme(dark ? "light" : "dark"); break; }
     case "add-station": S.confirm = S.confirm === "add-station" ? null : "add-station"; render(); setTimeout(() => $("#ns-name")?.focus(), 0); break;
     case "cancel": S.confirm = null; render(); break;
+    case "checkin": { const n = $("#v-note"); if (n) { n.scrollIntoView({ block: "center", behavior: "smooth" }); n.focus({ preventScroll: true }); } break; }
     case "retire": S.confirm = "retire"; render(); break;
-    case "retire-yes": Store.set("retired", S.stationId, { by: S.me.name || "", at: Date.now() }).then(() => { toast("Station retired."); go("map"); }).catch(() => toast("Couldn't retire it. Try again.")); break;
+    case "retire-yes": Store.set("retired", S.stationId, { by: S.me.name || "", at: Date.now() }).then(() => { toast("Station removed."); go("map"); }).catch(() => toast("Couldn't remove it. Try again.")); break;
   }
 });
 document.addEventListener("keydown", e => {
@@ -846,6 +849,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && S.sel) { S.sel = null; render(); }
 });
 document.addEventListener("input", e => {
+  if (e.target.id === "q") { S.q = e.target.value; render(); return; }
   if (S.view !== "review" || !S.draft) return;
   const m = { "f-by": "by", "f-date": "visitedOn", "f-hot": "hotTake", "f-text": "text", "f-station": "stationId" }[e.target.id];
   if (m) S.draft[m] = e.target.value;
@@ -861,9 +865,9 @@ document.addEventListener("change", async e => {
     const files = [...e.target.files].slice(0, 4);
     for (const f of files) {
       try { await Store.set("photos", rid(), { stationId: S.stationId, data: await shrink(f), by: S.me.name || "anonymous", authorId: S.me.id, createdAt: Date.now() }); }
-      catch (err) { toast(err && err.code === "quota_exceeded" ? "The photo shelf is full. Delete a few before adding more." : "Couldn't upload that photo."); }
+      catch (err) { toast(err && err.code === "quota_exceeded" ? "Photo storage is full. Delete a few before adding more." : "Couldn't upload that photo."); }
     }
-    if (files.length) toast("Photo pinned to the corkboard.");
+    if (files.length) toast("Photo added.");
   }
 });
 document.addEventListener("submit", async e => {
@@ -879,13 +883,13 @@ document.addEventListener("submit", async e => {
     catch { toast("That didn't save. Check your connection and try again."); return; }
     celebrate(S.stationId, wasVisited, "Checked in.");
   }
-  if (f.id === "nameform") { rememberName($("#me-name").value.trim()); toast("Name tag updated."); render(); }
+  if (f.id === "nameform") { rememberName($("#me-name").value.trim()); toast("Name saved."); render(); }
   if (f.id === "addstn") {
     const name = $("#ns-name").value.trim(), address = $("#ns-addr").value.trim(), hood = $("#ns-hood").value;
     if (!name || !address) return;
     const pos = placeNear(hood);
     const id = "c-" + name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 24) + "-" + rid().slice(0, 4);
-    try { await Store.set("stations", id, { name, address, hood, x: pos.x, y: pos.y, side: pos.x > 200 ? "r" : "l", custom: true, by: S.me.name || "", createdAt: Date.now() }); S.confirm = null; toast(name + " added to the map, unlit for now."); }
+    try { await Store.set("stations", id, { name, address, hood, x: pos.x, y: pos.y, side: pos.x > 200 ? "r" : "l", custom: true, by: S.me.name || "", createdAt: Date.now() }); S.confirm = null; toast(name + " added to the map."); }
     catch { toast("Couldn't add the station. Try again."); }
   }
 });
@@ -918,7 +922,7 @@ async function saveReview(){
     await Store.set("reviews", id, doc);
     for (const p of d.photos) { try { await Store.set("photos", rid(), { stationId: d.stationId, data: p, by: d.by, authorId: S.me.id, createdAt: Date.now() }); } catch {} }
   } catch (e) {
-    btn.disabled = false; btn.textContent = d.id ? "Save changes" : "Punch it in";
+    btn.disabled = false; btn.textContent = d.id ? "Save changes" : "Post review";
     return show(e && e.code === "invalid_argument" ? "This link is read-only for you. Ask for Contributor access." : "That didn't save. Check your connection and try again.");
   }
   if (d.id) { toast("Review updated."); go("station", { id: d.stationId }); return; }
@@ -929,7 +933,7 @@ function celebrate(id, wasVisited, msg){
   S.justLit = id; S.sel = id;
   if (!wasVisited) S.justStamped = id;
   go("map"); S.sel = id; render();
-  toast(wasVisited ? `${msg} ${s.name} glows a little brighter.` : `${msg} ${s.name} is lit. New passport stamp!`);
+  toast(wasVisited ? `${msg} ${s.name} updated.` : `${msg} New passport stamp: ${s.name}.`);
   setTimeout(() => { if (S.justLit === id) { S.justLit = null; } }, 3400);
   const el = document.querySelector(`[data-stn="${CSS.escape(id)}"]`); if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
 }
