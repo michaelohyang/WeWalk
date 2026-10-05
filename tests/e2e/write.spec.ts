@@ -201,9 +201,12 @@ test.describe("rating", () => {
       timeout: 10_000,
     });
     // Once it's out, you land on the station like a normal post.
-    await expect(page).toHaveURL(/\/s\/199-water-st\?posted=review$/);
-    await expect(main(page).getByText(take)).toHaveCount(2); // hot-take card + the review itself
+    // (The page then tidies `?posted=review` out of the URL, so don't insist on catching it.)
+    await expect(page).toHaveURL(/\/s\/199-water-st(\?posted=review)?$/);
+    // Exactly one review, with the text typed offline. (Not the station's hot-take card: other
+    // runs post to this building too, and the card shows just one take.)
     await expect(myReviews(page, "")).toHaveCount(1);
+    await expect(myReviews(page, "")).toContainText(take);
   });
 
   test("a shared phone: queued posts and drafts stay with whoever wrote them", async ({
@@ -276,8 +279,17 @@ test.describe("checking in", () => {
 test.describe("accessibility of the write screens", () => {
   test("axe (WCAG 2.1 A/AA): join, pair, rate, station actions, crew", async ({ page }) => {
     const check = async (label: string) => {
-      // Next streams the <title>; mid-refresh it can be briefly missing. Scan a settled page.
+      // Next streams the <title>; mid-refresh it can be briefly missing. And a toast fading in
+      // has partial contrast. Scan a settled page.
       await expect(page).toHaveTitle(/\S/);
+      await page.evaluate(() =>
+        Promise.all(
+          document
+            .getAnimations()
+            .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+            .map((a) => a.finished.catch(() => {})),
+        ),
+      );
       const { violations } = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();

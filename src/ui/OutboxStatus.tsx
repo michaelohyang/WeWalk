@@ -36,13 +36,22 @@ export function OutboxStatus() {
       });
     };
     retry();
+    // "online" fires as soon as the phone sees a network, often a moment before requests get
+    // through (lobby wifi, captive portals). Try again shortly instead of waiting for the timer.
+    const soon: ReturnType<typeof setTimeout>[] = [];
+    const onOnline = () => {
+      soon.splice(0).forEach(clearTimeout);
+      retry();
+      for (const ms of [1_000, 3_000, 7_000]) soon.push(setTimeout(retry, ms));
+    };
     const onVisible = () => document.visibilityState === "visible" && retry();
-    window.addEventListener("online", retry);
+    window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
     const timer = setInterval(retry, 30_000);
     return () => {
       unsubscribe();
-      window.removeEventListener("online", retry);
+      window.removeEventListener("online", onOnline);
+      soon.forEach(clearTimeout);
       document.removeEventListener("visibilitychange", onVisible);
       clearInterval(timer);
     };
