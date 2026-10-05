@@ -85,6 +85,9 @@
   user-select: all;
 }
 .textBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: 0;
   padding: 0 6px;
