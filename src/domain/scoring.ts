@@ -8,6 +8,8 @@ export interface StationScore {
   overall: number | null;
   /** Average of the reviewers who rated that category. */
   categories: Record<CategoryKey, number | null>;
+  /** How many reviewers rated each category. */
+  categoryCounts: Record<CategoryKey, number>;
   reviewCount: number;
 }
 
@@ -31,15 +33,17 @@ export function personOverall(scores: Scores): number | null {
 }
 
 export function scoreStation(reviews: readonly { scores: Scores }[]): StationScore {
-  const categories = Object.fromEntries(
-    CATEGORY_KEYS.map((k) => [
-      k,
-      mean(reviews.flatMap((r) => (r.scores[k] === undefined ? [] : [r.scores[k]]))),
-    ]),
-  ) as Record<CategoryKey, number | null>;
-
+  const rated = (k: CategoryKey) =>
+    reviews.flatMap((r) => (r.scores[k] === undefined ? [] : [r.scores[k]]));
+  const categories = Object.fromEntries(CATEGORY_KEYS.map((k) => [k, mean(rated(k))])) as Record<
+    CategoryKey,
+    number | null
+  >;
+  const categoryCounts = Object.fromEntries(
+    CATEGORY_KEYS.map((k) => [k, rated(k).length]),
+  ) as Record<CategoryKey, number>;
   const overalls = reviews.map((r) => personOverall(r.scores)).filter((v) => v !== null);
-  return { overall: mean(overalls), categories, reviewCount: reviews.length };
+  return { overall: mean(overalls), categories, categoryCounts, reviewCount: reviews.length };
 }
 
 /** Score color tier, on the displayed (rounded) value: ≥4.3 great · ≥3.5 good · ≥2.8 ok. */

@@ -10,6 +10,8 @@ import type { AreaKey } from "./areas";
 export interface StationSeed {
   id: string;
   name: string;
+  /** How New Yorkers say it ("450 Lex"): used on the map and stamps. */
+  short: string;
   address: string;
   neighborhood: string;
   area: AreaKey;
@@ -22,6 +24,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "250-broadway",
     name: "250 Broadway",
+    short: "250 Bway",
     address: "250 Broadway, New York, NY 10007",
     neighborhood: "Financial District",
     area: "downtown",
@@ -31,6 +34,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "199-water-st",
     name: "199 Water St",
+    short: "199 Water",
     address: "199 Water St, New York, NY 10038",
     neighborhood: "Financial District",
     area: "downtown",
@@ -40,6 +44,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "450-lexington-ave",
     name: "450 Lexington Ave",
+    short: "450 Lex",
     address: "450 Lexington Ave, New York, NY 10017",
     neighborhood: "Midtown East",
     area: "midtown",
@@ -49,6 +54,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "368-9th-ave",
     name: "368 9th Ave",
+    short: "368 9th",
     address: "368 9th Ave, New York, NY 10001",
     neighborhood: "Midtown West",
     area: "midtown",
@@ -58,6 +64,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "8-w-126th-st",
     name: "8 W 126th St",
+    short: "8 W 126th",
     address: "8 W 126th St, New York, NY 10027",
     neighborhood: "Harlem",
     area: "uptown",
@@ -67,6 +74,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "430-park-ave",
     name: "430 Park Ave",
+    short: "430 Park",
     address: "430 Park Ave, New York, NY 10022",
     neighborhood: "Upper East Side",
     area: "uptown",
@@ -76,6 +84,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "18-w-18th-st",
     name: "18 W 18th St",
+    short: "18 W 18th",
     address: "18 W 18th St, New York, NY 10011",
     neighborhood: "Flatiron",
     area: "flatiron",
@@ -85,6 +94,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "135-madison-ave",
     name: "135 Madison Ave",
+    short: "135 Madison",
     address: "135 Madison Ave, New York, NY 10016",
     neighborhood: "NoMad",
     area: "flatiron",
@@ -94,6 +104,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "500-7th-ave",
     name: "500 7th Ave",
+    short: "500 7th",
     address: "500 7th Ave, New York, NY 10018",
     neighborhood: "Midtown West",
     area: "midtown",
@@ -103,6 +114,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "85-broad-st",
     name: "85 Broad St",
+    short: "85 Broad",
     address: "85 Broad St, New York, NY 10004",
     neighborhood: "Financial District",
     area: "downtown",
@@ -112,6 +124,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "575-lexington-ave",
     name: "575 Lexington Ave",
+    short: "575 Lex",
     address: "575 Lexington Ave, New York, NY 10022",
     neighborhood: "Midtown East",
     area: "midtown",
@@ -121,6 +134,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "148-lafayette-st",
     name: "148 Lafayette St",
+    short: "148 Lafayette",
     address: "148 Lafayette St, New York, NY 10013",
     neighborhood: "SoHo",
     area: "downtown",
@@ -130,6 +144,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "160-varick-st",
     name: "160 Varick St",
+    short: "160 Varick",
     address: "160 Varick St, New York, NY 10013",
     neighborhood: "Greenwich Village",
     area: "downtown",
@@ -139,6 +154,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "1450-broadway",
     name: "1450 Broadway",
+    short: "1450 Bway",
     address: "1450 Broadway, New York, NY 10018",
     neighborhood: "Midtown West",
     area: "midtown",
@@ -148,6 +164,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "dock-72",
     name: "Dock 72",
+    short: "Dock 72",
     address: "Dock 72 Way, Brooklyn, NY 11205",
     neighborhood: "Brooklyn Navy Yard",
     area: "brooklyn",
@@ -157,6 +174,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "450-park-ave-s",
     name: "450 Park Ave S",
+    short: "450 Park S",
     address: "450 Park Ave S, New York, NY 10016",
     neighborhood: "NoMad",
     area: "flatiron",
@@ -166,6 +184,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "408-broadway",
     name: "408 Broadway",
+    short: "408 Bway",
     address: "408 Broadway, New York, NY 10013",
     neighborhood: "SoHo",
     area: "downtown",
@@ -175,6 +194,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "154-w-14th-st",
     name: "154 W 14th St",
+    short: "154 W 14th",
     address: "154 W 14th St, New York, NY 10011",
     neighborhood: "Chelsea",
     area: "flatiron",
@@ -184,6 +204,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "750-lexington-ave",
     name: "750 Lexington Ave",
+    short: "750 Lex",
     address: "750 Lexington Ave, New York, NY 10022",
     neighborhood: "Upper East Side",
     area: "uptown",
@@ -193,6 +214,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "115-broadway",
     name: "115 Broadway",
+    short: "115 Bway",
     address: "115 Broadway, New York, NY 10006",
     neighborhood: "Financial District",
     area: "downtown",
@@ -202,6 +224,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "134-n-4th-st",
     name: "134 N 4th St",
+    short: "134 N 4th",
     address: "134 N 4th St, Brooklyn, NY 11249",
     neighborhood: "Williamsburg",
     area: "brooklyn",
@@ -211,6 +234,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "575-fifth-ave",
     name: "575 Fifth",
+    short: "575 Fifth",
     address: "575 5th Ave, New York, NY 10017",
     neighborhood: "Midtown East",
     area: "midtown",
@@ -220,6 +244,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "33-irving-pl",
     name: "33 Irving Pl",
+    short: "33 Irving",
     address: "33 Irving Pl, New York, NY 10003",
     neighborhood: "Gramercy",
     area: "flatiron",
@@ -229,6 +254,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "379-w-broadway",
     name: "379 W Broadway",
+    short: "379 W Bway",
     address: "379 W Broadway, New York, NY 10012",
     neighborhood: "SoHo",
     area: "downtown",
@@ -238,6 +264,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "195-montague-st",
     name: "195 Montague St",
+    short: "195 Montague",
     address: "195 Montague St, 14th Fl, Brooklyn, NY 11201",
     neighborhood: "Brooklyn Heights",
     area: "brooklyn",
@@ -247,6 +274,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "1460-broadway",
     name: "1460 Broadway",
+    short: "1460 Bway",
     address: "1460 Broadway, New York, NY 10036",
     neighborhood: "Times Square",
     area: "midtown",
@@ -256,6 +284,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "dumbo-heights",
     name: "Dumbo Heights",
+    short: "Dumbo Heights",
     address: "77 Sands St, Brooklyn, NY 11201",
     neighborhood: "Dumbo",
     area: "brooklyn",
@@ -265,6 +294,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "524-broadway",
     name: "524 Broadway",
+    short: "524 Bway",
     address: "524 Broadway, New York, NY 10012",
     neighborhood: "SoHo",
     area: "downtown",
@@ -274,6 +304,7 @@ export const STATIONS: readonly StationSeed[] = [
   {
     id: "135-w-41st-st",
     name: "135 W 41st St",
+    short: "135 W 41st",
     address: "135 W 41st St, New York, NY 10036",
     neighborhood: "Midtown West",
     area: "midtown",
@@ -281,3 +312,8 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9864,
   },
 ];
+
+const SHORT = new Map(STATIONS.map((s) => [s.id, s.short]));
+
+/** The short name for a station id, falling back to its full name. */
+export const shortName = (id: string, name: string) => SHORT.get(id) ?? name;

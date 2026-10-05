@@ -1,12 +1,13 @@
 "use client";
 
-import type { MapGeometry, Pin } from "@/domain/map";
+import type { MapGeometry, Pin } from "@/domain/map-types";
 import { formatScore, tierOf } from "@/domain/scoring";
 import styles from "./MapView.module.css";
 
 export interface MapStation {
   id: string;
   name: string;
+  short: string;
   overall: number | null;
   visited: boolean;
 }
@@ -63,6 +64,18 @@ export function MapView({
         <text x={width - 8} y={squeezeY - 5} textAnchor="end" className={styles.geo}>
           Uptown, not to scale ↑
         </text>
+        {geometry.labels.map((l) => (
+          <text
+            key={l.text}
+            x={l.x}
+            y={l.y}
+            textAnchor="middle"
+            transform={l.rotate ? `rotate(${l.rotate} ${l.x} ${l.y})` : undefined}
+            className={l.water ? styles.water : styles.geo}
+          >
+            {l.text}
+          </text>
+        ))}
         {order.map((pin) => {
           const s = stations.get(pin.id);
           if (!s) return null;
@@ -80,6 +93,7 @@ export function MapView({
             <g
               key={pin.id}
               transform={`translate(${pin.x} ${pin.y})`}
+              data-pin={pin.id}
               className={`${styles.pin} ${dimmed.has(pin.id) ? styles.dim : ""} ${isSelected ? styles.selected : ""}`}
               role="button"
               tabIndex={0}
@@ -93,7 +107,8 @@ export function MapView({
                 }
               }}
             >
-              <circle r="16" className={styles.hit} />
+              {/* 44px tap target; overlapping neighbors resolve to the one drawn on top */}
+              <circle r="22" className={styles.hit} />
               {s.visited ? (
                 <>
                   <rect
@@ -119,7 +134,7 @@ export function MapView({
                   textAnchor={side === "right" ? "start" : "end"}
                   className={`${styles.name} ${s.visited ? "" : styles.nameDim}`}
                 >
-                  {s.name}
+                  {s.short}
                 </text>
               )}
             </g>

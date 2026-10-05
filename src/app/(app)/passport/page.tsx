@@ -72,7 +72,7 @@ export default async function PassportPage() {
                   <span className={styles.seal} aria-hidden="true">
                     {tileText(station.name)}
                   </span>
-                  <span className={styles.name}>{station.name}</span>
+                  <span className={styles.name}>{station.short}</span>
                   <span className={styles.date}>{formatDate(firstVisit)}</span>
                 </Link>
               </li>
@@ -91,12 +91,13 @@ export default async function PassportPage() {
                 <Link
                   href={`/s/${station.id}`}
                   className={`${styles.stamp} ${styles.slot}`}
-                  aria-label={`${station.name}, not visited`}
+                  aria-label={`${station.name}, not visited${station.visited ? ", the crew has been" : ""}`}
                 >
                   <span className={styles.seal} aria-hidden="true">
                     ?
                   </span>
-                  <span className={styles.name}>{station.name}</span>
+                  <span className={styles.name}>{station.short}</span>
+                  {station.visited && <span className={styles.crewBeen}>Crew&apos;s been</span>}
                 </Link>
               </li>
             ))}

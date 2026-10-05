@@ -26,7 +26,6 @@
   text-decoration: none;
   cursor: pointer;
 }
-.chip[aria-pressed="true"],
 .chip[aria-current="true"] {
   background: var(--fg);
   border-color: var(--fg);
@@ -47,9 +46,14 @@
   gap: 3px;
   margin-block: 12px 4px;
 }
+.seg a,
 .seg button {
   border: 0;
   background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  text-decoration: none;
   border-radius: 9px;
   min-height: 38px;
   font-weight: 700;
@@ -57,6 +61,7 @@
   color: var(--fg-2);
   cursor: pointer;
 }
+.seg a[aria-current="true"],
 .seg button[aria-pressed="true"] {
   background: var(--card);
   color: var(--fg);

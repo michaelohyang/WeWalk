@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Segmented } from "./Chips";
+import { SegmentedButtons } from "./Chips";
+import { Icon } from "./Icon";
+import styles from "./ThemeSwitch.module.css";
 
 type Theme = "system" | "light" | "dark";
 export const THEME_KEY = "wewalk:theme";
@@ -28,7 +30,7 @@ export function ThemeSwitch() {
     if (t === "light" || t === "dark") setTheme(t);
   }, []);
   return (
-    <Segmented
+    <SegmentedButtons
       label="Theme"
       value={theme}
       options={[
@@ -41,5 +43,25 @@ export function ThemeSwitch() {
         apply(t);
       }}
     />
+  );
+}
+
+/** The moon button in the Explore header: flips between light and dark. */
+export function ThemeToggle() {
+  return (
+    <button
+      type="button"
+      className={styles.toggle}
+      aria-label="Toggle dark mode"
+      onClick={() => {
+        const root = document.documentElement;
+        const dark = root.dataset.theme
+          ? root.dataset.theme === "dark"
+          : matchMedia("(prefers-color-scheme: dark)").matches;
+        apply(dark ? "light" : "dark");
+      }}
+    >
+      <Icon name="moon" size={20} />
+    </button>
   );
 }

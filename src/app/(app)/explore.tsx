@@ -12,6 +12,7 @@ import { Empty } from "@/ui/Empty";
 import { areaColor, tierWord } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { MapView } from "@/ui/MapView";
+import { ThemeToggle } from "@/ui/ThemeSwitch";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import { StationRow } from "@/ui/StationRow";
@@ -57,6 +58,9 @@ function useFilters(tags: readonly Tag[]) {
   return [filters, set] as const;
 }
 
+/** Room the preview sheet and tab bar take at the bottom of the screen. */
+const SHEET_CLEARANCE = 300;
+
 const matcher = (f: { q: string; area: AreaKey | null; tag: Tag | null }) => (s: StationCard) =>
   (!f.area || s.area === f.area) &&
   (!f.tag || s.tags.includes(f.tag)) &&
@@ -71,6 +75,29 @@ export function Explore({ view }: { view: ExploreView }) {
   const shown = view.stations.filter(matches);
   const dimmed = new Set(view.stations.filter((s) => !matches(s)).map((s) => s.id));
   const picked = selected ? byId.get(selected) : undefined;
+  const href = (next: Partial<Filters>) => {
+    const q = toQuery({ ...filters, ...next });
+    return q ? `/?${q}` : "/";
+  };
+
+  // Escape closes the preview.
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSelected(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selected]);
+
+  // Keep the tapped pin visible above the preview sheet.
+  useEffect(() => {
+    if (!selected) return;
+    const pin = document.querySelector(`[data-pin="${CSS.escape(selected)}"]`);
+    if (!pin) return;
+    const sheetTop = window.innerHeight - SHEET_CLEARANCE;
+    const { top, bottom } = pin.getBoundingClientRect();
+    if (bottom > sheetTop) window.scrollBy({ top: bottom - sheetTop + 24, behavior: "smooth" });
+    else if (top < 0) window.scrollBy({ top: top - 24, behavior: "smooth" });
+  }, [selected]);
 
   return (
     <Page
@@ -80,58 +107,85 @@ export function Explore({ view }: { view: ExploreView }) {
         </>
       }
       subtitle="NYC WeWorks, rated by people who care too much"
+      action={<ThemeToggle />}
     >
-      <label className={styles.search}>
+      {/* A plain GET form, so search works even before the page's JavaScript loads. */}
+      <form
+        role="search"
+        action="/"
+        className={styles.search}
+        onSubmit={(e) => {
+          e.preventDefault();
+          (document.activeElement as HTMLElement | null)?.blur();
+        }}
+      >
         <Icon name="search" size={18} />
         <input
           type="search"
+          name="q"
           value={filters.q}
           onChange={(e) => setFilters({ q: e.target.value })}
           placeholder="Search 1460 Broadway, Dumbo, Irving Pl…"
           aria-label="Search stations"
           autoComplete="off"
+          enterKeyHint="search"
         />
-      </label>
+        {filters.area && <input type="hidden" name="area" value={filters.area} />}
+        {filters.tag && <input type="hidden" name="tag" value={filters.tag} />}
+        {filters.view === "list" && <input type="hidden" name="view" value="list" />}
+      </form>
 
       <Segmented
         label="View"
         value={filters.view}
         options={[
-          { value: "map", label: "Map" },
-          { value: "list", label: "List" },
+          { value: "map", label: "Map", href: href({ view: "map" }) },
+          { value: "list", label: "List", href: href({ view: "list" }) },
         ]}
-        onChange={(v) => {
+        onSelect={(v) => {
           setSelected(null);
           setFilters({ view: v });
         }}
       />
 
       <ChipRow label="Neighborhood">
-        <Chip pressed={!filters.area} onClick={() => setFilters({ area: null })}>
+        <Chip
+          current={!filters.area}
+          href={href({ area: null })}
+          onSelect={() => setFilters({ area: null })}
+        >
           All
         </Chip>
-        {AREAS.map((a) => (
-          <Chip
-            key={a.key}
-            pressed={filters.area === a.key}
-            color={areaColor(a.key)}
-            onClick={() => setFilters({ area: filters.area === a.key ? null : a.key })}
-          >
-            {a.label}
-          </Chip>
-        ))}
+        {AREAS.map((a) => {
+          const area = filters.area === a.key ? null : a.key;
+          return (
+            <Chip
+              key={a.key}
+              current={filters.area === a.key}
+              color={areaColor(a.key)}
+              href={href({ area })}
+              onSelect={() => setFilters({ area })}
+            >
+              {a.label}
+            </Chip>
+          );
+        })}
       </ChipRow>
       {view.tags.length > 0 && (
         <ChipRow label="Best for">
-          {view.tags.map((t) => (
-            <Chip
-              key={t}
-              pressed={filters.tag === t}
-              onClick={() => setFilters({ tag: filters.tag === t ? null : t })}
-            >
-              {t}
-            </Chip>
-          ))}
+          {view.tags.map((t) => {
+            const tag = filters.tag === t ? null : t;
+            return (
+              <Chip
+                key={t}
+                current={filters.tag === t}
+                href={href({ tag })}
+                onSelect={() => setFilters({ tag })}
+              >
+                {t}
+              </Chip>
+            );
+          })}
         </ChipRow>
       )}
 
@@ -179,6 +233,11 @@ export function Explore({ view }: { view: ExploreView }) {
             ) : (
               <Empty title="The map's all grey.">
                 Nobody&apos;s rated anything yet. Grab a coffee somewhere, then judge it.
+                <span className={styles.emptyAction}>
+                  <ButtonLink href="/rate" variant="primary" size="sm">
+                    Rate your first station
+                  </ButtonLink>
+                </span>
               </Empty>
             )}
           </Section>

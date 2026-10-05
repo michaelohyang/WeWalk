@@ -1,0 +1,12 @@
+.toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  cursor: pointer;
+  flex: none;
+}

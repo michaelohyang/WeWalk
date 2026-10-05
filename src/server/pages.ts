@@ -1,4 +1,5 @@
 import "server-only";
+import type { AreaKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { getSession } from "./session";
@@ -11,8 +12,9 @@ import { crewView, exploreView, passportView, ranksView, stationView } from "./s
  */
 
 export async function loadExplore() {
-  if (!(await getSession())) return null;
-  return exploreView(await getDb());
+  const session = await getSession();
+  if (!session) return null;
+  return exploreView(await getDb(), session);
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */
@@ -22,9 +24,10 @@ export async function loadStation(id: string) {
   return stationView(await getDb(), session, id);
 }
 
-export async function loadRanks(key: RankKey) {
-  if (!(await getSession())) return null;
-  return ranksView(await getDb(), key, new Date());
+export async function loadRanks(key: RankKey, area: AreaKey | null) {
+  const session = await getSession();
+  if (!session) return null;
+  return ranksView(await getDb(), session, key, area, new Date());
 }
 
 export async function loadPassport() {

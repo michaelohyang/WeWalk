@@ -8,7 +8,7 @@ const SCREENS = [
   "/?view=list",
   "/s/18-w-18th-st",
   "/ranks",
-  "/ranks?by=coffee",
+  "/ranks?by=coffee&area=downtown",
   "/passport",
   "/crew",
 ];
@@ -20,6 +20,9 @@ async function noHorizontalScroll(page: Page) {
   }));
   expect(scrollWidth, page.url()).toBeLessThanOrEqual(clientWidth);
 }
+
+const listRows = (page: Page, name: RegExp) => page.getByRole("main").getByRole("link", { name });
+const chip = (page: Page, name: string) => page.getByRole("link", { name, exact: true });
 
 test.describe("signed out", () => {
   test("every screen shows the members-only gate and no crew data", async ({ page }) => {
@@ -51,31 +54,69 @@ test.describe("signed in", () => {
 
   test("filters live in the URL and survive Back", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "List" }).click();
-    await page.getByRole("button", { name: "Brooklyn" }).click();
+    await chip(page, "List").click();
+    await chip(page, "Brooklyn").click();
     await expect(page).toHaveURL(/area=brooklyn/);
     await expect(page).toHaveURL(/view=list/);
-    const rows = page
-      .getByRole("main")
-      .getByRole("link", { name: /Dock 72|Dumbo Heights|195 Montague|134 N 4th/ });
+    const rows = listRows(page, /Dock 72|Dumbo Heights|195 Montague|134 N 4th/);
     await expect(rows).toHaveCount(4);
-    await expect(page.getByRole("link", { name: /1460 Broadway/ })).toHaveCount(0);
+    await expect(listRows(page, /1460 Broadway/)).toHaveCount(0);
 
     await rows.filter({ hasText: "Dock 72" }).click();
     await expect(page).toHaveURL(/\/s\/dock-72$/);
     await page.goBack();
     await expect(page).toHaveURL(/area=brooklyn/);
-    await expect(page.getByRole("button", { name: "Brooklyn" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(chip(page, "Brooklyn")).toHaveAttribute("aria-current", "true");
+
+    // The in-app Back button returns to the same filtered list, not bare Explore.
+    await listRows(page, /Dumbo Heights/).click();
+    await expect(page).toHaveURL(/\/s\/dumbo-heights$/);
+    await page.getByRole("link", { name: "Back" }).click();
+    await expect(page).toHaveURL(/area=brooklyn/);
+    await expect(page).toHaveURL(/view=list/);
+  });
+
+  test("the in-app Back button on a shared link goes to Explore", async ({ page }) => {
+    await page.goto("/s/dock-72");
+    await page.getByRole("link", { name: "Back" }).click();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("filters and search work before JavaScript loads (plain links and a GET form)", async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({ ...info.project.use, javaScriptEnabled: false });
+    const page = await context.newPage();
+    await joinAs(page);
+    await page.goto("/");
+    await chip(page, "List").click();
+    await expect(page).toHaveURL(/view=list/);
+    await chip(page, "Uptown").click();
+    await expect(page).toHaveURL(/area=uptown/);
+    await expect(listRows(page, /8 W 126th/)).toBeVisible();
+    await page.getByRole("searchbox", { name: "Search stations" }).fill("park");
+    await page.getByRole("searchbox", { name: "Search stations" }).press("Enter");
+    await expect(page).toHaveURL(/q=park/);
+    await expect(page).toHaveURL(/area=uptown/);
+    await expect(listRows(page, /430 Park Ave/)).toBeVisible();
+    await context.close();
   });
 
   test("search narrows the list", async ({ page }) => {
     await page.goto("/?view=list");
     await page.getByRole("searchbox", { name: "Search stations" }).fill("lexington");
-    await expect(page.getByRole("main").getByRole("link", { name: /Lexington/ })).toHaveCount(3);
+    await expect(listRows(page, /Lexington/)).toHaveCount(3);
     await expect(page).toHaveURL(/q=lexington/);
+  });
+
+  test("rows say whether you've been or only the crew has", async ({ page, browser }, info) => {
+    await checkIn(page.request, "135-madison-ave");
+    const other = await (await browser.newContext({ ...info.project.use })).newPage();
+    await joinAs(other);
+    await other.goto("/?view=list&q=135%20madison");
+    await expect(listRows(other, /135 Madison Ave/)).toContainText("Crew's been");
+    await page.goto("/?view=list&q=135%20madison");
+    await expect(listRows(page, /135 Madison Ave/)).toContainText("You've been");
   });
 
   test("tapping a map pin opens its preview", async ({ page }) => {
@@ -83,17 +124,27 @@ test.describe("signed in", () => {
     await page.getByRole("button", { name: /^33 Irving Pl,/ }).click();
     const sheet = page.getByRole("dialog", { name: "33 Irving Pl preview" });
     await expect(sheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await page.getByRole("button", { name: /^33 Irving Pl,/ }).click();
     await sheet.getByRole("link", { name: "View station" }).click();
     await expect(page).toHaveURL(/\/s\/33-irving-pl$/);
   });
 
-  test("ranks sort by a category", async ({ page }) => {
+  test("ranks sort by a category, then narrow to a neighborhood", async ({ page }) => {
     await review(page.request, "524-broadway", { scores: { coffee: 5 } });
     await page.goto("/ranks");
-    await page.getByRole("link", { name: "Coffee" }).click();
+    await chip(page, "Coffee").click();
     await expect(page).toHaveURL(/by=coffee/);
-    await expect(page.getByRole("heading", { name: "Best for coffee" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /524 Broadway/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Best coffee" })).toBeVisible();
+    await expect(listRows(page, /524 Broadway/)).toBeVisible();
+
+    await chip(page, "Downtown").click();
+    await expect(page).toHaveURL(/by=coffee/);
+    await expect(page).toHaveURL(/area=downtown/);
+    await expect(page.getByRole("heading", { name: "Best coffee · Downtown" })).toBeVisible();
+    await chip(page, "Brooklyn").click();
+    await expect(listRows(page, /524 Broadway/)).toHaveCount(0);
   });
 
   test("the passport is personal", async ({ page, browser }, info) => {
@@ -102,7 +153,7 @@ test.describe("signed in", () => {
     const mine = page.getByRole("region", { name: "Your stamps" });
     await expect(mine.getByRole("link", { name: /^379 W Broadway, first visit/ })).toBeVisible();
 
-    // Someone else's passport doesn't get my stamp.
+    // Someone else's passport doesn't get my stamp, but shows the crew has been.
     const other = await (await browser.newContext({ ...info.project.use })).newPage();
     await joinAs(other);
     await other.goto("/passport");
@@ -111,9 +162,23 @@ test.describe("signed in", () => {
         .getByRole("region", { name: "Your stamps" })
         .getByRole("link", { name: /379 W Broadway/ }),
     ).toHaveCount(0);
+    await expect(
+      other.getByRole("link", { name: "379 W Broadway, not visited, the crew has been" }),
+    ).toBeVisible();
   });
 
-  test("no screen scrolls sideways", async ({ page }) => {
+  test("no screen scrolls sideways, even with very long names and words", async ({
+    browser,
+  }, info) => {
+    const page = await (await browser.newContext({ ...info.project.use })).newPage();
+    await joinAs(page, `W${Math.random().toString(36).slice(2, 8)}${"W".repeat(23)}`); // 30 chars
+    const word = "Supercalifragilisticexpialidociouscoldbrew".repeat(7);
+    await review(page.request, "18-w-18th-st", {
+      scores: { coffee: 3 },
+      hotTake: word.slice(0, 120),
+      body: word,
+    });
+    await checkIn(page.request, "18-w-18th-st", word);
     for (const path of SCREENS) {
       await page.goto(path);
       await noHorizontalScroll(page);
@@ -125,6 +190,10 @@ test.describe("signed in", () => {
       scores: { coffee: 4, wifi: 2 },
       hotTake: "Fine. Fine!",
     });
+    // A stamp in every area: each area's seal color has its own contrast.
+    for (const id of ["8-w-126th-st", "1460-broadway", "154-w-14th-st", "85-broad-st", "dock-72"]) {
+      await checkIn(page.request, id);
+    }
     for (const path of SCREENS) {
       await page.goto(path);
       const { violations } = await new AxeBuilder({ page })

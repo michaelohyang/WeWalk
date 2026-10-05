@@ -8,7 +8,10 @@ import {
   ROOSEVELT_ISLAND,
   type LatLng,
 } from "./geo";
+import type { MapGeometry, Pin } from "./map-types";
 import { STATIONS } from "./stations";
+
+export type { MapGeometry, Pin } from "./map-types";
 
 /*
  * The schematic map: real positions, stood upright and squeezed where nothing happens.
@@ -86,29 +89,26 @@ export const LAND = [
   { name: "Governors Island", far: true, d: toPath(GOVERNORS_ISLAND) },
 ] as const;
 
-/** Everything static the map needs to draw, as plain data. */
-export interface MapGeometry {
-  width: number;
-  height: number;
-  squeezeY: number;
-  land: readonly { name: string; far: boolean; d: string }[];
-}
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
+const label = (text: string, at: LatLng, rotate = 0, water = false) => {
+  const p = project(at);
+  return { text, x: round1(p.x), y: round1(p.y), rotate, water };
+};
 
 export const MAP_GEOMETRY: MapGeometry = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
   squeezeY: SQUEEZE_LINE_Y,
   land: LAND,
+  labels: [
+    label("Hudson", [40.733, -74.0175], -90, true),
+    label("East River", [40.722, -73.9705], -70, true),
+    label("New Jersey · no comment", [40.745, -74.034], -90),
+    label("Brooklyn", [40.688, -73.968]),
+    label("Queens", [40.757, -73.93]),
+  ],
 };
-
-/** Placed pins for the screen: positions nudged apart, labels placed where they fit. */
-export interface Pin {
-  id: string;
-  x: number;
-  y: number;
-  /** Which side the name goes on, or null when there's no room (shown on tap instead). */
-  label: "left" | "right" | null;
-}
 
 const PIN_GAP = 22; // pins are 32×20 bubbles: keep centers at least this far apart
 const LABEL_HEIGHT = 11;
@@ -117,11 +117,15 @@ const CHAR_WIDTH = 4.9; // ~8.5px Figtree semibold
 /**
  * Lays out pins. Overlapping pins (three buildings share a block at 41st & Broadway) are
  * pushed apart. Labels are placed greedily in `priority` order: right if it fits, else left,
- * else hidden.
+ * else hidden (the name shows on tap). Visited pins are 32×20 bubbles; the rest are small dots,
+ * so labels may pass close to a dot but never over a bubble or another label.
  */
 export function layoutPins(
   stations: readonly { id: string; name: string; lat: number; lng: number }[],
-  priority: (id: string) => number = () => 0,
+  {
+    priority = () => 0,
+    lit = () => true,
+  }: { priority?: (id: string) => number; lit?: (id: string) => boolean } = {},
 ): Pin[] {
   const pts = stations.map((s) => ({ ...s, ...project([s.lat, s.lng]) }));
 
@@ -149,7 +153,10 @@ export function layoutPins(
   }
 
   type Box = { x1: number; y1: number; x2: number; y2: number };
-  const taken: Box[] = pts.map((p) => ({ x1: p.x - 16, y1: p.y - 10, x2: p.x + 16, y2: p.y + 10 }));
+  const taken: Box[] = pts.map((p) => {
+    const [w, h] = lit(p.id) ? [16, 10] : [6, 6];
+    return { x1: p.x - w, y1: p.y - h, x2: p.x + w, y2: p.y + h };
+  });
   const hits = (b: Box) =>
     b.x1 < 2 ||
     b.x2 > MAP_WIDTH - 2 ||
@@ -160,8 +167,9 @@ export function layoutPins(
   for (const p of byPriority) {
     const w = p.name.length * CHAR_WIDTH;
     const y1 = p.y - LABEL_HEIGHT / 2;
-    const right = { x1: p.x + 19, y1, x2: p.x + 19 + w, y2: y1 + LABEL_HEIGHT };
-    const left = { x1: p.x - 19 - w, y1, x2: p.x - 19, y2: y1 + LABEL_HEIGHT };
+    const gap = lit(p.id) ? 19 : 8;
+    const right = { x1: p.x + gap, y1, x2: p.x + gap + w, y2: y1 + LABEL_HEIGHT };
+    const left = { x1: p.x - gap - w, y1, x2: p.x - gap, y2: y1 + LABEL_HEIGHT };
     const side = !hits(right) ? "right" : !hits(left) ? "left" : null;
     if (side) taken.push(side === "right" ? right : left);
     labels.set(p.id, side);
@@ -174,5 +182,3 @@ export function layoutPins(
     label: labels.get(p.id) ?? null,
   }));
 }
-
-const round1 = (n: number) => Math.round(n * 10) / 10;

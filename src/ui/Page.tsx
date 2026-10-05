@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Icon } from "./Icon";
+import { BackLink } from "./BackLink";
 import styles from "./Page.module.css";
 
 /** The phone-width column every screen sits in, with an optional header. */
@@ -12,7 +11,7 @@ export function Page({
 }: {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
-  /** Shows a back button linking here. */
+  /** Shows a back button; goes here when there is no in-app history. */
   back?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
@@ -21,9 +20,7 @@ export function Page({
     <main className={styles.page}>
       {back && (
         <div className={styles.nav}>
-          <Link href={back} className={styles.round} aria-label="Back">
-            <Icon name="back" size={20} />
-          </Link>
+          <BackLink fallback={back} className={styles.round} />
         </div>
       )}
       {(title || action) && (

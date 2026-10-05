@@ -6,6 +6,7 @@ import {
   type StationSummary,
 } from "@/domain/activity";
 import type { AreaKey } from "@/domain/areas";
+import { shortName } from "@/domain/stations";
 import { CATEGORY_KEYS, type CategoryKey } from "@/domain/categories";
 import { monthOf, utcDate, type IsoDate } from "@/domain/dates";
 import { layoutPins, MAP_GEOMETRY, type MapGeometry, type Pin } from "@/domain/map";
@@ -25,19 +26,30 @@ import { loadCrew, type CrewData, type Station } from "./crew";
 export interface StationCard {
   id: string;
   name: string;
+  /** "450 Lex": for the map and stamps. */
+  short: string;
   address: string;
   neighborhood: string;
   area: AreaKey;
   overall: number | null;
   reviewCount: number;
+  /** Anyone in the crew has been. */
   visited: boolean;
+  /** You have been. */
+  mine: boolean;
   lastVisit: IsoDate | null;
   hotTake: { text: string; by: string } | null;
   tags: Tag[];
 }
 
-function cards(crew: CrewData): { cards: StationCard[]; summaries: Map<string, StationSummary> } {
+function cards(
+  crew: CrewData,
+  me: string,
+): { cards: StationCard[]; summaries: Map<string, StationSummary> } {
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
+  const mine = new Set(
+    [...crew.reviews, ...crew.checkins].filter((v) => v.memberId === me).map((v) => v.stationId),
+  );
   const summaries = new Map(
     crew.stations.map((s) => [s.id, summarizeStation(s.id, crew.reviews, crew.checkins)]),
   );
@@ -46,12 +58,14 @@ function cards(crew: CrewData): { cards: StationCard[]; summaries: Map<string, S
     return {
       id: s.id,
       name: s.name,
+      short: shortName(s.id, s.name),
       address: s.address,
       neighborhood: s.neighborhood,
       area: s.area as AreaKey,
       overall: x.score.overall,
       reviewCount: x.score.reviewCount,
       visited: x.visited,
+      mine: mine.has(s.id),
       lastVisit: x.lastVisit,
       hotTake: x.hotTake && {
         text: x.hotTake.text,
@@ -74,15 +88,20 @@ export interface ExploreView {
   favorites: string[];
 }
 
-export async function exploreView(db: Db): Promise<ExploreView> {
+export async function exploreView(db: Db, session: Session): Promise<ExploreView> {
   const crew = await loadCrew(db);
-  const { cards: stations, summaries } = cards(crew);
+  const { cards: stations, summaries } = cards(crew, session.member.id);
   const scores = new Map([...summaries].map(([id, s]) => [id, s.score]));
   const ranked = rankStations(crew.stations, scores, "overall");
   const rankOf = new Map(ranked.map((r) => [r.stationId, r.rank]));
   // Label priority: rated stations first (best first), then visited, then the rest.
-  const pins = layoutPins(crew.stations, (id) =>
-    rankOf.has(id) ? 1000 - rankOf.get(id)! : summaries.get(id)!.visited ? 1 : 0,
+  const pins = layoutPins(
+    crew.stations.map((s) => ({ ...s, name: shortName(s.id, s.name) })),
+    {
+      priority: (id) =>
+        rankOf.has(id) ? 1000 - rankOf.get(id)! : summaries.get(id)!.visited ? 1 : 0,
+      lit: (id) => summaries.get(id)!.visited,
+    },
   );
   const tagCounts = new Map<Tag, number>();
   for (const s of summaries.values())
@@ -122,7 +141,7 @@ export async function stationView(
   id: string,
 ): Promise<StationView | null> {
   const crew = await loadCrew(db);
-  const station = cards(crew).cards.find((c) => c.id === id);
+  const station = cards(crew, session.member.id).cards.find((c) => c.id === id);
   if (!station) return null;
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
   const by = (memberId: string) => names.get(memberId) ?? "someone";
@@ -156,29 +175,39 @@ export async function stationView(
 
 export interface RanksView {
   key: RankKey;
+  area: AreaKey | null;
   month: string;
   stationOfMonth: { station: StationCard; fresh: boolean } | null;
   rows: { rank: number; value: number; station: StationCard }[];
   unrated: number;
 }
 
-export async function ranksView(db: Db, key: RankKey, now: Date): Promise<RanksView> {
+/** Rankings by `key`, optionally within one area. Station of the Month is always crew-wide. */
+export async function ranksView(
+  db: Db,
+  session: Session,
+  key: RankKey,
+  area: AreaKey | null,
+  now: Date,
+): Promise<RanksView> {
   const crew = await loadCrew(db);
-  const { cards: all, summaries } = cards(crew);
+  const { cards: all, summaries } = cards(crew, session.member.id);
+  const inArea = crew.stations.filter((s) => !area || s.area === area);
   const byId = new Map(all.map((c) => [c.id, c]));
   const scores = new Map([...summaries].map(([id, s]) => [id, s.score]));
   const month = monthOf(utcDate(now));
   const som = stationOfMonth(crew.stations, crew.reviews, crew.checkins, month);
   return {
     key,
+    area,
     month,
     stationOfMonth: som && { station: byId.get(som.stationId)!, fresh: som.fresh },
-    rows: rankStations(crew.stations, scores, key).map((r) => ({
+    rows: rankStations(inArea, scores, key).map((r) => ({
       rank: r.rank,
       value: r.value,
       station: byId.get(r.stationId)!,
     })),
-    unrated: all.filter((c) => c.overall === null).length,
+    unrated: all.filter((c) => c.overall === null && (!area || c.area === area)).length,
   };
 }
 
@@ -191,13 +220,16 @@ export interface PassportView {
 
 export async function passportView(db: Db, session: Session): Promise<PassportView> {
   const crew = await loadCrew(db);
-  const { cards: all } = cards(crew);
+  const { cards: all } = cards(crew, session.member.id);
   const byId = new Map(all.map((c) => [c.id, c]));
   const p = passportFor(session.member.id, crew.stations, [...crew.reviews, ...crew.checkins]);
   const stamped = new Set(p.stamps.map((s) => s.stationId));
   return {
     stamps: p.stamps.map((s) => ({ station: byId.get(s.stationId)!, firstVisit: s.firstVisit })),
-    notYet: all.filter((c) => !stamped.has(c.id)).sort((a, b) => a.name.localeCompare(b.name)),
+    // Places the crew has been come first: they're the easy next stamps.
+    notYet: all
+      .filter((c) => !stamped.has(c.id))
+      .sort((a, b) => Number(b.visited) - Number(a.visited) || a.name.localeCompare(b.name)),
     crewVisited: p.crewVisited,
     total: p.total,
   };

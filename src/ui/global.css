@@ -43,6 +43,11 @@ img {
   max-width: 100%;
 }
 
+/* Crew-written text (30-char names, one long word) must wrap, never widen the page. */
+main {
+  overflow-wrap: anywhere;
+}
+
 :focus-visible {
   outline: 2.5px solid var(--brand);
   outline-offset: 2px;

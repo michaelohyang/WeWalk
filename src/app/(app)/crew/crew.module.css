@@ -56,7 +56,14 @@
 .count {
   font-weight: 800;
   font-size: 18px;
-  color: var(--muted);
+  color: var(--fg-2);
+  display: grid;
+  justify-items: end;
+  line-height: 1.1;
+}
+.count small {
+  font-size: 11px;
+  font-weight: 600;
 }
 .first {
   color: var(--brand);

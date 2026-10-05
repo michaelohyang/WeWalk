@@ -66,8 +66,24 @@ describe("layoutPins", () => {
 
   it("labels most pins, and gives the top-priority pin a label", () => {
     expect(pins.filter((p) => p.label).length).toBeGreaterThanOrEqual(STATIONS.length / 2);
-    const top = layoutPins(STATIONS, (id) => (id === "135-w-41st-st" ? 1 : 0));
+    const top = layoutPins(STATIONS, { priority: (id) => (id === "135-w-41st-st" ? 1 : 0) });
     expect(top.find((p) => p.id === "135-w-41st-st")!.label).not.toBeNull();
+  });
+
+  it("labels every visited pin when only a few are visited (grey dots leave room)", () => {
+    const visited = new Set([
+      "1450-broadway",
+      "1460-broadway",
+      "135-w-41st-st",
+      "575-fifth-ave",
+      "450-lexington-ave",
+      "18-w-18th-st",
+    ]);
+    const laid = layoutPins(
+      STATIONS.map((s) => ({ ...s, name: s.short })),
+      { priority: (id) => (visited.has(id) ? 1 : 0), lit: (id) => visited.has(id) },
+    );
+    for (const id of visited) expect(laid.find((p) => p.id === id)!.label, id).not.toBeNull();
   });
 
   it("is deterministic", () => {

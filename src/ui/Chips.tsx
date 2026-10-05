@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import styles from "./Chips.module.css";
 
@@ -10,40 +12,82 @@ export function ChipRow({ label, children }: { label: string; children: React.Re
   );
 }
 
-type ChipProps = { pressed: boolean; color?: string; children: React.ReactNode };
-
-/** A toggle chip. Pass `href` for a link (URL-driven filters) or `onClick` for local state. */
+/**
+ * A filter chip: always a real link, so a tap works even before the page's JavaScript loads.
+ * With `onSelect`, a loaded page handles the tap itself (instant, no navigation).
+ */
 export function Chip({
-  pressed,
+  href,
+  current,
   color,
+  onSelect,
   children,
-  ...target
-}: ChipProps & ({ href: string } | { onClick: () => void })) {
-  const body = (
-    <>
-      {color && <span className={styles.dot} style={{ background: color }} aria-hidden="true" />}
-      {children}
-    </>
-  );
-  return "href" in target ? (
+}: {
+  href: string;
+  current: boolean;
+  color?: string;
+  onSelect?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
     <Link
-      href={target.href}
+      href={href}
       className={styles.chip}
-      aria-current={pressed ? "true" : undefined}
+      aria-current={current ? "true" : undefined}
       scroll={false}
       replace
+      onClick={
+        onSelect &&
+        ((e) => {
+          e.preventDefault();
+          onSelect();
+        })
+      }
     >
-      {body}
+      {color && <span className={styles.dot} style={{ background: color }} aria-hidden="true" />}
+      {children}
     </Link>
-  ) : (
-    <button type="button" className={styles.chip} aria-pressed={pressed} onClick={target.onClick}>
-      {body}
-    </button>
   );
 }
 
-/** Two or three mutually exclusive options. */
+/** Two or three mutually exclusive options, as links (same progressive behavior as Chip). */
 export function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onSelect,
+}: {
+  label: string;
+  options: readonly { value: T; label: string; href: string }[];
+  value: T;
+  onSelect?: (v: T) => void;
+}) {
+  return (
+    <div className={styles.seg} role="group" aria-label={label}>
+      {options.map((o) => (
+        <Link
+          key={o.value}
+          href={o.href}
+          aria-current={o.value === value ? "true" : undefined}
+          scroll={false}
+          replace
+          onClick={
+            onSelect &&
+            ((e) => {
+              e.preventDefault();
+              onSelect(o.value);
+            })
+          }
+        >
+          {o.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** Segmented control for local settings (not URL state), e.g. the theme. */
+export function SegmentedButtons<T extends string>({
   label,
   options,
   value,

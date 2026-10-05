@@ -58,6 +58,13 @@ export default defineConfig([
               message: "server/ must not import UI, routes or browser code.",
             },
             {
+              // Station list, shorelines and projection are server data; browser code gets the
+              // results as props (use domain/map-types for the types).
+              target: ["./src/ui", "./src/client", "./src/app"],
+              from: ["./src/domain/stations.ts", "./src/domain/geo.ts", "./src/domain/map.ts"],
+              message: "Keep station and map data on the server: pass it in as props.",
+            },
+            {
               target: "./src/app",
               // index.ts: a barrel would re-export repos/db past this rule.
               from: ["./src/server/repos", "./src/server/db", "./src/server/index.ts"],

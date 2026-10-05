@@ -10,7 +10,10 @@ export interface StationRowData {
   area: Parameters<typeof areaColor>[0];
   overall: number | null;
   reviewCount: number;
+  /** Anyone in the crew has been. */
   visited: boolean;
+  /** You have been. */
+  mine: boolean;
 }
 
 /** One station in a list: tile (or rank), name, neighborhood · status, score. */
@@ -40,14 +43,18 @@ export function StationRow({
             {station.neighborhood}
           </span>
           <span aria-hidden="true">·</span>
-          {station.visited ? (
+          {station.mine ? (
+            <span className={styles.been}>You&apos;ve been</span>
+          ) : station.visited ? (
+            <span>Crew&apos;s been</span>
+          ) : (
+            <span>Not yet</span>
+          )}
+          {station.reviewCount > 0 && (
             <>
-              <span className={styles.been}>Been</span>
               <span aria-hidden="true">·</span>
               <span>{plural(station.reviewCount, "review")}</span>
             </>
-          ) : (
-            <span>Not yet</span>
           )}
         </span>
       </span>

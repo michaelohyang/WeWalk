@@ -72,7 +72,7 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--c) 72%, #000);
+  background: color-mix(in srgb, var(--c) 62%, #000); /* AA for white text in both themes */
   color: #fff;
   font-weight: 900;
   font-size: 16px;
@@ -100,6 +100,12 @@
   background: var(--surface);
   color: var(--muted);
   box-shadow: none;
+}
+.crewBeen {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand);
+  margin-top: -6px;
 }
 .slot .name {
   color: var(--fg-2);

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { AREAS, isArea, type AreaKey } from "@/domain/areas";
 import { CATEGORIES, type CategoryKey } from "@/domain/categories";
 import type { RankKey } from "@/domain/ranking";
 import { loadRanks } from "@/server/pages";
 import { ButtonLink } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Chips";
 import { Empty } from "@/ui/Empty";
-import { plural } from "@/ui/format";
+import { areaColor, plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import { StationRow } from "@/ui/StationRow";
@@ -13,21 +14,31 @@ import styles from "./ranks.module.css";
 
 export const metadata: Metadata = { title: "Ranks" };
 
-const SORTS: { key: RankKey; label: string }[] = [
-  { key: "overall", label: "Overall" },
-  ...CATEGORIES.map((c) => ({ key: c.key as CategoryKey, label: c.label })),
+const SORTS: { key: RankKey; label: string; title: string }[] = [
+  { key: "overall", label: "Overall", title: "Best overall" },
+  ...CATEGORIES.map((c) => ({ key: c.key as CategoryKey, label: c.label, title: c.rankTitle })),
 ];
+
+/** /ranks?by=wifi&area=flatiron: "best Wi-Fi near Flatiron" is two taps. */
+function ranksHref(by: RankKey, area: AreaKey | null) {
+  const qs = new URLSearchParams();
+  if (by !== "overall") qs.set("by", by);
+  if (area) qs.set("area", area);
+  const q = qs.toString();
+  return q ? `/ranks?${q}` : "/ranks";
+}
 
 export default async function RanksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ by?: string }>;
+  searchParams: Promise<{ by?: string; area?: string }>;
 }) {
-  const { by } = await searchParams;
-  const key = SORTS.find((s) => s.key === by)?.key ?? "overall";
-  const view = await loadRanks(key);
+  const params = await searchParams;
+  const sort = SORTS.find((s) => s.key === params.by) ?? SORTS[0]!;
+  const area = isArea(params.area) ? params.area : null;
+  const view = await loadRanks(sort.key, area);
   if (!view) return null;
-  const label = SORTS.find((s) => s.key === key)!.label;
+  const areaLabel = AREAS.find((a) => a.key === area)?.label;
   const monthName = new Date(`${view.month}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",
     timeZone: "UTC",
@@ -53,7 +64,7 @@ export default async function RanksPage({
           <p className={styles.quote}>
             {som.station.hotTake
               ? `“${som.station.hotTake.text}”`
-              : "Top marks, zero words. Classic."}
+              : "No hot take yet. Strong, silent type."}
           </p>
           <ButtonLink href={`/s/${som.station.id}`} variant="light" size="sm">
             View station
@@ -66,17 +77,28 @@ export default async function RanksPage({
       )}
 
       <Section
-        title={key === "overall" ? "Best overall" : `Best for ${label.toLowerCase()}`}
+        title={areaLabel ? `${sort.title} · ${areaLabel}` : sort.title}
         note={`${view.rows.length} rated`}
       >
         <ChipRow label="Rank by">
           {SORTS.map((s) => (
-            <Chip
-              key={s.key}
-              pressed={s.key === key}
-              href={s.key === "overall" ? "/ranks" : `/ranks?by=${s.key}`}
-            >
+            <Chip key={s.key} current={s.key === sort.key} href={ranksHref(s.key, area)}>
               {s.label}
+            </Chip>
+          ))}
+        </ChipRow>
+        <ChipRow label="Neighborhood">
+          <Chip current={!area} href={ranksHref(sort.key, null)}>
+            All
+          </Chip>
+          {AREAS.map((a) => (
+            <Chip
+              key={a.key}
+              current={area === a.key}
+              color={areaColor(a.key)}
+              href={ranksHref(sort.key, area === a.key ? null : a.key)}
+            >
+              {a.label}
             </Chip>
           ))}
         </ChipRow>
@@ -97,9 +119,7 @@ export default async function RanksPage({
             ))}
           </ol>
         ) : (
-          <Empty title={`No ${label.toLowerCase()} scores yet.`}>
-            Somebody has to try it first.
-          </Empty>
+          <Empty title="No scores here yet.">Somebody has to try it first.</Empty>
         )}
         {view.rows.length > 0 && view.unrated > 0 && (
           <p className={styles.note}>

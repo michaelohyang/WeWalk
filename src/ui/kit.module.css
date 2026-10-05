@@ -72,7 +72,7 @@
   font-weight: 800;
   font-size: 14px;
   color: #fff;
-  background: color-mix(in srgb, var(--c) 72%, #000);
+  background: color-mix(in srgb, var(--c) 62%, #000); /* AA for white text in both themes */
   flex: none;
 }
 

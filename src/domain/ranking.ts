@@ -12,7 +12,8 @@ export interface RankedStation {
 
 /**
  * Stations with a score for `key`, best first. Stations showing the same (rounded) score are
- * ordered by more reviews, then name A–Z. Stations without a score for `key` are left out.
+ * ordered by more ratings behind that score (reviews for overall, people who rated the
+ * category otherwise), then name A–Z. Stations without a score for `key` are left out.
  */
 export function rankStations(
   stations: readonly { id: string; name: string }[],
@@ -22,7 +23,9 @@ export function rankStations(
   const rows = stations.flatMap((s) => {
     const score = scores.get(s.id);
     const value = key === "overall" ? score?.overall : score?.categories[key];
-    return value == null ? [] : [{ station: s, value, reviewCount: score!.reviewCount }];
+    if (value == null) return [];
+    const reviewCount = key === "overall" ? score!.reviewCount : score!.categoryCounts[key];
+    return [{ station: s, value, reviewCount }];
   });
 
   rows.sort(

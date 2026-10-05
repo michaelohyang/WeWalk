@@ -52,7 +52,7 @@ export default async function StationPage({ params }: Props) {
           <div className={styles.sub}>
             {station.lastVisit
               ? `Last visit ${formatDate(station.lastVisit)}`
-              : "Never visited (yet)"}
+              : "Nobody's been. Be the first."}
           </div>
         </div>
       </div>

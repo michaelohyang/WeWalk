@@ -1,4 +1,5 @@
 import { getSession } from "@/server/session";
+import { NavTracker } from "@/ui/BackLink";
 import { Empty } from "@/ui/Empty";
 import { Page } from "@/ui/Page";
 import { TabBar } from "@/ui/TabBar";
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
   return (
     <>
+      <NavTracker />
       {children}
       <TabBar />
     </>

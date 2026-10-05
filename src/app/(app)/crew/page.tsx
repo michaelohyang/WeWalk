@@ -24,7 +24,7 @@ export default async function CrewPage() {
         <div>
           <b>{me.name}</b>
           <div className={styles.sub}>
-            {me.isOwner ? "Crew owner" : "Crew member"} · no passwords, ever
+            {me.isOwner ? "Runs this crew." : "Card-carrying member."} No passwords, ever.
           </div>
         </div>
       </div>
@@ -45,7 +45,7 @@ export default async function CrewPage() {
       <Section title="Leaderboard" note="by stations visited">
         {leaderboard.length ? (
           <ol className={styles.board}>
-            {leaderboard.map((m, i) => (
+            {leaderboard.map((m) => (
               <li key={m.memberId}>
                 <Avatar name={m.name} seed={m.memberId} />
                 <div className={styles.who}>
@@ -56,10 +56,10 @@ export default async function CrewPage() {
                   {m.hotTake && <span className={styles.take}>“{m.hotTake}”</span>}
                 </div>
                 <span
-                  className={`${styles.count} ${i === 0 ? styles.first : ""}`}
-                  aria-label={plural(m.stations, "station")}
+                  className={`${styles.count} ${m.stations === leaderboard[0]!.stations ? styles.first : ""}`}
                 >
                   {m.stations}
+                  <small>{m.stations === 1 ? "station" : "stations"}</small>
                 </span>
               </li>
             ))}
