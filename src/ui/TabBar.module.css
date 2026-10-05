@@ -20,7 +20,7 @@
   padding-inline: 8px;
 }
 .tab {
-  color: var(--muted);
+  color: var(--fg-2);
   display: grid;
   justify-items: center;
   gap: 3px;
@@ -32,6 +32,9 @@
 }
 .tab[aria-current="page"] {
   color: var(--fg);
+}
+.tab[aria-current="page"] svg {
+  color: var(--brand);
 }
 .plus {
   width: 48px;

@@ -1,0 +1,116 @@
+.brand {
+  color: var(--brand);
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 14px;
+  padding-inline: 14px;
+  height: 46px;
+  color: var(--muted);
+}
+.search input {
+  border: 0;
+  background: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  color: var(--fg);
+}
+.search:focus-within {
+  outline: 2.5px solid var(--brand);
+  outline-offset: 2px;
+}
+.search input::placeholder {
+  color: var(--muted);
+}
+.list {
+  margin-top: 6px;
+}
+.spaced {
+  margin-top: 12px;
+}
+.legend {
+  list-style: none;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 12px 2px 0;
+  font-size: 12px;
+  color: var(--fg-2);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend li::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+}
+.sheet {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tab-h) + 12px + env(safe-area-inset-bottom, 0px));
+  width: min(528px, calc(100% - 24px));
+  z-index: 30;
+  background: var(--card);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--line);
+  padding: 16px;
+  animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes rise {
+  from {
+    transform: translate(-50%, 20px);
+    opacity: 0;
+  }
+}
+.sheetHead {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.sheetTitle {
+  min-width: 0;
+  flex: 1;
+}
+.sheetTitle h3 {
+  font-size: 19px;
+}
+.sheetTitle p {
+  margin: 2px 0 0;
+  color: var(--fg-2);
+  font-size: 13px;
+}
+.close {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+  cursor: pointer;
+}
+.verdict {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.35;
+  margin: 12px 0 14px;
+}
+.sheetActions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}

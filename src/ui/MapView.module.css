@@ -45,7 +45,7 @@
 }
 .value {
   font: 800 10px var(--font);
-  fill: #fff;
+  fill: var(--on-score);
   pointer-events: none;
 }
 .dot {
@@ -60,7 +60,6 @@
   stroke: var(--land);
   stroke-width: 3px;
   stroke-linejoin: round;
-  pointer-events: none;
 }
 .nameDim {
   fill: var(--muted);

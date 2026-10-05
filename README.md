@@ -24,7 +24,10 @@ cp .env.example .env.local   # then fill in the values (see below)
 pnpm dev                     # http://localhost:3000
 ```
 
-Tests don't need a database: they run on [PGlite](https://pglite.dev), an in-memory Postgres.
+You don't need Supabase to work locally. Set `DATABASE_URL=pglite:.data/dev` (a local embedded
+Postgres, migrated and seeded on first use) or `pglite:memory` (wiped on restart), plus any
+`CREW_CODE` of 16+ characters, then open `/` and join via `POST /api/join` (the join screen comes
+in Phase 3). Unit tests and e2e use [PGlite](https://pglite.dev) in memory too.
 
 ### Database (Supabase)
 

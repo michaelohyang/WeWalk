@@ -43,7 +43,8 @@
   font-size: 14px;
   letter-spacing: -0.03em;
   background: color-mix(in srgb, var(--c) 14%, transparent);
-  color: var(--c);
+  /* blended toward the text color so it reads (AA) on the tint in both themes */
+  color: color-mix(in srgb, var(--c) 62%, var(--fg));
 }
 .hood {
   display: inline-flex;
@@ -71,7 +72,7 @@
   font-weight: 800;
   font-size: 14px;
   color: #fff;
-  background: var(--c);
+  background: color-mix(in srgb, var(--c) 72%, #000);
   flex: none;
 }
 

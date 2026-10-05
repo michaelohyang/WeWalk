@@ -1,6 +1,6 @@
 "use client";
 
-import { LAND, MAP_HEIGHT, MAP_WIDTH, SQUEEZE_LINE_Y, type Pin } from "@/domain/map";
+import type { MapGeometry, Pin } from "@/domain/map";
 import { formatScore, tierOf } from "@/domain/scoring";
 import styles from "./MapView.module.css";
 
@@ -11,25 +11,34 @@ export interface MapStation {
   visited: boolean;
 }
 
-const TIER_FILL = { great: "var(--s-great)", good: "var(--s-good)", ok: "var(--s-ok)", bad: "var(--s-bad)" };
+const TIER_FILL = {
+  great: "var(--s-great)",
+  good: "var(--s-good)",
+  ok: "var(--s-ok)",
+  bad: "var(--s-bad)",
+};
 
 /**
  * The schematic map. Rated stations are score bubbles, visited-but-unrated ones are brand
  * checks, the rest are grey dots. Tap a pin to select it.
  */
 export function MapView({
+  geometry,
   pins,
   stations,
   selected,
   dimmed,
   onSelect,
 }: {
+  /** Land shapes and size, computed on the server so the projection code never ships. */
+  geometry: MapGeometry;
   pins: Pin[];
   stations: Map<string, MapStation>;
   selected: string | null;
   dimmed: Set<string>;
   onSelect: (id: string | null) => void;
 }) {
+  const { width, height, squeezeY, land } = geometry;
   // Draw unvisited first and the selected pin last, so they stack sensibly.
   const order = [...pins].sort(
     (a, b) =>
@@ -40,18 +49,18 @@ export function MapView({
     <div className={styles.card}>
       <svg
         className={styles.map}
-        viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+        viewBox={`0 0 ${width} ${height}`}
         role="group"
         aria-label="Map of WeWork locations in Manhattan and Brooklyn"
         onClick={(e) => {
           if (e.target === e.currentTarget) onSelect(null);
         }}
       >
-        {LAND.map((l) => (
+        {land.map((l) => (
           <path key={l.name} d={l.d} className={l.far ? styles.landFar : styles.land} />
         ))}
-        <line x1="0" x2={MAP_WIDTH} y1={SQUEEZE_LINE_Y} y2={SQUEEZE_LINE_Y} className={styles.squeeze} />
-        <text x={MAP_WIDTH - 8} y={SQUEEZE_LINE_Y - 5} textAnchor="end" className={styles.geo}>
+        <line x1="0" x2={width} y1={squeezeY} y2={squeezeY} className={styles.squeeze} />
+        <text x={width - 8} y={squeezeY - 5} textAnchor="end" className={styles.geo}>
           Uptown, not to scale ↑
         </text>
         {order.map((pin) => {
@@ -61,7 +70,11 @@ export function MapView({
           const side = pin.label ?? (isSelected ? "right" : null);
           const tier = tierOf(s.overall);
           const label = `${s.name}, ${
-            s.overall !== null ? `${formatScore(s.overall)} out of 5` : s.visited ? "visited, not rated" : "not visited yet"
+            s.overall !== null
+              ? `${formatScore(s.overall)} out of 5`
+              : s.visited
+                ? "visited, not rated"
+                : "not visited yet"
           }`;
           return (
             <g
@@ -83,7 +96,15 @@ export function MapView({
               <circle r="16" className={styles.hit} />
               {s.visited ? (
                 <>
-                  <rect x="-16" y="-10" width="32" height="20" rx="10" className={styles.bubble} fill={tier ? TIER_FILL[tier] : "var(--brand)"} />
+                  <rect
+                    x="-16"
+                    y="-10"
+                    width="32"
+                    height="20"
+                    rx="10"
+                    className={styles.bubble}
+                    fill={tier ? TIER_FILL[tier] : "var(--brand)"}
+                  />
                   <text y="3.6" textAnchor="middle" className={styles.value}>
                     {tier ? formatScore(s.overall) : "✓"}
                   </text>

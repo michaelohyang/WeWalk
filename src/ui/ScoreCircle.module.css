@@ -7,7 +7,7 @@
   display: grid;
   place-items: center;
   border: 2.5px solid var(--c);
-  color: var(--c);
+  color: var(--ink, var(--c));
   background: color-mix(in srgb, var(--c) 9%, transparent);
   font-weight: 800;
   font-size: 15px;
@@ -25,15 +25,19 @@
 }
 .great {
   --c: var(--s-great);
+  --ink: var(--s-great-ink);
 }
 .good {
   --c: var(--s-good);
+  --ink: var(--s-good-ink);
 }
 .ok {
   --c: var(--s-ok);
+  --ink: var(--s-ok-ink);
 }
 .bad {
   --c: var(--s-bad);
+  --ink: var(--s-bad-ink);
 }
 .none {
   --c: var(--muted);

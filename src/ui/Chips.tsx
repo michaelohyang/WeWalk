@@ -26,7 +26,13 @@ export function Chip({
     </>
   );
   return "href" in target ? (
-    <Link href={target.href} className={styles.chip} aria-current={pressed ? "true" : undefined} scroll={false} replace>
+    <Link
+      href={target.href}
+      className={styles.chip}
+      aria-current={pressed ? "true" : undefined}
+      scroll={false}
+      replace
+    >
       {body}
     </Link>
   ) : (
@@ -51,7 +57,12 @@ export function Segmented<T extends string>({
   return (
     <div className={styles.seg} role="group" aria-label={label}>
       {options.map((o) => (
-        <button key={o.value} type="button" aria-pressed={o.value === value} onClick={() => onChange(o.value)}>
+        <button
+          key={o.value}
+          type="button"
+          aria-pressed={o.value === value}
+          onClick={() => onChange(o.value)}
+        >
           {o.label}
         </button>
       ))}

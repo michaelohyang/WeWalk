@@ -15,7 +15,14 @@ export function tileText(name: string): string {
 
 export const areaColor = (area: AreaKey) => `var(--a-${area})`;
 
-const AVATAR_COLORS = ["--a-midtown", "--a-flatiron", "--a-downtown", "--a-brooklyn", "--brand", "--a-uptown"];
+const AVATAR_COLORS = [
+  "--a-midtown",
+  "--a-flatiron",
+  "--a-downtown",
+  "--a-brooklyn",
+  "--brand",
+  "--a-uptown",
+];
 
 /** A stable color per person, from their id. */
 export function avatarColor(seed: string): string {
@@ -35,3 +42,8 @@ export function formatDate(date: IsoDate): string {
 }
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+const TIER_WORDS = { great: "Elite", good: "Solid", ok: "It's fine", bad: "Pray" } as const;
+/** The one-word verdict for a score tier. */
+export const tierWord = (tier: keyof typeof TIER_WORDS | null) =>
+  tier ? TIER_WORDS[tier] : "Not rated";

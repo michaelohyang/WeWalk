@@ -1,9 +1,14 @@
 import "server-only";
-import { passportFor, stationOfMonth, summarizeStation, type StationSummary } from "@/domain/activity";
+import {
+  passportFor,
+  stationOfMonth,
+  summarizeStation,
+  type StationSummary,
+} from "@/domain/activity";
 import type { AreaKey } from "@/domain/areas";
 import { CATEGORY_KEYS, type CategoryKey } from "@/domain/categories";
 import { monthOf, utcDate, type IsoDate } from "@/domain/dates";
-import { layoutPins, type Pin } from "@/domain/map";
+import { layoutPins, MAP_GEOMETRY, type MapGeometry, type Pin } from "@/domain/map";
 import { rankStations, type RankKey } from "@/domain/ranking";
 import type { ReviewRecord } from "@/domain/records";
 import { personOverall, scoreStation } from "@/domain/scoring";
@@ -48,7 +53,10 @@ function cards(crew: CrewData): { cards: StationCard[]; summaries: Map<string, S
       reviewCount: x.score.reviewCount,
       visited: x.visited,
       lastVisit: x.lastVisit,
-      hotTake: x.hotTake && { text: x.hotTake.text, by: names.get(x.hotTake.memberId) ?? "someone" },
+      hotTake: x.hotTake && {
+        text: x.hotTake.text,
+        by: names.get(x.hotTake.memberId) ?? "someone",
+      },
       tags: x.tags.map((t) => t.tag),
     };
   };
@@ -57,6 +65,7 @@ function cards(crew: CrewData): { cards: StationCard[]; summaries: Map<string, S
 
 export interface ExploreView {
   stations: StationCard[];
+  map: MapGeometry;
   pins: Pin[];
   /** Tags someone has used, most common first. */
   tags: Tag[];
@@ -80,6 +89,7 @@ export async function exploreView(db: Db): Promise<ExploreView> {
     for (const t of s.tags) tagCounts.set(t.tag, (tagCounts.get(t.tag) ?? 0) + t.count);
   return {
     stations,
+    map: MAP_GEOMETRY,
     pins,
     tags: [...tagCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t),
     visited: stations.filter((s) => s.visited).length,
@@ -106,7 +116,11 @@ export interface StationView {
   log: { date: IsoDate; by: string; text: string }[];
 }
 
-export async function stationView(db: Db, session: Session, id: string): Promise<StationView | null> {
+export async function stationView(
+  db: Db,
+  session: Session,
+  id: string,
+): Promise<StationView | null> {
   const crew = await loadCrew(db);
   const station = cards(crew).cards.find((c) => c.id === id);
   if (!station) return null;
@@ -207,7 +221,9 @@ export async function crewView(db: Db, session: Session): Promise<CrewView> {
   const board = crew.members.map((m) => {
     const rs = crew.reviews.filter((r) => r.memberId === m.id);
     const cs = crew.checkins.filter((c) => c.memberId === m.id);
-    const hot = [...rs].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).find((r) => r.hotTake);
+    const hot = [...rs]
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .find((r) => r.hotTake);
     return {
       memberId: m.id,
       name: m.name,
@@ -227,6 +243,8 @@ export async function crewView(db: Db, session: Session): Promise<CrewView> {
     })),
     leaderboard: board
       .filter((b) => b.stations > 0)
-      .sort((a, b) => b.stations - a.stations || b.reviews - a.reviews || a.name.localeCompare(b.name)),
+      .sort(
+        (a, b) => b.stations - a.stations || b.reviews - a.reviews || a.name.localeCompare(b.name),
+      ),
   };
 }

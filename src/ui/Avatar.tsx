@@ -5,7 +5,11 @@ import styles from "./kit.module.css";
 export function Avatar({ name, seed }: { name: string; seed: string }) {
   const initial = [...name.trim()][0]?.toUpperCase() ?? "?";
   return (
-    <span className={styles.avatar} style={{ "--c": avatarColor(seed) } as React.CSSProperties} aria-hidden="true">
+    <span
+      className={styles.avatar}
+      style={{ "--c": avatarColor(seed) } as React.CSSProperties}
+      aria-hidden="true"
+    >
       {initial}
     </span>
   );

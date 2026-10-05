@@ -86,6 +86,21 @@ export const LAND = [
   { name: "Governors Island", far: true, d: toPath(GOVERNORS_ISLAND) },
 ] as const;
 
+/** Everything static the map needs to draw, as plain data. */
+export interface MapGeometry {
+  width: number;
+  height: number;
+  squeezeY: number;
+  land: readonly { name: string; far: boolean; d: string }[];
+}
+
+export const MAP_GEOMETRY: MapGeometry = {
+  width: MAP_WIDTH,
+  height: MAP_HEIGHT,
+  squeezeY: SQUEEZE_LINE_Y,
+  land: LAND,
+};
+
 /** Placed pins for the screen: positions nudged apart, labels placed where they fit. */
 export interface Pin {
   id: string;

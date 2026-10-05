@@ -1,0 +1,68 @@
+.spot {
+  border-radius: var(--r-lg);
+  padding: 20px 18px;
+  background: var(--fg);
+  color: var(--bg);
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  position: relative;
+}
+.spotScore {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  /* the card is inverted; a plain disc keeps the score's colors readable */
+  background: var(--bg);
+  border-radius: 50%;
+  padding: 4px;
+}
+.kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  padding-right: 92px;
+}
+.spot h2 {
+  font-size: clamp(26px, 7.6vw, 34px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  padding-right: 92px;
+  margin-top: 6px;
+}
+.meta {
+  font-size: 13px;
+  opacity: 0.7;
+}
+.quote {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 12px 0 14px;
+  max-width: 36ch;
+}
+.rows {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+.rank {
+  width: 24px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--muted);
+}
+.top {
+  color: var(--brand);
+}
+.note {
+  margin-top: 14px;
+  color: var(--fg-2);
+  font-size: 13px;
+}
+.rows li + li {
+  border-top: 1px solid var(--line);
+}
