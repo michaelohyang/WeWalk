@@ -1,8 +1,8 @@
-import type { AreaKey } from "@/domain/areas";
+import type { AreaKey } from "./areas";
 
 /**
  * The owner's station list (docs/PLAN.md, appendix A). This file is the source of truth:
- * edit it and redeploy to add, fix or hide a station. Never delete an entry that has reviews;
+ * edit it, then run `pnpm db:seed`, to add, fix or hide a station. Never delete an entry that has reviews;
  * set `hidden: true` instead so reviews and stamps are kept.
  *
  * lat/lng are approximate building positions, used to place pins on the schematic map.

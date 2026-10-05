@@ -31,7 +31,7 @@ Tests don't need a database: they run on [PGlite](https://pglite.dev), an in-mem
 1. Create a Supabase project. Under **Connect**, copy the **transaction pooler** URL (port 6543)
    into `DATABASE_URL` and the **direct** URL (port 5432) into `DIRECT_URL`.
 2. `pnpm db:migrate` creates the tables (with row-level security on).
-3. `pnpm db:seed` loads the stations from `src/server/db/seed/stations.ts`. Re-run it after
+3. `pnpm db:seed` loads the stations from `src/domain/stations.ts`. Re-run it after
    editing that file. It upserts, and never deletes.
 4. Set `CREW_CODE` (`openssl rand -hex 16`). Your crew's invite link is `/j/<CREW_CODE>`. The first
    person to join becomes the owner.

@@ -105,10 +105,11 @@ src/
     j/[code]/page.tsx       # invite link → pick a name
     pair/[token]/page.tsx   # one-time link page; its button POSTs /api/pair (Phase 3)
     api/…/route.ts          # JSON endpoints (writes)
-  domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport
+  domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport,
+                            # the station list, map projection
   server/
     db/schema.ts, db/client.ts, db/migrations/   # client: postgres-js → Supabase pooler
-    db/seed/stations.ts     # the station list: source of truth, upserted by `pnpm db:seed`
+    db/seed/                # `pnpm db:seed`: upserts domain/stations.ts (the station list)
     auth/tokens.ts          # random tokens, hashing, constant-time compare
     http.ts                 # route plumbing: session cookie, JSON validation, errors → status, same-origin
     repos/                  # stations, members, reviews, checkins (SQL lives here only)

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { stations } from "../schema";
-import { STATIONS } from "./stations";
+import { STATIONS } from "@/domain/stations";
 
 /** Upserts every station from the seed file. Stations missing from the file are left alone. */
 export async function seedStations(db: Db): Promise<number> {
