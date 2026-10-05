@@ -1,6 +1,6 @@
 # WeWalk v1: product and engineering plan
 
-Status: **draft, waiting on owner decisions** (section 9). No production code until it's approved.
+Status: **draft, waiting on owner decisions** (section 9). Database host decided: Supabase. No production code until it's approved.
 
 The prototype in `src/app.html` is now the spec for design and flow. This plan covers turning
 it into a real web app that a group of friends can share from one link.
@@ -49,28 +49,40 @@ Prototype problems the rebuild has to fix, most important first:
 
 ## 4. Tech stack
 
-**Choice:** Next.js (App Router), TypeScript, Postgres (Neon), Drizzle ORM, Zod, plain CSS
-Modules with our design tokens, hosted on Vercel.
+**Choice:** Next.js (App Router), TypeScript, Postgres on **Supabase**, Drizzle ORM, Zod, plain
+CSS Modules with our design tokens, hosted on Vercel.
+
+**How we use Supabase:** only as the hosted Postgres database and, from v1.1, Storage for photos.
+Only our Next.js server connects to it, through the repo layer with a server-side connection
+string. The browser never talks to Supabase directly. We don't use Supabase Auth, its
+auto-generated API or row-level-security policies. This keeps all the rules in TypeScript, where
+they're tested, and swapping Postgres hosts later only means changing a connection string.
 
 Why this stack, keeping it pragmatic:
 
 - **One repo, one deploy, one language.** The UI and the API live in the same Next.js app. There's
   no separate backend service to run for 15 users.
+- **Supabase gives us Postgres plus file storage in one dashboard.** Photos (v1.1) don't need a
+  second vendor, and live updates are available later if we want them.
 - **Postgres fits the rules we need.** "One review per person per station" and "unique names
   ignoring case" become database constraints instead of app code that has to remember them.
-  Neon's free tier is enough.
+  Supabase's free tier is enough for this size (see Risks for the idle pause).
 - **Drizzle** keeps queries typed and close to SQL, with migrations as plain SQL files. It has no
   runtime cost to speak of.
 - **Zod** schemas validate requests at the API boundary, and the same types are used on the client.
 - **Plain CSS Modules and custom properties.** The prototype's tokens move over as they are, with
   no Tailwind conversion. It also helps stay under the 150KB JavaScript+CSS budget.
-- **Vercel and Neon** both have free tiers, preview deploys for each pull request, and a working
-  link in minutes.
+- **Vercel and Supabase** both have free tiers. Vercel gives a preview deploy for each pull request
+  and a working link in minutes.
 
 Options I considered and turned down:
 
-- **Supabase.** It would mean less backend code, but its row-level security assumes a real
-  sign-in system, and we have none.
+- **Supabase as the whole backend (the browser talks to the database, protected by row-level
+  security).** Our identity model (one person across phones with no email) isn't a Supabase Auth
+  pattern, so we'd still need our own server code. The access rules would also live in SQL
+  policies that are hard to test, and one loose policy exposes the database.
+- **Neon.** Also good Postgres. Its free tier wakes automatically when idle, but it has no file
+  storage, so photos would need another vendor.
 - **SvelteKit.** It ships smaller bundles, but React is the safer choice for whoever maintains
   this later.
 - **Firebase.** Rules like "one review per person per station" are awkward to express there, and
@@ -95,10 +107,11 @@ src/
     api/…/route.ts          # JSON endpoints (writes)
   domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport
   server/
-    db/schema.ts, db/client.ts, db/migrations/
+    db/schema.ts, db/client.ts, db/migrations/   # client: postgres-js → Supabase pooler
     auth/session.ts         # invite code, device tokens, cookie
     repos/                  # stations, members, reviews, checkins (SQL lives here only)
     services/               # use cases: postReview, checkIn, joinCrew (validation + repos + domain)
+    storage/                # v1.1: Supabase Storage wrapper (signed upload URLs), server-only
   ui/                       # components: ScoreCircle, StationRow, Chip, Sheet, TabBar, MapSvg, tokens.css
   client/                   # draft autosave, outbox (retry queue)
 seed/stations.ts
@@ -107,6 +120,12 @@ tests/ (e2e)                # unit tests sit next to the code they test
 
 **Dependency rule:** `app → services → repos/domain`. `domain` imports nothing from the other
 layers. `ui` never imports `server`. CI enforces this with ESLint `no-restricted-imports`.
+
+**Database connection.** Vercel functions connect through Supabase's transaction pooler (port
+6543), with `prepare: false` because the pooler doesn't support prepared statements. Migrations
+run with the direct connection string. Defense in depth: row-level security is **on, with no
+policies**, on every table, and the Supabase keys never ship to the browser. Even if the
+auto-generated API is reachable, it returns nothing.
 
 **Reads.** Server Components load station and review rows and compute aggregates in `domain/`.
 With about 25 stations and a few hundred reviews, that's microseconds. The scoring logic stays
@@ -182,6 +201,7 @@ nothing to rewire later.
   - a 401 when there's no session
   - malformed input
   - the rankings and Station of the Month match the prototype on the same data.
+  - every table has row-level security enabled (a test checks `pg_class.relrowsecurity`).
 
 ### Phase 2: Frontend, read paths
 - The `ui/` components, routing (M4), and the Explore list and map, Station, Ranks, Passport and
@@ -210,12 +230,14 @@ nothing to rewire later.
 - **Product review:** walk journeys A and C on a throttled phone profile.
 
 ### Phase 4: Ship
-- Create the Neon database and Vercel project. Set `CREW_CODE` and `DATABASE_URL`. Run migrations
-  in the deploy step.
+- Create the Supabase project and the Vercel project. Set `CREW_CODE`, `DATABASE_URL` (pooled) and
+  `DIRECT_URL` (migrations). Run migrations in the deploy step. Confirm row-level security is on
+  for every table.
 - Add the Open Graph preview card for shared links. Do a smoke test on prod. Invite the crew.
 - **QA gate:** production smoke test of journeys A–D on a real phone.
 
-After launch, v1.1 covers photos (Vercel Blob), the "new since your last visit" dot and bigger map
+After launch, v1.1 covers photos (Supabase Storage: a private bucket, uploads through signed URLs
+created by our server, images served through signed URLs), the "new since your last visit" dot and bigger map
 tap targets.
 
 ## 7. Engineering principles
@@ -231,7 +253,10 @@ tap targets.
 | Risk | Mitigation |
 |---|---|
 | The invite code leaks | Rotate the env var. Existing device sessions keep working |
-| Vercel and Neon cold starts make the first load feel slow | Neon pooled connection. Static shell. Measured at the Phase 2 gate |
+| The Supabase free tier pauses a project after a stretch of no activity (about a week, last checked), and it has to be restored by hand | Either a scheduled Vercel cron that pings the database daily, or the Pro plan ($25/mo). Check Supabase's current policy at Phase 4 |
+| Serverless functions run out of database connections | Always use the transaction pooler URL in the app. The direct URL is for migrations only |
+| Supabase's auto-generated API exposes tables | Row-level security on with no policies. Keys stay server-side. Checked at the Phase 1 gate |
+| Cold starts make the first load feel slow | Static shell. Measured at the Phase 2 gate |
 | The station list is out of date | Seed file plus an `active` flag. The owner fixes it in one PR |
 | The repo can't be pushed from this environment | The Claude GitHub App needs access to `michaelohyang/WeWalk` before Phase 0 |
 
@@ -239,7 +264,7 @@ tap targets.
 
 | # | Decision | Recommended default |
 |---|---|---|
-| 1 | Stack and hosting | Next.js + Neon + Vercel (free tiers) |
+| 1 | Stack and hosting | **Decided:** Next.js on Vercel, Supabase for Postgres and Storage, accessed only from our server |
 | 2 | Scoring display | Tap 1–5 per category, category scores shown /5, overall station score shown as the /10 circle |
 | 3 | Passport | Personal ("your stamps"), with crew coverage as a secondary stat |
 | 4 | Identity | Invite code + display name + personal device link, no email |
