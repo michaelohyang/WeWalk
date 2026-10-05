@@ -103,18 +103,19 @@ src/
     (app)/rate/[id]/page.tsx
     (app)/ranks|passport|crew/page.tsx
     j/[code]/page.tsx       # invite link → pick a name
-    pair/[token]/route.ts   # one-time pairing or recovery link → sets session cookie
+    pair/[token]/page.tsx   # one-time link page; its button POSTs /api/pair (Phase 3)
     api/…/route.ts          # JSON endpoints (writes)
   domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport
   server/
     db/schema.ts, db/client.ts, db/migrations/   # client: postgres-js → Supabase pooler
-    auth/session.ts         # invite code, device tokens, cookie
+    db/seed/stations.ts     # the station list: source of truth, upserted by `pnpm db:seed`
+    auth/tokens.ts          # random tokens, hashing, constant-time compare
+    http.ts                 # route plumbing: session cookie, JSON validation, errors → status, same-origin
     repos/                  # stations, members, reviews, checkins (SQL lives here only)
     services/               # use cases: postReview, checkIn, joinCrew (validation + repos + domain)
     storage/                # v1.1: Supabase Storage wrapper (signed upload URLs), server-only
   ui/                       # components: ScoreCircle, StationRow, Chip, Sheet, TabBar, MapSvg, tokens.css
   client/                   # draft autosave, outbox (retry queue)
-seed/stations.ts
 tests/ (e2e)                # unit tests sit next to the code they test
 ```
 
@@ -139,17 +140,24 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
 **Auth (no passwords, no email).**
 - **Joining:** the invite code is part of the shared link (`/j/<CREW_CODE>`). The page checks it,
   then asks for a display name. Changing the `CREW_CODE` env var stops new joins and leaves
-  existing sessions alone.
+  existing sessions alone. `CREW_CODE` must be at least 16 characters, or joining is refused.
+  Generate one with `openssl rand -hex 16`.
+- **Owner:** the first person to join becomes the owner. A partial unique index guarantees
+  there's only ever one. Join first after deploying.
 - **Sessions:** each phone gets a random 32-byte device token. Its SHA-256 hash is stored in
   `devices`, and the token itself goes in an httpOnly, Secure, SameSite=Lax cookie.
 - **Adding a phone:** "Add a phone" in Crew creates a **one-time pairing link**
-  (`/pair/<token>`). It expires after 15 minutes and stops working after its first use. There are
+  (`/pair/<token>`). It expires after 15 minutes and stops working after its first use. Opening
+  the link shows a "Sign in on this phone" button that POSTs the token. A plain GET would let
+  chat apps that fetch link previews use the link up first. There are
   no permanent personal links, because a link left in a chat would let anyone post as you.
 - **Lost phone:** Crew lists your phones and you can sign out any of them, which deletes that
   device row.
 - **Locked out of every phone:** the owner (`members.is_owner`) creates a one-time recovery link
   for that member. It uses the same mechanism as pairing, with a 24-hour expiry.
 - **Names:** reviews point at `member_id`, so renaming yourself updates your name everywhere.
+- **Writes** must carry an `Origin` header equal to the site's own origin (browsers always send
+  it), have a JSON body, and be at most 64 KB.
 - **Access:** every page and API route needs a session. Without one, you see a "Get an invite
   link from your crew" screen.
 
@@ -159,7 +167,12 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
 - **A building's overall score** is the average of each person's overall score, so each friend
   counts once however many categories they rated.
 - **A category score** is the average of the people who rated that category.
-- **Ties in rankings** go to the building with more reviews, then to the name in A–Z order.
+- **Ties in rankings:** buildings that show the same score (one decimal) are ordered by more
+  reviews, then name A–Z. What you see decides, not hidden digits.
+- This intentionally differs from the prototype, which averaged the category averages. That let
+  someone who rated all nine categories outweigh someone who rated one. Rankings and Station of
+  the Month otherwise follow the prototype's rules (`domain/activity.ts`). `domain/parity.test.ts`
+  checks this against the prototype's own code.
 - **Score colors:** 4.3 and up green, 3.5 and up lime, 2.8 and up amber, below that red.
 
 **Passport (decided: personal).** You get a stamp the first time you check in at or review a
@@ -169,8 +182,9 @@ crew-wide: a building shows as visited if anyone in the crew has been.
 ### Data model
 
 ```
-stations  id (slug PK) · name · address · neighborhood · area · map_x · map_y · label_side
+stations  id (slug PK) · name · address · neighborhood · area · lat · lng
           · hidden bool · created_at          -- hidden keeps reviews and stamps
+                                              -- the map projects lat/lng (Phase 2)
 members   id uuid PK · name · name_key (lower/trimmed, UNIQUE) · is_owner · created_at
 devices   id uuid PK · member_id FK · token_hash UNIQUE · label · created_at · last_seen_at
 links     id uuid PK · member_id FK · token_hash UNIQUE · purpose (pair|recover)
@@ -191,6 +205,8 @@ plain SQL and the database rejects bad values.
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/api/join` | `{code, name}` → sets cookie. 409 if the name is taken |
+| POST | `/api/pair` | `{token}` → uses a one-time pairing or recovery link, sets cookie. 410 if expired or used |
+| GET | `/api/me` | you, plus the phones you're signed in on |
 | PUT | `/api/reviews/:id` | create or update your review. 409 if you already reviewed this station under a different id (the client then switches to edit) |
 | DELETE | `/api/reviews/:id` | only your own |
 | PUT | `/api/checkins/:id` | idempotent. 409 on a second check-in at the same station on the same day |
@@ -285,6 +301,7 @@ tap targets.
 |---|---|
 | The invite code leaks | Rotate the env var. Existing device sessions keep working |
 | The Supabase free tier pauses a project after a stretch of no activity (about a week, last checked), and it has to be restored by hand | Either a scheduled Vercel cron that pings the database daily, or the Pro plan ($25/mo). Check Supabase's current policy at Phase 4 |
+| Behind Vercel's proxy, `req.nextUrl.origin` doesn't match the public https origin, so every write gets 403 | Check a write against the production URL in the Phase 4 smoke test |
 | Serverless functions run out of database connections | Always use the transaction pooler URL in the app. The direct URL is for migrations only |
 | Supabase's auto-generated API exposes tables | Row-level security on with no policies. Keys stay server-side. Checked at the Phase 1 gate |
 | Cold starts make the first load feel slow | Static shell. Measured at the Phase 2 gate |
