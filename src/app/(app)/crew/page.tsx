@@ -5,7 +5,7 @@ import { Empty } from "@/ui/Empty";
 import { plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import { ThemeSwitch } from "@/ui/ThemeSwitch";
-import { AddPhone, InviteFriends, RecoveryLinks, Rename, SignOutPhone } from "./crew-controls";
+import { InviteFriends, RecoveryLinks, Rename, SetPassword, SignOutPhone } from "./crew-controls";
 import styles from "./crew.module.css";
 
 export const metadata: Metadata = { title: "Crew" };
@@ -16,7 +16,7 @@ const lastSeen = (iso: string) =>
 export default async function CrewPage() {
   const view = await loadCrew();
   if (!view) return null;
-  const { me, devices, leaderboard, invitePath, members } = view;
+  const { me, devices, leaderboard, members } = view;
   const top = leaderboard[0]?.stations;
 
   return (
@@ -26,13 +26,13 @@ export default async function CrewPage() {
         <div>
           <b>{me.name}</b>
           <div className={styles.sub}>
-            {me.isOwner ? "Runs this crew." : "Card-carrying member."} No passwords, ever.
+            {me.isOwner ? "Runs this crew." : "Card-carrying member."}
           </div>
         </div>
       </div>
 
       <Section title="Invite friends">
-        <InviteFriends invitePath={invitePath} />
+        <InviteFriends />
       </Section>
 
       <Section title="Leaderboard" note="by stations visited">
@@ -66,12 +66,16 @@ export default async function CrewPage() {
         <Rename name={me.name} />
       </Section>
 
-      <Section title="Your phones" note={devices.length}>
+      <Section title="Password">
+        <SetPassword hasPassword={me.hasPassword} />
+      </Section>
+
+      <Section title="Signed in on" note={devices.length}>
         <ul className={styles.devices}>
           {devices.map((d) => (
             <li key={d.id}>
               <span>
-                {d.current ? "This phone" : d.label || "Another phone"}
+                {d.current ? "This device" : d.label || "Another device"}
                 <span className={styles.sub}>
                   {" "}
                   · {d.current ? "signed in now" : `last seen ${lastSeen(d.lastSeenAt)}`}
@@ -81,11 +85,10 @@ export default async function CrewPage() {
             </li>
           ))}
         </ul>
-        <AddPhone />
       </Section>
 
       {me.isOwner && members.length > 0 && (
-        <Section title="Lost phone help">
+        <Section title="Forgot password help">
           <RecoveryLinks members={members} />
         </Section>
       )}

@@ -66,7 +66,7 @@ export default async function RanksPage({
               ? `“${som.station.hotTake.text}”`
               : "No hot take yet. Strong, silent type."}
           </p>
-          <ButtonLink href={`/s/${som.station.id}`} variant="light" size="sm">
+          <ButtonLink href={`/stations/${som.station.id}`} variant="light" size="sm">
             View station
           </ButtonLink>
         </article>

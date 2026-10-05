@@ -1,6 +1,6 @@
 /*
  * `pnpm smoke https://your-app.vercel.app`: a read-only check of a deployed WeWalk. It writes
- * nothing and never needs the invite code, so it's safe to run against production any time.
+ * nothing and logs in as nobody, so it's safe to run against production any time.
  */
 
 const base = (process.argv[2] ?? process.env.SMOKE_URL ?? "").replace(/\/$/, "");
@@ -16,12 +16,14 @@ const get = (path: string, init?: RequestInit) =>
 
 const checks: Check[] = [
   {
-    name: "signed-out home shows the members-only gate",
+    name: "signed out, home asks you to log in",
     run: async () => {
       const res = await get("/");
       const html = await res.text();
       if (res.status !== 200) return `status ${res.status}`;
-      return html.includes("Members only.") ? null : "no members-only gate in the page";
+      return html.includes("Log in") && html.includes('type="password"')
+        ? null
+        : "no login form in the page";
     },
   },
   {
@@ -48,36 +50,37 @@ const checks: Check[] = [
   {
     name: "cross-site writes are refused",
     run: async () => {
-      const res = await get("/api/join", {
+      const res = await get("/api/login", {
         method: "POST",
         headers: { origin: "https://evil.example", "content-type": "application/json" },
-        body: JSON.stringify({ code: "x", name: "x" }),
+        body: JSON.stringify({ name: "x", password: "x" }),
       });
       return res.status === 403 ? null : `got ${res.status}, expected 403`;
     },
   },
   {
-    name: "a wrong invite code is refused (and the database answers)",
+    name: "a wrong login is refused (and the database answers)",
     run: async () => {
-      const res = await get("/api/join", {
+      const res = await get("/api/login", {
         method: "POST",
         headers: { origin: base, "content-type": "application/json" },
-        body: JSON.stringify({ code: "definitely-not-the-crew-code", name: "Smoke Test" }),
+        body: JSON.stringify({ name: "nobody-smoke-test", password: "definitely wrong" }),
       });
       return res.status === 401 ? null : `got ${res.status}, expected 401`;
     },
   },
   {
-    name: "a bad invite link explains itself",
+    name: "the sign-up page loads",
     run: async () => {
-      const html = await (await get("/j/not-the-code")).text();
-      return html.includes("That invite link doesn't work.") ? null : "no bad-link message";
+      const res = await get("/signup");
+      const html = await res.text();
+      return res.ok && html.includes("Sign up") ? null : `status ${res.status}, no sign-up form`;
     },
   },
   {
     name: "the link-preview card is served",
     run: async () => {
-      const html = await (await get("/j/not-the-code")).text();
+      const html = await (await get("/signup")).text();
       const image = /<meta property="og:image" content="([^"]+)"/.exec(html)?.[1];
       if (!image) return "no og:image tag";
       const url = new URL(image);

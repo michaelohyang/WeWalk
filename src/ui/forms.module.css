@@ -101,3 +101,11 @@
 .danger {
   color: var(--s-bad-ink);
 }
+.inlineLink {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  font-weight: 700;
+  color: var(--brand);
+  text-underline-offset: 3px;
+}

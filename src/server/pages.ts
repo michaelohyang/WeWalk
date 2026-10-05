@@ -3,7 +3,7 @@ import type { AreaKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { getSession } from "./session";
-import { crewSize, isInviteCode, MIN_CREW_CODE_LENGTH, peekLink } from "./services/auth";
+import { peekLink } from "./services/auth";
 import {
   crewView,
   exploreView,
@@ -47,12 +47,7 @@ export async function loadPassport() {
 export async function loadCrew() {
   const session = await getSession();
   if (!session) return null;
-  const code = process.env.CREW_CODE;
-  return crewView(
-    await getDb(),
-    session,
-    code && code.length >= MIN_CREW_CODE_LENGTH ? code : null,
-  );
+  return crewView(await getDb(), session);
 }
 
 export async function loadRate(stationId: string | undefined) {
@@ -70,10 +65,7 @@ export async function loadPair(token: string) {
   return { link, signedInAs: session?.member.name ?? null };
 }
 
-/** The invite page. Only a valid invite learns anything about the crew (its size). */
-export async function loadJoin(code: string) {
-  const session = await getSession();
-  if (!isInviteCode(code, process.env.CREW_CODE))
-    return { signedIn: !!session, valid: false as const };
-  return { signedIn: !!session, valid: true as const, members: await crewSize(await getDb()) };
+/** Login and signup pages: only for people who aren't signed in. */
+export async function isSignedIn() {
+  return !!(await getSession());
 }

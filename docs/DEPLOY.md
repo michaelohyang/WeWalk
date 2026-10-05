@@ -24,8 +24,7 @@ that every table has row-level security on.
    | Name | Value |
    |---|---|
    | `DATABASE_URL` | the transaction pooler string (port 6543) |
-   | `DIRECT_URL` | the direct (or session pooler) string (port 5432) |
-   | `CREW_CODE` | a long random code: `openssl rand -hex 16` |
+   | `DIRECT_URL` | the session pooler string (port 5432) |
 
 3. **Deploy.** The build log should show:
    ```
@@ -37,13 +36,13 @@ that every table has row-level security on.
 4. Optional: **Settings → Domains** to add your own domain. Redeploy after adding it so link
    previews use it.
 
-## 3. Check it, then join first
+## 3. Check it, then sign up first
 
 1. From your machine: `pnpm smoke https://<your-app>.vercel.app`. It only reads; expect
    `All 8 checks passed.`
-2. **Join first.** Open `https://<your-app>/j/<CREW_CODE>` on your phone and pick your name.
-   The first person to join becomes the owner (the only one who can make recovery links).
-3. Share that same link in the group chat. The preview card should show up.
+2. **Sign up first.** Open `https://<your-app>/signup` and pick a username and password. The
+   first person to sign up becomes the owner (the only one who can make recovery links).
+3. Send `https://<your-app>/signup` to your friends (Crew → "Invite friends" has a share button).
 
 ## Later
 
@@ -51,6 +50,8 @@ that every table has row-level security on.
   one, set `hidden: true` (its reviews are kept, frozen).
 - **Schema changes:** edit `src/server/db/schema.ts`, run `pnpm db:generate`, commit the new
   migration; the next production deploy applies it.
-- **Stop new joins:** change `CREW_CODE` and redeploy. Everyone already in stays signed in.
-- **Someone lost their phone:** the owner opens Crew → "Lost phone help" and sends them a
-  one-time recovery link.
+- **Someone forgot their password:** the owner opens Crew → "Forgot password help" and sends
+  them a one-time link. It logs them in once and they pick a new password.
+- **Passwords** are stored as salted scrypt hashes (`members.password_hash`); nobody, including
+  whoever can read the database, can see them. Five wrong passwords in a row lock the account for
+  15 minutes.

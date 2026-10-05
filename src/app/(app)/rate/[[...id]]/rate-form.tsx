@@ -83,7 +83,9 @@ export function RateForm({ view }: { view: RateView }) {
     const check = () => {
       if (pending().some((j) => j.key === posted)) return;
       router.push(
-        outcome(posted) === "rejected" ? `/s/${station.id}` : `/s/${station.id}?posted=review`,
+        outcome(posted) === "rejected"
+          ? `/stations/${station.id}`
+          : `/stations/${station.id}?posted=review`,
       );
     };
     check();
@@ -179,7 +181,7 @@ export function RateForm({ view }: { view: RateView }) {
 
     if (result.status === "sent") {
       if (draftKey) clearDraft(draftKey);
-      router.push(`/s/${station.id}?posted=${firstVisit ? "stamp" : "review"}`);
+      router.push(`/stations/${station.id}?posted=${firstVisit ? "stamp" : "review"}`);
       return;
     }
     if (result.status === "queued") {
@@ -202,14 +204,14 @@ export function RateForm({ view }: { view: RateView }) {
 
   if (state === "queued") {
     return (
-      <Page title="In the outbox." back={station ? `/s/${station.id}` : "/"}>
+      <Page title="In the outbox." back={station ? `/stations/${station.id}` : "/"}>
         <div className={styles.saved} role="status">
           <b>It posts itself the second you get a bar.</b>
           No signal in the lobby? Classic. It&apos;s safe on this phone. Keep the app open or come
           back later; either way it goes out on its own.
         </div>
         {station && (
-          <ButtonLink href={`/s/${station.id}`} variant="plain">
+          <ButtonLink href={`/stations/${station.id}`} variant="plain">
             Back to {station.name}
           </ButtonLink>
         )}
@@ -222,7 +224,7 @@ export function RateForm({ view }: { view: RateView }) {
       title={
         view.existing ? "Edit your rating" : station ? `Rate ${station.name}` : "Rate a building"
       }
-      back={station ? `/s/${station.id}` : "/"}
+      back={station ? `/stations/${station.id}` : "/"}
     >
       <form className={styles.form} onSubmit={submit} noValidate>
         <label className={styles.field}>

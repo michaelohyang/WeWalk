@@ -259,9 +259,7 @@ export async function passportView(db: Db, session: Session): Promise<PassportVi
 }
 
 export interface CrewView {
-  me: { id: string; name: string; isOwner: boolean };
-  /** Path of the crew's invite link (`/j/<code>`), or null if joining is switched off. */
-  invitePath: string | null;
+  me: { id: string; name: string; isOwner: boolean; hasPassword: boolean };
   /** Everyone, for the owner's recovery links. Empty for non-owners. */
   members: { id: string; name: string }[];
   devices: { id: string; label: string; lastSeenAt: string; current: boolean }[];
@@ -275,11 +273,7 @@ export interface CrewView {
   }[];
 }
 
-export async function crewView(
-  db: Db,
-  session: Session,
-  crewCode: string | null,
-): Promise<CrewView> {
+export async function crewView(db: Db, session: Session): Promise<CrewView> {
   const [crew, devices] = await Promise.all([loadCrew(db), listDevices(db, session)]);
   const board = crew.members.map((m) => {
     const rs = crew.reviews.filter((r) => r.memberId === m.id);
@@ -297,8 +291,12 @@ export async function crewView(
     };
   });
   return {
-    me: { id: session.member.id, name: session.member.name, isOwner: session.member.isOwner },
-    invitePath: crewCode ? `/j/${encodeURIComponent(crewCode)}` : null,
+    me: {
+      id: session.member.id,
+      name: session.member.name,
+      isOwner: session.member.isOwner,
+      hasPassword: session.member.hasPassword,
+    },
     members: session.member.isOwner ? crew.members.filter((m) => m.id !== session.member.id) : [],
     devices: devices.map((d) => ({
       id: d.id,

@@ -18,7 +18,7 @@ function Tracker() {
   const path = usePathname();
   const query = useSearchParams().toString();
   useEffect(() => {
-    if (!path.startsWith("/s/") && !path.startsWith("/rate"))
+    if (!path.startsWith("/stations/") && !path.startsWith("/rate"))
       lastList = query ? `${path}?${query}` : path;
   }, [path, query]);
   return null;

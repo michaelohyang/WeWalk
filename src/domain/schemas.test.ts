@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkinInputSchema, joinInputSchema, reviewInputSchema } from "./schemas";
+import { checkinInputSchema, reviewInputSchema, signupInputSchema } from "./schemas";
 
 const base = { stationId: "18-w-18th-st", visitedOn: "2026-10-01", scores: { coffee: 4 } };
 
@@ -32,12 +32,15 @@ describe("checkinInputSchema", () => {
   });
 });
 
-describe("joinInputSchema", () => {
-  it("normalizes the name", () => {
-    expect(joinInputSchema.parse({ code: "c", name: "  Dana  K " }).name).toBe("Dana K");
-  });
-  it("rejects a blank name", () => {
-    expect(joinInputSchema.safeParse({ code: "c", name: "   " }).success).toBe(false);
+describe("signupInputSchema", () => {
+  it("normalizes the name and requires a real password", () => {
+    expect(signupInputSchema.parse({ name: "  Dana  K ", password: "long enough" }).name).toBe(
+      "Dana K",
+    );
+    expect(signupInputSchema.safeParse({ name: "   ", password: "long enough" }).success).toBe(
+      false,
+    );
+    expect(signupInputSchema.safeParse({ name: "Dana", password: "short" }).success).toBe(false);
   });
 });
 

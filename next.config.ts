@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   agentRules: false,
   // PGlite (local dev + e2e only) ships WebAssembly; load it from node_modules, don't bundle it.
   serverExternalPackages: ["@electric-sql/pglite"],
+  // Older short links (already shared in chats) keep working.
+  async redirects() {
+    return [
+      // Invite links from before accounts had passwords: send people to sign up.
+      { source: "/j/:code", destination: "/signup", permanent: false },
+      { source: "/s/:id", destination: "/stations/:id", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

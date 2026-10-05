@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import { BASE_URL, E2E_CREW_CODE } from "../../playwright.config";
+import { BASE_URL } from "../../playwright.config";
 
 // Writes must carry our Origin (the API rejects anything else).
 const headers = { origin: BASE_URL };
@@ -9,14 +9,16 @@ const headers = { origin: BASE_URL };
  * with unique names and never assume the database is empty.
  */
 
+export const PASSWORD = "correct horse battery";
+
 export const uniqueName = (base: string) => `${base} ${Math.random().toString(36).slice(2, 7)}`;
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** Joins the crew via the API; the page's browser context gets the session cookie. */
+/** Signs up via the API; the page's browser context gets the session cookie. */
 export async function joinAs(page: Page, name = uniqueName("Tester")) {
-  const res = await page.request.post("/api/join", {
-    data: { code: E2E_CREW_CODE, name },
+  const res = await page.request.post("/api/signup", {
+    data: { name, password: PASSWORD },
     headers,
   });
   expect(res.status(), await res.text()).toBe(201);

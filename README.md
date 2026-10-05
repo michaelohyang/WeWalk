@@ -25,9 +25,8 @@ pnpm dev                     # http://localhost:3000
 ```
 
 You don't need Supabase to work locally. Set `DATABASE_URL=pglite:.data/dev` (a local embedded
-Postgres, migrated and seeded on first use) or `pglite:memory` (wiped on restart), plus any
-`CREW_CODE` of 16+ characters, then open `/` and join via `POST /api/join` (the join screen comes
-in Phase 3). Unit tests and e2e use [PGlite](https://pglite.dev) in memory too.
+Postgres, migrated and seeded on first use) or `pglite:memory` (wiped on restart), then open
+`/signup`. Unit tests and e2e use [PGlite](https://pglite.dev) in memory too.
 
 ### Database (Supabase)
 
@@ -36,8 +35,7 @@ in Phase 3). Unit tests and e2e use [PGlite](https://pglite.dev) in memory too.
 2. `pnpm db:migrate` creates the tables (with row-level security on).
 3. `pnpm db:seed` loads the stations from `src/domain/stations.ts`. Re-run it after
    editing that file. It upserts, and never deletes.
-4. Set `CREW_CODE` (`openssl rand -hex 16`). Your crew's invite link is `/j/<CREW_CODE>`. The first
-   person to join becomes the owner.
+4. Open `/signup` and create your account. The first person to sign up becomes the owner.
 
 ## Scripts
 
