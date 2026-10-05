@@ -9,6 +9,9 @@ import nextTs from "eslint-config-next/typescript";
  * - server: never imports UI, routes or browser code.
  * - app: routes call services, never repos or the database directly.
  */
+/** A folder itself (barrel/index imports) and anything inside it, via alias or relative path. */
+const dir = (...names) => names.flatMap((n) => [`**/${n}`, `**/${n}/**`]);
+
 const layer = (files, patterns) => ({
   files,
   rules: { "no-restricted-imports": ["error", { patterns }] },
@@ -32,12 +35,16 @@ export default defineConfig([
     ["src/domain/**"],
     [
       {
-        group: ["**/server/**", "**/ui/**", "**/app/**", "**/client/**"],
+        group: dir("server", "ui", "app", "client"),
         message: "domain/ is pure: it must not import other layers.",
       },
       {
         group: ["next", "next/*", "react", "react/*", "react-dom", "react-dom/*", ...DB_DRIVERS],
         message: "domain/ is pure: no framework or database imports.",
+      },
+      {
+        group: ["node:*", "fs", "fs/*", "path", "child_process", "http", "https", "net"],
+        message: "domain/ is pure: no I/O.",
       },
     ],
   ),
@@ -45,7 +52,7 @@ export default defineConfig([
     ["src/ui/**", "src/client/**"],
     [
       {
-        group: ["**/server/**", "server-only"],
+        group: [...dir("server"), "server-only"],
         message: "Browser code must not import server code.",
       },
       { group: DB_DRIVERS, message: "Browser code must not import database drivers." },
@@ -55,7 +62,7 @@ export default defineConfig([
     ["src/server/**"],
     [
       {
-        group: ["**/ui/**", "**/app/**", "**/client/**"],
+        group: dir("ui", "app", "client"),
         message: "server/ must not import UI, routes or browser code.",
       },
     ],
@@ -64,7 +71,7 @@ export default defineConfig([
     ["src/app/**"],
     [
       {
-        group: ["**/server/repos/**", "**/server/db/**"],
+        group: dir("server/repos", "server/db"),
         message: "Routes call services, not repos or the database.",
       },
       { group: DB_DRIVERS, message: "Routes call services, not the database." },

@@ -26,16 +26,24 @@ pnpm dev                     # http://localhost:3000
 
 ## Scripts
 
-| Command       | What it does                                                |
-| ------------- | ----------------------------------------------------------- |
-| `pnpm dev`    | Dev server                                                  |
-| `pnpm build`  | Production build                                            |
-| `pnpm check`  | Format check, lint, typecheck, unit tests (run before push) |
-| `pnpm test`   | Unit tests (Vitest), next to the code in `src/**/*.test.ts` |
-| `pnpm e2e`    | Browser tests (Playwright) at 390×844, light and dark       |
-| `pnpm format` | Format everything with Prettier                             |
+| Command           | What it does                                                         |
+| ----------------- | -------------------------------------------------------------------- |
+| `pnpm dev`        | Dev server                                                           |
+| `pnpm build`      | Production build                                                     |
+| `pnpm start`      | Serve the production build                                           |
+| `pnpm check`      | Format check, lint, typecheck and unit tests. Run before pushing     |
+| `pnpm lint`       | ESLint, including the layer rules                                    |
+| `pnpm typecheck`  | TypeScript, no emit                                                  |
+| `pnpm test`       | Unit tests (Vitest): `src/**/*.test.{ts,tsx}`, next to the code      |
+| `pnpm test:watch` | Unit tests in watch mode                                             |
+| `pnpm e2e`        | Browser tests (Playwright) at 390×844, light and dark, on `pnpm dev` |
+| `pnpm format`     | Format everything with Prettier                                      |
 
-CI (`.github/workflows/ci.yml`) runs all of the above, plus the build and e2e, on every push.
+`CI=1 pnpm e2e` tests the production build instead, so run `pnpm build` first.
+CI (`.github/workflows/ci.yml`) runs format, lint, typecheck, unit tests, build and e2e on every
+push.
+
+`vite` is a direct dev dependency only because Vitest requires it as a peer.
 
 ## Code layout
 

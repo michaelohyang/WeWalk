@@ -12,8 +12,21 @@ test("home renders at phone width without horizontal scroll", async ({ page }) =
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 });
 
-test("body paints the theme background, not transparent", async ({ page }) => {
+// --bg in src/ui/tokens.css: #ffffff light, #0c0e0e dark
+const BG = { light: "rgb(255, 255, 255)", dark: "rgb(12, 14, 14)" } as const;
+
+test("body paints the background for the color scheme", async ({ page }, testInfo) => {
   await page.goto("/");
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(bg).toBe(testInfo.project.use.colorScheme === "dark" ? BG.dark : BG.light);
+});
+
+test("an explicit data-theme overrides the system color scheme", async ({ page }, testInfo) => {
+  await page.goto("/");
+  const forced = testInfo.project.use.colorScheme === "dark" ? "light" : "dark";
+  const bg = await page.evaluate((theme) => {
+    document.documentElement.dataset.theme = theme;
+    return getComputedStyle(document.body).backgroundColor;
+  }, forced);
+  expect(bg).toBe(BG[forced]);
 });

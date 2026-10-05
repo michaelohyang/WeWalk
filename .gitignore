@@ -18,6 +18,9 @@ blob-report/
 .env.*
 !.env.example
 
+# vercel
+.vercel/
+
 # misc
 .DS_Store
 *.log
