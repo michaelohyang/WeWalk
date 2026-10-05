@@ -276,6 +276,8 @@ test.describe("checking in", () => {
 test.describe("accessibility of the write screens", () => {
   test("axe (WCAG 2.1 A/AA): join, pair, rate, station actions, crew", async ({ page }) => {
     const check = async (label: string) => {
+      // Next streams the <title>; mid-refresh it can be briefly missing. Scan a settled page.
+      await expect(page).toHaveTitle(/\S/);
       const { violations } = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
         .analyze();
@@ -295,6 +297,7 @@ test.describe("accessibility of the write screens", () => {
     await check("rate (edit, expanded)");
     await page.goto("/s/33-irving-pl");
     await page.getByRole("button", { name: "Check in" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Checked in" })).toBeVisible();
     await page.getByRole("button", { name: "✓ Here · add note" }).click();
     await check("station with note form");
     await page.goto("/crew");
