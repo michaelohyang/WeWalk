@@ -196,13 +196,16 @@ test.describe("rating", () => {
       page.getByRole("status").filter({ hasText: "will post when you're back online" }),
     ).toBeVisible();
 
-    await context.setOffline(false);
-    await expect(page.getByText("Back online. Your updates are posted.")).toBeVisible({
-      timeout: 10_000,
+    let posted = 0;
+    page.on("response", (r) => {
+      if (r.request().method() === "PUT" && r.url().includes("/api/reviews/") && r.ok()) posted++;
     });
-    // Once it's out, you land on the station like a normal post.
-    // (The page then tidies `?posted=review` out of the URL, so don't insist on catching it.)
-    await expect(page).toHaveURL(/\/s\/199-water-st(\?posted=review)?$/);
+    await context.setOffline(false);
+    // Once it's out, you land on the station like a normal post. (Its "Posted." toast can
+    // replace "Back online" within milliseconds, so the toast isn't what we wait for; and the
+    // page tidies `?posted=review` out of the URL, so don't insist on catching that either.)
+    await expect(page).toHaveURL(/\/s\/199-water-st(\?posted=review)?$/, { timeout: 15_000 });
+    expect(posted).toBe(1);
     // Exactly one review, with the text typed offline. (Not the station's hot-take card: other
     // runs post to this building too, and the card shows just one take.)
     await expect(myReviews(page, "")).toHaveCount(1);
