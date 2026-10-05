@@ -97,6 +97,15 @@ export async function consumeLink(db: Db, tokenHash: string, now: Date) {
   return row;
 }
 
+/** A link that can still be used, without using it. */
+export async function findLiveLink(db: Db, tokenHash: string, now: Date) {
+  const [row] = await db
+    .select({ memberId: links.memberId, purpose: links.purpose })
+    .from(links)
+    .where(and(eq(links.tokenHash, tokenHash), isNull(links.usedAt), gt(links.expiresAt, now)));
+  return row;
+}
+
 /** Housekeeping: drop links that can never be used again. */
 export async function deleteDeadLinks(db: Db, now: Date) {
   await db.delete(links).where(sql`${links.usedAt} is not null or ${links.expiresAt} <= ${now}`);

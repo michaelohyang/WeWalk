@@ -147,6 +147,10 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
   there's only ever one. Join first after deploying.
 - **Sessions:** each phone gets a random 32-byte device token. Its SHA-256 hash is stored in
   `devices`, and the token itself goes in an httpOnly, Secure, SameSite=Lax cookie.
+- **Shared phones:** a second, readable cookie (`ww_member`, just the member id) lets the client
+  keep drafts and the offline outbox per member. Queued writes carry their author in an
+  `x-wewalk-member` header; the server answers 401 if it isn't the signed-in member, and the
+  outbox holds the write (it never posts under someone else's name, and never drops it).
 - **Adding a phone:** "Add a phone" in Crew creates a **one-time pairing link**
   (`/pair/<token>`). It expires after 15 minutes and stops working after its first use. Opening
   the link shows a "Sign in on this phone" button that POSTs the token. A plain GET would let
@@ -210,7 +214,7 @@ plain SQL and the database rejects bad values.
 | GET | `/api/me` | you, plus the phones you're signed in on |
 | PUT | `/api/reviews/:id` | create or update your review. 409 if you already reviewed this station under a different id (the client then switches to edit) |
 | DELETE | `/api/reviews/:id` | only your own |
-| PUT | `/api/checkins/:id` | idempotent. 409 on a second check-in at the same station on the same day |
+| PUT | `/api/checkins/:id` | create, or add/change the note when the same id is sent again (an identical retry is a no-op). 409 with `existingId` on a second id for the same station and day |
 | POST | `/api/me/pair-links` | creates a one-time pairing link (15 min) |
 | DELETE | `/api/me/devices/:id` | signs out one of your phones |
 | PATCH | `/api/me` | renames you. 409 if the name is taken |
@@ -269,6 +273,8 @@ nothing to rewire later.
   autosave, outbox, edit mode when you've already reviewed. After posting, land on the station
   page with your review on top, plus the pin glow and stamp animation.
 - One-tap check-in (M5). Edit and delete your own reviews.
+- The rate screen is full-screen: the tab bar hides on `/rate` so the sticky Post button owns the
+  bottom of the screen.
 - **QA gate:**
   - a scores-only review posts in 20 seconds or less
   - in airplane mode, Post shows "Saved, will post when you're back online"; on reconnect it posts

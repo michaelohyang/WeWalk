@@ -42,12 +42,6 @@
   font-size: 18px;
   letter-spacing: -0.02em;
 }
-.actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 12px;
-}
 .hot {
   margin: 22px 0 0;
   padding: 20px 18px;

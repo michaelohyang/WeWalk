@@ -9,5 +9,8 @@ import { redeemLink } from "@/server/services/auth";
 export const POST = route(async ({ req, db, now }) => {
   const { token } = await readJson(req, redeemLinkSchema);
   const { member, token: session } = await redeemLink(db, token, now);
-  return setSessionCookie(json({ member: memberJson(member) }), session);
+  return setSessionCookie(json({ member: memberJson(member) }), {
+    token: session,
+    memberId: member.id,
+  });
 });

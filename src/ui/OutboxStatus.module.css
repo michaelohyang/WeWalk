@@ -1,0 +1,15 @@
+.bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tab-h) + 10px + env(safe-area-inset-bottom, 0px));
+  width: min(528px, calc(100% - 24px));
+  z-index: 35;
+  background: var(--surface-2);
+  color: var(--fg);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}

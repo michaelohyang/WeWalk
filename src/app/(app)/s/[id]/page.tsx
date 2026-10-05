@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CATEGORIES } from "@/domain/categories";
 import { formatScore, tierOf } from "@/domain/scoring";
 import { loadStation } from "@/server/pages";
 import { Avatar } from "@/ui/Avatar";
-import { ButtonLink } from "@/ui/Button";
 import { Empty } from "@/ui/Empty";
 import { areaColor, formatDate, plural, tierWord } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
+import { PostedToast, ReviewActions, StationActions } from "./station-actions";
 import styles from "./station.module.css";
 
 type Props = { params: Promise<{ id: string }> };
@@ -57,12 +58,16 @@ export default async function StationPage({ params }: Props) {
         </div>
       </div>
 
-      <div className={styles.actions}>
-        <ButtonLink href={`/rate/${station.id}`} variant="primary">
-          {mine ? "Edit your rating" : "Rate it"}
-        </ButtonLink>
-        <ButtonLink href={`/rate/${station.id}?checkin=1`}>Check in</ButtonLink>
-      </div>
+      <StationActions
+        stationId={station.id}
+        name={station.short}
+        reviewed={!!mine}
+        myCheckins={view.myCheckins}
+        firstVisit={!station.mine}
+      />
+      <Suspense>
+        <PostedToast name={station.short} color={areaColor(station.area)} />
+      </Suspense>
 
       {station.hotTake && (
         <figure className={styles.hot}>
@@ -130,7 +135,7 @@ export default async function StationPage({ params }: Props) {
         {reviews.length ? (
           <ul className={styles.posts}>
             {reviews.map((r) => (
-              <li key={r.id} className={styles.post}>
+              <li key={r.id} id={r.mine ? "my-review" : undefined} className={styles.post}>
                 <div className={styles.postHead}>
                   <Avatar name={r.by} seed={r.memberId} />
                   <div>
@@ -141,6 +146,7 @@ export default async function StationPage({ params }: Props) {
                 </div>
                 {r.hotTake && <p className={styles.postHot}>“{r.hotTake}”</p>}
                 {r.body && <p className={styles.body}>{r.body}</p>}
+                {r.mine && <ReviewActions reviewId={r.id} stationId={station.id} />}
                 {r.tags.length > 0 && (
                   <ul className={styles.tags}>
                     {r.tags.map((t) => (
@@ -162,8 +168,12 @@ export default async function StationPage({ params }: Props) {
             {log.map((l, i) => (
               <li key={i}>
                 <div>
-                  <b>{formatDate(l.date)}</b> <span className={styles.sub}>· {l.by}</span>
-                  <p>{l.text}</p>
+                  <b>{formatDate(l.date)}</b>{" "}
+                  <span className={styles.sub}>
+                    · {l.mine ? `${l.by} (you)` : l.by} ·{" "}
+                    {l.kind === "checkin" ? "checked in" : "reviewed"}
+                  </span>
+                  {l.note && <p>{l.note}</p>}
                 </div>
               </li>
             ))}

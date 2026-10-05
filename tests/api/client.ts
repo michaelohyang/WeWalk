@@ -16,7 +16,21 @@ export interface Reply {
 }
 
 export class Phone {
-  cookie = "";
+  private jar = new Map<string, string>();
+
+  /** The Cookie header this phone sends. Assigning replaces the whole jar (e.g. "" to clear). */
+  get cookie(): string {
+    return [...this.jar].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+  set cookie(value: string) {
+    this.jar = new Map(
+      value
+        .split(";")
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => [p.slice(0, p.indexOf("=")), p.slice(p.indexOf("=") + 1)]),
+    );
+  }
 
   async call(
     handler: Handler,
@@ -41,9 +55,12 @@ export class Phone {
       params: Promise.resolve(opts.params ?? {}),
     });
     const setCookie = res.headers.get("set-cookie");
-    if (setCookie) {
-      const [pair] = setCookie.split(";");
-      this.cookie = pair!.endsWith("=") ? "" : pair!;
+    for (const line of res.headers.getSetCookie()) {
+      const pair = line.split(";")[0]!;
+      const name = pair.slice(0, pair.indexOf("="));
+      const value = pair.slice(pair.indexOf("=") + 1);
+      if (value && !/max-age=0|expires=thu, 01 jan 1970/i.test(line)) this.jar.set(name, value);
+      else this.jar.delete(name);
     }
     const text = await res.text();
     return { status: res.status, body: text ? JSON.parse(text) : null, setCookie };

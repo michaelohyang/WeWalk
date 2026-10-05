@@ -20,6 +20,8 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
 /** Bottom navigation. The middle button starts a review (for the station you're on, if any). */
 export function TabBar() {
   const path = usePathname();
+  // The rate form gets the whole screen (and the keyboard's room) for its Post button.
+  if (path.startsWith("/rate")) return null;
   const station = path.match(/^\/s\/([^/]+)/)?.[1];
   const tab = (t: (typeof TABS)[number]) => (
     <Link

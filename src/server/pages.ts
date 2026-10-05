@@ -3,7 +3,15 @@ import type { AreaKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { getSession } from "./session";
-import { crewView, exploreView, passportView, ranksView, stationView } from "./services/views";
+import { crewSize, isInviteCode, MIN_CREW_CODE_LENGTH, peekLink } from "./services/auth";
+import {
+  crewView,
+  exploreView,
+  passportView,
+  ranksView,
+  rateView,
+  stationView,
+} from "./services/views";
 
 /*
  * Data loaders for pages. Each one checks the session itself: layouts and pages render in
@@ -39,5 +47,33 @@ export async function loadPassport() {
 export async function loadCrew() {
   const session = await getSession();
   if (!session) return null;
-  return crewView(await getDb(), session);
+  const code = process.env.CREW_CODE;
+  return crewView(
+    await getDb(),
+    session,
+    code && code.length >= MIN_CREW_CODE_LENGTH ? code : null,
+  );
+}
+
+export async function loadRate(stationId: string | undefined) {
+  const session = await getSession();
+  if (!session) return null;
+  return rateView(await getDb(), session, stationId);
+}
+
+/** The pairing page: who the link signs in as (null if it's dead), and who's signed in now. */
+export async function loadPair(token: string) {
+  const [session, link] = await Promise.all([
+    getSession(),
+    peekLink(await getDb(), token, new Date()),
+  ]);
+  return { link, signedInAs: session?.member.name ?? null };
+}
+
+/** The invite page. Only a valid invite learns anything about the crew (its size). */
+export async function loadJoin(code: string) {
+  const session = await getSession();
+  if (!isInviteCode(code, process.env.CREW_CODE))
+    return { signedIn: !!session, valid: false as const };
+  return { signedIn: !!session, valid: true as const, members: await crewSize(await getDb()) };
 }

@@ -39,7 +39,7 @@ export const displayNameSchema = z
   });
 
 /**
- * Free text: control characters are removed (Postgres rejects NUL, and the rest only cause
+ * Free text: control characters and bidi overrides are removed (Postgres rejects NUL, and the rest only cause
  * trouble). `multiline` keeps line breaks and tabs; single-line text turns them into spaces.
  */
 const text = (max: number, { multiline = false } = {}) =>
@@ -48,6 +48,8 @@ const text = (max: number, { multiline = false } = {}) =>
     .transform((s) =>
       (multiline ? s.replace(/\r\n?/g, "\n") : s.replace(/[\t\r\n]+/g, " "))
         .replace(multiline ? /[\u0000-\u0008\u000b-\u001f\u007f]/g : /[\u0000-\u001f\u007f]/g, "")
+        // Bidi overrides can make text display backwards or hide what it says.
+        .replace(/[\u202a-\u202e\u2066-\u2069]/g, "")
         .trim(),
     )
     .pipe(z.string().max(max, `Keep it under ${max} characters.`))

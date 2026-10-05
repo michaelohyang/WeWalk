@@ -74,6 +74,21 @@ export function Explore({ view }: { view: ExploreView }) {
   const matches = matcher(filters);
   const shown = view.stations.filter(matches);
   const dimmed = new Set(view.stations.filter((s) => !matches(s)).map((s) => s.id));
+  // Searching or filtering on the map: list what matches under it, not the usual favorites.
+  const filtering = !!(filters.q || filters.area || filters.tag);
+  const results = shown.length ? (
+    <div className={styles.list}>
+      {[...shown]
+        .sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name))
+        .map((s) => (
+          <StationRow key={s.id} station={s} />
+        ))}
+    </div>
+  ) : (
+    <div className={styles.spaced}>
+      <Empty title="No matches.">Nothing fits those filters. Loosen up a little.</Empty>
+    </div>
+  );
   const picked = selected ? byId.get(selected) : undefined;
   const href = (next: Partial<Filters>) => {
     const q = toQuery({ ...filters, ...next });
@@ -190,19 +205,7 @@ export function Explore({ view }: { view: ExploreView }) {
       )}
 
       {filters.view === "list" ? (
-        shown.length ? (
-          <div className={styles.list}>
-            {[...shown]
-              .sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name))
-              .map((s) => (
-                <StationRow key={s.id} station={s} />
-              ))}
-          </div>
-        ) : (
-          <div className={styles.spaced}>
-            <Empty title="No matches.">Nothing fits those filters. Loosen up a little.</Empty>
-          </div>
-        )
+        results
       ) : (
         <>
           <MapView
@@ -220,27 +223,33 @@ export function Explore({ view }: { view: ExploreView }) {
             <li style={{ "--c": "var(--s-bad)" } as React.CSSProperties}>pray</li>
             <li style={{ "--c": "var(--muted)" } as React.CSSProperties}>not yet</li>
           </ul>
-          <Section
-            title="Crew favorites"
-            note={`${view.visited} of ${view.stations.length} visited`}
-          >
-            {view.favorites.length ? (
-              <div>
-                {view.favorites.map((id) => (
-                  <StationRow key={id} station={byId.get(id)!} />
-                ))}
-              </div>
-            ) : (
-              <Empty title="The map's all grey.">
-                Nobody&apos;s rated anything yet. Grab a coffee somewhere, then judge it.
-                <span className={styles.emptyAction}>
-                  <ButtonLink href="/rate" variant="primary" size="sm">
-                    Rate your first station
-                  </ButtonLink>
-                </span>
-              </Empty>
-            )}
-          </Section>
+          {filtering ? (
+            <Section title="Matches" note={shown.length || undefined}>
+              {results}
+            </Section>
+          ) : (
+            <Section
+              title="Crew favorites"
+              note={`${view.visited} of ${view.stations.length} visited`}
+            >
+              {view.favorites.length ? (
+                <div>
+                  {view.favorites.map((id) => (
+                    <StationRow key={id} station={byId.get(id)!} />
+                  ))}
+                </div>
+              ) : (
+                <Empty title="The map's all grey.">
+                  Nobody&apos;s rated anything yet. Grab a coffee somewhere, then judge it.
+                  <span className={styles.emptyAction}>
+                    <ButtonLink href="/rate" variant="primary" size="sm">
+                      Rate your first station
+                    </ButtonLink>
+                  </span>
+                </Empty>
+              )}
+            </Section>
+          )}
         </>
       )}
 
