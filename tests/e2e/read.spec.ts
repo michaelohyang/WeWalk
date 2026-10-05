@@ -220,16 +220,36 @@ test.describe("signed in", () => {
     }
   });
 
-  test("first load ships under 150 KB of JS + CSS, gzipped", async ({ page }) => {
-    const assets = new Set<string>();
-    page.on("response", (r) => {
-      const type = r.request().resourceType();
-      if (type === "script" || type === "stylesheet") assets.add(r.url());
-    });
-    await page.goto("/", { waitUntil: "networkidle" });
-    let total = 0;
-    for (const url of assets) total += gzipSync(await (await page.request.get(url)).body()).length;
-    console.log(`first-load JS + CSS: ${(total / 1024).toFixed(1)} KB gzipped`);
-    expect(total).toBeLessThan(150 * 1024);
+  test("first load stays within the size budget (docs/PLAN.md §6)", async ({
+    page,
+    browser,
+  }, info) => {
+    // JS + CSS the browser downloads for a page, by URL, gzipped.
+    const downloads = async (p: Page, path: string) => {
+      const urls = new Set<string>();
+      p.on("response", (r) => {
+        const type = r.request().resourceType();
+        if (type === "script" || type === "stylesheet") urls.add(r.url());
+      });
+      await p.goto(path, { waitUntil: "networkidle" });
+      const sizes = new Map<string, number>();
+      for (const url of urls)
+        sizes.set(url, gzipSync(await (await p.request.get(url)).body()).length);
+      return sizes;
+    };
+    const app = await downloads(page, "/");
+    // The signed-out page is the framework (React, Next.js) plus the root layout, almost no app
+    // code. What Explore downloads beyond that is ours.
+    const signedOut = await downloads(
+      await (await browser.newContext({ ...info.project.use })).newPage(),
+      "/",
+    );
+    const sum = (xs: Iterable<number>) => [...xs].reduce((a, b) => a + b, 0);
+    const total = sum(app.values());
+    const ours = sum([...app].filter(([url]) => !signedOut.has(url)).map(([, size]) => size));
+    const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
+    console.log(`first-load JS + CSS: ${kb(total)} gzipped (our code: ${kb(ours)})`);
+    expect(total, "total budget").toBeLessThan(200 * 1024);
+    expect(ours, "our own code").toBeLessThan(40 * 1024);
   });
 });

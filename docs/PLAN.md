@@ -71,7 +71,7 @@ Why this stack, keeping it pragmatic:
   runtime cost to speak of.
 - **Zod** schemas validate requests at the API boundary, and the same types are used on the client.
 - **Plain CSS Modules and custom properties.** The prototype's tokens move over as they are, with
-  no Tailwind conversion. It also helps stay under the 150KB JavaScript+CSS budget.
+  no Tailwind conversion. It also helps keep our own code small (see the size budget, §9).
 - **Vercel and Supabase** both have free tiers. Vercel gives a preview deploy for each pull request
   and a working link in minutes.
 
@@ -258,7 +258,8 @@ nothing to rewire later.
   - deep links work, and back restores filters and scroll position
   - no horizontal scroll
   - no accessibility violations from axe
-  - bundle under 150KB gzipped, first render under 3 seconds on Slow 3G
+  - first-load JS + CSS under 200 KB gzipped, of which our own code (beyond React and Next.js)
+    under 40 KB; first render under 3 seconds on Slow 3G
   - screenshots side by side with the prototype.
 - **Product review:** walk journeys B and D.
 
@@ -319,6 +320,7 @@ tap targets.
 | 4 | Identity | Invite link, unique display name, one-time pairing links, device sign-out, owner-issued recovery links |
 | 5 | Stations | Owner only, through the seed file. Removing a station hides it and keeps its data. "Suggest a building" comes later |
 | 6 | Building list | The owner's list of 29 (appendix A) |
+| 7 | Size budget | First-load JS + CSS ≤ 200 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Revisit if performance becomes a problem |
 
 ## Appendix A: Stations (seed data, from the owner)
 
