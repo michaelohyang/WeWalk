@@ -1,4 +1,5 @@
 import { idSchema, reviewInputSchema } from "@/domain/schemas";
+import { crewChanged } from "@/server/crew-cache";
 import { authedRoute, json, parse, readJson } from "@/server/http";
 import { deleteReview, putReview } from "@/server/services/visits";
 import { NextResponse } from "next/server";
@@ -8,11 +9,13 @@ export const PUT = authedRoute<{ id: string }>(async ({ req, db, now, session },
   const id = parse(idSchema, params.id);
   const input = await readJson(req, reviewInputSchema);
   const { review, created } = await putReview(db, session, id, input, now);
+  crewChanged();
   return json({ review }, created ? 201 : 200);
 });
 
 /** Delete your review. Deleting one that's already gone succeeds. */
 export const DELETE = authedRoute<{ id: string }>(async ({ db, session }, params) => {
   await deleteReview(db, session, parse(idSchema, params.id));
+  crewChanged();
   return new NextResponse(null, { status: 204 });
 });

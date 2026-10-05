@@ -65,6 +65,7 @@ export default async function PassportPage() {
               <li key={station.id}>
                 <Link
                   href={`/stations/${station.id}`}
+                  prefetch={false}
                   className={styles.stamp}
                   style={{ "--c": areaColor(station.area) } as React.CSSProperties}
                   aria-label={`${station.name}, first visit ${formatDate(firstVisit)}`}
@@ -90,6 +91,7 @@ export default async function PassportPage() {
               <li key={station.id}>
                 <Link
                   href={`/stations/${station.id}`}
+                  prefetch={false}
                   className={`${styles.stamp} ${styles.slot}`}
                   aria-label={`${station.name}, not visited${station.visited ? ", the crew has been" : ""}`}
                 >

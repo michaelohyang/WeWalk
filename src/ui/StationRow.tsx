@@ -30,7 +30,7 @@ export function StationRow({
 }) {
   const color = { "--c": areaColor(station.area) } as React.CSSProperties;
   return (
-    <Link href={`/stations/${station.id}`} className={styles.row}>
+    <Link href={`/stations/${station.id}`} className={styles.row} prefetch={false}>
       {lead ?? (
         <span className={styles.tile} style={color} aria-hidden="true">
           {tileText(station.name)}

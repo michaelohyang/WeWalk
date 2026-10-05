@@ -1,11 +1,12 @@
 import "server-only";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { connectionOptions } from "./connection";
+import { attachDatabasePool } from "@vercel/functions";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { poolOptions } from "./connection";
 import * as schema from "./schema";
 
-/** Any Drizzle Postgres database with our schema: postgres-js in the app, PGlite locally. */
+/** Any Drizzle Postgres database with our schema: node-postgres in the app, PGlite locally. */
 export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 // Kept on globalThis so dev-server hot reloads reuse one connection pool / local database.
@@ -13,8 +14,7 @@ const cache = globalThis as unknown as { __wewalkDb?: Promise<Db> };
 
 /**
  * The app's database, from DATABASE_URL:
- * - Supabase's transaction pooler URL (port 6543) in production. The pooler doesn't support
- *   prepared statements.
+ * - Supabase's transaction pooler URL (port 6543) in production.
  * - `pglite:memory` or `pglite:<dir>` for local dev and e2e: an embedded Postgres, migrated and
  *   seeded on first use.
  */
@@ -34,7 +34,13 @@ async function open(url: string | undefined): Promise<Db> {
     const { openLocalDb } = await import("./local");
     return openLocalDb(dir === "memory" ? undefined : dir);
   }
-  return drizzle(postgres(url, { prepare: false, ...connectionOptions(url) }), { schema });
+  const pool = new Pool(poolOptions(url));
+  // Vercel freezes a function between requests; connections left open can die while it's frozen
+  // and then hang the next request. This keeps the instance alive just long enough to close idle
+  // connections first. (A no-op outside Vercel.)
+  attachDatabasePool(pool);
+  pool.on("error", (e) => console.error("database pool:", e.message)); // a dropped idle client
+  return drizzle(pool, { schema });
 }
 
 /** Tests swap in their own database. */

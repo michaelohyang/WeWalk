@@ -1,4 +1,5 @@
 import { checkinInputSchema, idSchema } from "@/domain/schemas";
+import { crewChanged } from "@/server/crew-cache";
 import { authedRoute, json, parse, readJson } from "@/server/http";
 import { putCheckin } from "@/server/services/visits";
 
@@ -7,5 +8,6 @@ export const PUT = authedRoute<{ id: string }>(async ({ req, db, now, session },
   const id = parse(idSchema, params.id);
   const input = await readJson(req, checkinInputSchema);
   const { checkin, created } = await putCheckin(db, session, id, input, now);
+  crewChanged();
   return json({ checkin }, created ? 201 : 200);
 });

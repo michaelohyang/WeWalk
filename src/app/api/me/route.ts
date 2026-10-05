@@ -1,4 +1,5 @@
 import { renameInputSchema } from "@/domain/schemas";
+import { crewChanged } from "@/server/crew-cache";
 import { authedRoute, json, memberJson, readJson } from "@/server/http";
 import { listDevices, rename } from "@/server/services/auth";
 
@@ -10,5 +11,7 @@ export const GET = authedRoute(async ({ db, session }) =>
 /** Rename yourself: `{ name }`. */
 export const PATCH = authedRoute(async ({ req, db, session }) => {
   const { name } = await readJson(req, renameInputSchema);
-  return json({ member: memberJson(await rename(db, session, name)) });
+  const member = await rename(db, session, name);
+  crewChanged();
+  return json({ member: memberJson(member) });
 });

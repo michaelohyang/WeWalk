@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { connectionOptions } from "../src/server/db/connection";
+import { scriptConnectionOptions } from "../src/server/db/connection";
 import * as schema from "../src/server/db/schema";
 import { seedStations } from "../src/server/db/seed/seed";
 
@@ -26,7 +26,7 @@ async function main() {
   const url = process.env.DIRECT_URL;
   if (!url) throw new Error("db:deploy needs DIRECT_URL (Supabase direct connection, port 5432).");
 
-  const client = postgres(url, { ...connectionOptions(url), max: 1, onnotice: () => {} });
+  const client = postgres(url, { ...scriptConnectionOptions(url), onnotice: () => {} });
   try {
     const db = drizzle(client, { schema });
     await migrate(db, { migrationsFolder: "src/server/db/migrations" });
