@@ -1,12 +1,14 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { fileURLToPath } from "node:url";
+import path from "node:path";
 import type { Db } from "./client";
 import * as schema from "./schema";
 import { seedStations } from "./seed/seed";
 
-const migrationsFolder = fileURLToPath(new URL("./migrations", import.meta.url));
+// Resolved from the project root (where tests, `next dev` and `next start` run), not via
+// import.meta.url, which the bundler would try to treat as an asset.
+const migrationsFolder = path.join(process.cwd(), "src/server/db/migrations");
 
 /**
  * An embedded Postgres (PGlite) with migrations applied and stations seeded. Used by tests and
