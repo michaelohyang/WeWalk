@@ -284,6 +284,7 @@ test.describe("accessibility of the write screens", () => {
     const check = async (label: string) => {
       // Next streams the <title>; mid-refresh it can be briefly missing. And a toast fading in
       // has partial contrast. Scan a settled page.
+      await page.waitForLoadState("networkidle"); // e.g. the refresh after checking in
       await expect(page).toHaveTitle(/\S/);
       await page.evaluate(() =>
         Promise.all(
