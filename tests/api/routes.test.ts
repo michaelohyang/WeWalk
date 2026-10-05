@@ -53,6 +53,10 @@ describe("joining", () => {
     expect(res.setCookie).toMatch(/HttpOnly/i);
     expect(res.setCookie).toMatch(/SameSite=lax/i);
     expect((await phone.call(me, "GET", "/api/me")).body.member.name).toBe("Dana");
+    // Plus a readable member-id cookie for the client's per-member drafts and outbox.
+    expect(phone.cookie).toContain(`ww_member=${res.body.member.id}`);
+    const member = res.setCookie!.split(/, (?=ww_)/).find((c) => c.startsWith("ww_member="));
+    expect(member).not.toMatch(/HttpOnly/i);
   });
 
   it("rejects a wrong code (401) and a taken name (409)", async () => {
@@ -188,6 +192,16 @@ describe("request limits and odd input", () => {
 });
 
 describe("reviews", () => {
+  it("holds a queued write made by someone else on this phone (401), never posts it as you", async () => {
+    const phone = await joined("Dana");
+    const res = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+      headers: { "x-wewalk-member": "00000000-0000-4000-8000-000000000000" },
+    });
+    expect(res.status).toBe(401);
+  });
+
   it("creates (201), edits (200), conflicts on a second review (409 + existingId), deletes (204)", async () => {
     const phone = await joined("Dana");
     const id = newId();

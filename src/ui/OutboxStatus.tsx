@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { flush, pending, subscribe, type Job } from "@/client/outbox";
+import { flush, subscribe, waiting, type Job } from "@/client/outbox";
 import styles from "./OutboxStatus.module.css";
 import { useToast } from "./Toast";
 
@@ -18,18 +18,22 @@ export function OutboxStatus() {
   useEffect(() => {
     const unsubscribe = subscribe(setJobs);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- read storage once on mount
-    setJobs(pending());
+    setJobs(waiting());
     const retry = () => {
-      if (!pending().length) return;
-      const before = pending().length;
-      void flush((job, result) => toast(`${job.label} didn't post: ${result.error.message}`)).then(
-        () => {
-          if (pending().length < before) {
-            toast("Back online. Your updates are posted.");
-            router.refresh();
-          }
-        },
-      );
+      if (!waiting().length) return;
+      const before = waiting().length;
+      const refused: string[] = [];
+      void flush((job, result) => {
+        refused.push(
+          `${job.label} didn't post: ${result.error.message}` +
+            (job.draft ? " What you wrote is still in the form." : ""),
+        );
+      }).then(() => {
+        if (waiting().length >= before) return;
+        // One toast at a time: a refusal matters more than "all good".
+        toast(refused.length ? refused.join(" ") : "Back online. Your updates are posted.");
+        router.refresh();
+      });
     };
     retry();
     const onVisible = () => document.visibilityState === "visible" && retry();

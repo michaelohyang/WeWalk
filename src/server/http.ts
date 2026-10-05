@@ -11,6 +11,14 @@ import { authenticate, type Session } from "./services/auth";
  */
 
 export const SESSION_COOKIE = "ww_session";
+/**
+ * Who this phone is signed in as, readable by our own scripts (it's an id, not a secret). The
+ * offline outbox and drafts are kept per member, so one person's queued writes never post
+ * under someone else's name on a shared phone.
+ */
+export const MEMBER_COOKIE = "ww_member";
+/** Sent with queued writes: the member who made the write. */
+export const MEMBER_HEADER = "x-wewalk-member";
 const SESSION_MAX_AGE = 400 * 24 * 60 * 60; // the longest browsers allow
 
 const STATUS: Record<AppErrorCode, number> = {
@@ -89,7 +97,20 @@ export function authedRoute<P>(handler: (ctx: AuthedCtx, params: P) => Promise<R
     const session = await authenticate(ctx.db, ctx.req.cookies.get(SESSION_COOKIE)?.value, ctx.now);
     if (!session)
       throw new AppError("unauthorized", "You're signed out. Open your crew's invite link.");
-    return handler({ ...ctx, session }, params);
+    const author = ctx.req.headers.get(MEMBER_HEADER);
+    if (author && author !== session.member.id) {
+      // Written by whoever was signed in before. Not lost: the outbox holds it for them.
+      throw new AppError("unauthorized", "This phone is signed in as someone else now.");
+    }
+    const res = await handler({ ...ctx, session }, params);
+    // Keep the readable member cookie in step with the session (it may predate it).
+    if (
+      res instanceof NextResponse &&
+      ctx.req.cookies.get(MEMBER_COOKIE)?.value !== session.member.id
+    ) {
+      setMemberCookie(res, session.member.id);
+    }
+    return res;
   });
 }
 
@@ -124,19 +145,29 @@ export function parse<S extends z.ZodType>(schema: S, value: unknown): z.output<
   });
 }
 
-export function setSessionCookie(res: NextResponse, token: string): NextResponse {
-  res.cookies.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  });
+const COOKIE = {
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: SESSION_MAX_AGE,
+} as const;
+
+function setMemberCookie(res: NextResponse, memberId: string) {
+  res.cookies.set(MEMBER_COOKIE, memberId, COOKIE);
+}
+
+export function setSessionCookie(
+  res: NextResponse,
+  { token, memberId }: { token: string; memberId: string },
+): NextResponse {
+  res.cookies.set(SESSION_COOKIE, token, { ...COOKIE, httpOnly: true });
+  setMemberCookie(res, memberId);
   return res;
 }
 
 export function clearSessionCookie(res: NextResponse): NextResponse {
   res.cookies.delete(SESSION_COOKIE);
+  res.cookies.delete(MEMBER_COOKIE);
   return res;
 }
 

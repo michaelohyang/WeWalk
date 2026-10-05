@@ -147,6 +147,10 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
   there's only ever one. Join first after deploying.
 - **Sessions:** each phone gets a random 32-byte device token. Its SHA-256 hash is stored in
   `devices`, and the token itself goes in an httpOnly, Secure, SameSite=Lax cookie.
+- **Shared phones:** a second, readable cookie (`ww_member`, just the member id) lets the client
+  keep drafts and the offline outbox per member. Queued writes carry their author in an
+  `x-wewalk-member` header; the server answers 401 if it isn't the signed-in member, and the
+  outbox holds the write (it never posts under someone else's name, and never drops it).
 - **Adding a phone:** "Add a phone" in Crew creates a **one-time pairing link**
   (`/pair/<token>`). It expires after 15 minutes and stops working after its first use. Opening
   the link shows a "Sign in on this phone" button that POSTs the token. A plain GET would let

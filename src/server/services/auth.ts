@@ -129,9 +129,29 @@ export async function redeemLink(
   return { member, token: await startDevice(db, member.id) };
 }
 
+/**
+ * Who a one-time link signs in as, without using it up (so the page can say "Sign in as Dana").
+ * Anyone holding a live link could redeem it anyway, so this reveals nothing new.
+ */
+export async function peekLink(
+  db: Db,
+  token: string,
+  now: Date,
+): Promise<{ name: string; purpose: repo.LinkPurpose } | null> {
+  const link = await repo.findLiveLink(db, hashToken(token), now);
+  const member = link && (await repo.findMember(db, link.memberId));
+  return member && link ? { name: member.name, purpose: link.purpose as repo.LinkPurpose } : null;
+}
+
+/** How many people are in the crew, for the join page. */
+export const crewSize = (db: Db) => repo.countMembers(db);
+
 export async function listDevices(db: Db, session: Session) {
   const rows = await repo.listDevices(db, session.member.id);
-  return rows.map((d) => ({ ...d, current: d.id === session.deviceId }));
+  // This phone first, then the rest oldest first.
+  return rows
+    .map((d) => ({ ...d, current: d.id === session.deviceId }))
+    .sort((a, b) => Number(b.current) - Number(a.current));
 }
 
 export async function signOutDevice(db: Db, session: Session, deviceId: string): Promise<void> {

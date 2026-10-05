@@ -1,20 +1,18 @@
+import { currentMember } from "./member";
 import { store } from "./storage";
+
+/** Drafts belong to whoever is signed in: a shared phone never shows you someone else's. */
+const scoped = (key: string) => `wewalk:draft:${currentMember() ?? "anyone"}:${key}`;
 
 /** Autosaved form state, so a reload or a dropped tab never loses a half-written review. */
 export function loadDraft<T>(key: string): T | null {
-  return store.get<{ savedAt: number; value: T }>(`wewalk:draft:${key}`)?.value ?? null;
+  return store.get<{ savedAt: number; value: T }>(scoped(key))?.value ?? null;
 }
 
 export function saveDraft(key: string, value: unknown): void {
-  store.set(`wewalk:draft:${key}`, { savedAt: Date.now(), value });
+  store.set(scoped(key), { savedAt: Date.now(), value });
 }
 
 export function clearDraft(key: string): void {
-  store.remove(`wewalk:draft:${key}`);
+  store.remove(scoped(key));
 }
-
-/** The station you last rated: the default when you open the rate form from the tab bar. */
-export const lastStation = {
-  get: () => store.get<string>("wewalk:lastStation"),
-  set: (id: string) => store.set("wewalk:lastStation", id),
-};

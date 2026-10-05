@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { localToday, newId } from "@/client/ids";
-import { send } from "@/client/outbox";
+import { send, waiting } from "@/client/outbox";
 import { useToast } from "@/ui/Toast";
 import styles from "./actions.module.css";
 
@@ -30,6 +30,29 @@ export function StationActions({
   const [busy, setBusy] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState(existing?.note ?? "");
+
+  // A check-in still in the outbox counts: otherwise a reload offers "Check in" again and a
+  // second one gets queued (and refused later).
+  useEffect(() => {
+    if (checkin) return;
+    for (const job of waiting()) {
+      const body = job.body as { stationId?: string; visitedOn?: string; note?: string };
+      if (
+        job.key.startsWith("checkin:") &&
+        body.stationId === stationId &&
+        body.visitedOn === today
+      ) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- read storage once on mount
+        setCheckin({
+          id: job.key.slice("checkin:".length),
+          visitedOn: today,
+          note: body.note ?? "",
+        });
+        setNote(body.note ?? "");
+        return;
+      }
+    }
+  }, [checkin, stationId, today]);
 
   async function put(id: string, body: { note: string }, label: string) {
     setBusy(true);
@@ -90,11 +113,11 @@ export function StationActions({
         {checkin ? (
           <button
             type="button"
-            className={styles.btn}
+            className={`${styles.btn} ${styles.here}`}
             onClick={() => setNoteOpen((o) => !o)}
             aria-expanded={noteOpen}
           >
-            {checkin.note ? "Edit today's note" : "Checked in · add note"}
+            {checkin.note ? "✓ Here · edit note" : "✓ Here · add note"}
           </button>
         ) : (
           <button type="button" className={styles.btn} onClick={checkIn} disabled={busy}>
@@ -128,11 +151,25 @@ export function ReviewActions({ reviewId, stationId }: { reviewId: string; stati
   const toast = useToast();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [queued, setQueued] = useState(false);
+  const key = `delete-review:${reviewId}`;
+
+  // Deleted offline (now or before a reload): grey the review out until it syncs.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- read storage once on mount
+  useEffect(() => setQueued(waiting().some((j) => j.key === key)), [key]);
+
+  if (queued) {
+    return (
+      <p className={styles.deleting}>
+        Deleted on this phone. Gone for everyone once you have signal.
+      </p>
+    );
+  }
 
   async function remove() {
     setBusy(true);
     const result = await send({
-      key: `delete-review:${reviewId}`,
+      key,
       method: "DELETE",
       url: `/api/reviews/${reviewId}`,
       label: "Deleting your review",
@@ -140,9 +177,10 @@ export function ReviewActions({ reviewId, stationId }: { reviewId: string; stati
     setBusy(false);
     setConfirming(false);
     if (result.status === "rejected") toast(result.error.message);
-    else if (result.status === "queued")
+    else if (result.status === "queued") {
+      setQueued(true);
       toast("Deleted on this phone. It'll sync when you're back online.");
-    else {
+    } else {
       toast("Review deleted.");
       router.refresh();
     }
@@ -178,12 +216,13 @@ export function ReviewActions({ reviewId, stationId }: { reviewId: string; stati
 }
 
 /** After posting, a toast ("New passport stamp!") then a clean URL. */
-export function PostedToast({ name }: { name: string }) {
+export function PostedToast({ name, color }: { name: string; color: string }) {
   const params = useSearchParams();
   const router = useRouter();
   const path = usePathname();
   const toast = useToast();
   const posted = params.get("posted");
+  const [stamp, setStamp] = useState(false);
   useEffect(() => {
     if (!posted) return;
     toast(
@@ -191,7 +230,27 @@ export function PostedToast({ name }: { name: string }) {
         ? `Posted. New passport stamp: ${name}!`
         : "Posted. The crew can see it now.",
     );
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-off celebration from the URL
+    if (posted === "stamp") setStamp(true);
+    const mine = document.getElementById("my-review");
+    if (mine) {
+      mine.scrollIntoView({ block: "center", behavior: "smooth" });
+      mine.classList.add(styles.just!);
+    }
     router.replace(path, { scroll: false });
   }, [posted, name, path, router, toast]);
-  return null;
+  if (!stamp) return null;
+  return (
+    <div
+      className={styles.stamp}
+      style={{ "--c": color } as React.CSSProperties}
+      aria-hidden="true"
+      onAnimationEnd={(e) => e.target === e.currentTarget && setStamp(false)}
+    >
+      <span>
+        <small>WeWalk</small>
+        {name}
+      </span>
+    </div>
+  );
 }

@@ -6,5 +6,8 @@ import { joinCrew } from "@/server/services/auth";
 export const POST = route(async ({ req, db }) => {
   const input = await readJson(req, joinInputSchema);
   const { member, token } = await joinCrew(db, input, process.env.CREW_CODE);
-  return setSessionCookie(json({ member: memberJson(member) }, 201), token);
+  return setSessionCookie(json({ member: memberJson(member) }, 201), {
+    token,
+    memberId: member.id,
+  });
 });

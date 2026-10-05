@@ -66,7 +66,7 @@ export default async function StationPage({ params }: Props) {
         firstVisit={!station.mine}
       />
       <Suspense>
-        <PostedToast name={station.short} />
+        <PostedToast name={station.short} color={areaColor(station.area)} />
       </Suspense>
 
       {station.hotTake && (
@@ -135,7 +135,7 @@ export default async function StationPage({ params }: Props) {
         {reviews.length ? (
           <ul className={styles.posts}>
             {reviews.map((r) => (
-              <li key={r.id} className={styles.post}>
+              <li key={r.id} id={r.mine ? "my-review" : undefined} className={styles.post}>
                 <div className={styles.postHead}>
                   <Avatar name={r.by} seed={r.memberId} />
                   <div>
@@ -168,8 +168,12 @@ export default async function StationPage({ params }: Props) {
             {log.map((l, i) => (
               <li key={i}>
                 <div>
-                  <b>{formatDate(l.date)}</b> <span className={styles.sub}>· {l.by}</span>
-                  <p>{l.text}</p>
+                  <b>{formatDate(l.date)}</b>{" "}
+                  <span className={styles.sub}>
+                    · {l.mine ? `${l.by} (you)` : l.by} ·{" "}
+                    {l.kind === "checkin" ? "checked in" : "reviewed"}
+                  </span>
+                  {l.note && <p>{l.note}</p>}
                 </div>
               </li>
             ))}

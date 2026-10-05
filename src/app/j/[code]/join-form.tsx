@@ -6,7 +6,7 @@ import { fieldErrors, request } from "@/client/api";
 import styles from "@/ui/forms.module.css";
 
 /** Pick a name, once. That's the whole sign-up. */
-export function JoinForm({ code }: { code: string }) {
+export function JoinForm({ code, members }: { code: string; members: number }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +32,12 @@ export function JoinForm({ code }: { code: string }) {
   return (
     <form className={styles.card} onSubmit={submit} noValidate>
       <p className={styles.lede}>
-        No passwords, no email. Pick the name your crew knows you by, and you&apos;re in on this
-        phone.
+        {members === 0
+          ? "You're first. Pick a name, and you run the place."
+          : members === 1
+            ? "One person is already in here, judging the coffee alone. Pick a name."
+            : `${members} people are already arguing about the coffee. Pick a name.`}{" "}
+        No passwords, no email.
       </p>
       <label className={styles.field}>
         <span>Your name</span>

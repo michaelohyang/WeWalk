@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { flush, pending, send, subscribe } from "./outbox";
+import { TIMEOUT_MS } from "./api";
+import { loadDraft, saveDraft } from "./draft";
+import { flush, outcome, pending, send, subscribe, waiting } from "./outbox";
 
 const job = (key = "k1") => ({
   key,
@@ -12,7 +14,12 @@ const job = (key = "k1") => ({
 const reply = (status: number, body?: unknown) =>
   Promise.resolve(new Response(body === undefined ? null : JSON.stringify(body), { status }));
 
-beforeEach(() => localStorage.clear());
+const signIn = (id: string) => (document.cookie = `ww_member=${id}; path=/`);
+
+beforeEach(() => {
+  localStorage.clear();
+  signIn("alice");
+});
 afterEach(() => vi.unstubAllGlobals());
 
 describe("outbox", () => {
@@ -117,10 +124,108 @@ describe("outbox", () => {
     const rejected = vi.fn();
     await flush(rejected);
     off();
-    expect(seen).toEqual([1, 0]); // queued, then dropped when rejected
+    expect(seen).toEqual([0, 1, 0]); // first try in flight, queued, then dropped when rejected
     expect(rejected).toHaveBeenCalledWith(
       expect.objectContaining({ key: "k1" }),
       expect.objectContaining({ status: "rejected" }),
     );
+  });
+
+  it("doesn't announce a write as waiting while its first try is still in flight", async () => {
+    let finish!: (r: Response) => void;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>((r) => (finish = r))),
+    );
+    const seen: number[] = [];
+    const stop = subscribe((jobs) => seen.push(jobs.length));
+    const sending = send(job());
+    expect(pending()).toHaveLength(1); // safe on the phone already
+    expect(waiting()).toEqual([]); // but nothing to tell the user yet
+    finish(new Response("{}", { status: 201 }));
+    await sending;
+    stop();
+    expect(seen.every((n) => n === 0)).toBe(true);
+    expect(outcome("k1")).toBe("sent");
+  });
+
+  it("gives up on a hanging request and keeps the write queued", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          (_url: string, init: RequestInit) =>
+            new Promise<Response>((_, reject) =>
+              init.signal!.addEventListener("abort", () => reject(new Error("aborted"))),
+            ),
+        ),
+      );
+      const sending = send(job("slow"));
+      await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+      expect(await sending).toEqual({ status: "queued" });
+      expect(waiting().map((j) => j.key)).toEqual(["slow"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never sends someone else's queued write; holds it for them", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("offline"))),
+    );
+    await send(job("alices"));
+    signIn("bob"); // Alice signs out, Bob signs in on the same phone
+    const fetch = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(() =>
+      reply(201, {}),
+    );
+    vi.stubGlobal("fetch", fetch);
+    expect(waiting()).toEqual([]);
+    await flush();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(pending()).toHaveLength(1);
+
+    signIn("alice");
+    await flush();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const headers = fetch.mock.calls[0]![1].headers as Record<string, string>;
+    expect(headers["x-wewalk-member"]).toBe("alice"); // the server double-checks
+    expect(pending()).toEqual([]);
+  });
+
+  it("holds writes when signed out or refused (401, 403) instead of dropping them", async () => {
+    for (const status of [401, 403]) {
+      localStorage.clear();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() => reply(status, { error: { code: "unauthorized", message: "Signed out" } })),
+      );
+      expect((await send(job())).status).toBe("queued");
+      expect(pending()).toHaveLength(1);
+    }
+  });
+
+  it("clears the form draft only once the server has the write", async () => {
+    saveDraft("review:x", { hotTake: "keep me" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => reply(409, { error: { code: "conflict", message: "Already reviewed" } })),
+    );
+    expect((await send({ ...job(), draft: "review:x" })).status).toBe("rejected");
+    expect(loadDraft("review:x")).toEqual({ hotTake: "keep me" });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => reply(201, {})),
+    );
+    await send({ ...job(), draft: "review:x" });
+    expect(loadDraft("review:x")).toBeNull();
+  });
+
+  it("keeps drafts per member", () => {
+    saveDraft("review:x", { hotTake: "alice's" });
+    signIn("bob");
+    expect(loadDraft("review:x")).toBeNull();
   });
 });

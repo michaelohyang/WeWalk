@@ -7,23 +7,36 @@ export type ApiResult<T = unknown> =
 
 const OFFLINE: ApiError = { code: "offline", message: "No signal. Try again in a sec." };
 
+/** Lobby wifi can hang instead of failing. Past this, treat the request as "no signal". */
+export const TIMEOUT_MS = 8000;
+
 /** A JSON request to our API. Never throws: failures come back as `{ ok: false }`. */
 export async function request<T = unknown>(
   method: string,
   url: string,
   body?: unknown,
+  extraHeaders: Record<string, string> = {},
 ): Promise<ApiResult<T>> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res: Response;
+  let text: string;
   try {
     res = await fetch(url, {
       method,
-      headers: body === undefined ? undefined : { "content-type": "application/json" },
+      headers: {
+        ...(body === undefined ? {} : { "content-type": "application/json" }),
+        ...extraHeaders,
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: abort.signal,
     });
+    text = await res.text();
   } catch {
     return { ok: false, status: 0, error: OFFLINE };
+  } finally {
+    clearTimeout(timer);
   }
-  const text = await res.text();
   let json: unknown = null;
   try {
     json = text ? JSON.parse(text) : null;

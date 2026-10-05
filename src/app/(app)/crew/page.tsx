@@ -31,6 +31,10 @@ export default async function CrewPage() {
         </div>
       </div>
 
+      <Section title="Invite friends">
+        <InviteFriends invitePath={invitePath} />
+      </Section>
+
       <Section title="Leaderboard" note="by stations visited">
         {leaderboard.length ? (
           <ol className={styles.board}>
@@ -56,10 +60,6 @@ export default async function CrewPage() {
             Post one review and you&apos;re number one. Easiest win in New York.
           </Empty>
         )}
-      </Section>
-
-      <Section title="Invite friends">
-        <InviteFriends invitePath={invitePath} />
       </Section>
 
       <Section title="You">

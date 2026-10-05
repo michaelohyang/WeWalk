@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getSession } from "@/server/session";
+import { loadPair } from "@/server/pages";
 import { Page } from "@/ui/Page";
 import { PairForm } from "./pair-form";
 
@@ -10,10 +10,11 @@ export const metadata: Metadata = { title: "Sign in on this phone" };
  * to build previews); the button uses it up.
  */
 export default async function PairPage({ params }: { params: Promise<{ token: string }> }) {
-  const session = await getSession();
+  const token = (await params).token;
+  const { link, signedInAs } = await loadPair(token);
   return (
-    <Page title="Sign in on this phone">
-      <PairForm token={(await params).token} signedInAs={session?.member.name ?? null} />
+    <Page title={link ? `Sign in as ${link.name}` : "Sign in on this phone"}>
+      <PairForm token={token} link={link} signedInAs={signedInAs} />
     </Page>
   );
 }

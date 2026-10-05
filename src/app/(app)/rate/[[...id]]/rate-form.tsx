@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fieldErrors } from "@/client/api";
-import { clearDraft, lastStation, loadDraft, saveDraft } from "@/client/draft";
+import { clearDraft, loadDraft, saveDraft } from "@/client/draft";
 import { localToday, newId } from "@/client/ids";
-import { send } from "@/client/outbox";
+import { outcome, pending, send, subscribe } from "@/client/outbox";
 import { CATEGORIES, type CategoryKey, type Score } from "@/domain/categories";
 import { TAGS, type Tag } from "@/domain/tags";
 import type { RateView } from "@/server/services/views";
+import { ButtonLink } from "@/ui/Button";
 import { Icon } from "@/ui/Icon";
 import { Page } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
@@ -23,6 +24,8 @@ interface Draft {
   body: string;
   tags: Tag[];
   visitedOn: string;
+  /** Typed before a building was picked, then carried over: not a draft to "pick up". */
+  carried?: boolean;
 }
 
 const SCORE_COLOR: Record<Score, string> = {
@@ -39,6 +42,9 @@ export function RateForm({ view }: { view: RateView }) {
   const station = view.stations.find((s) => s.id === view.stationId) ?? null;
   const draftKey = station ? `review:${station.id}` : null;
   const today = useMemo(() => localToday(), []);
+  const suggested = view.toReview.flatMap(
+    ({ stationId }) => view.stations.find((s) => s.id === stationId) ?? [],
+  );
 
   const initial = (): Draft => {
     const saved = draftKey ? loadDraft<Draft>(draftKey) : null;
@@ -46,24 +52,53 @@ export function RateForm({ view }: { view: RateView }) {
       ? { ...view.existing, scores: { ...view.existing.scores }, tags: [...view.existing.tags] }
       : { id: newId(), scores: {}, hotTake: "", body: "", tags: [], visitedOn: today };
     // A draft is your latest typing; it wins, but an existing review keeps its id.
-    return saved ? { ...base, ...saved, id: view.existing?.id ?? saved.id } : base;
+    if (!saved) return base;
+    return { ...base, ...saved, carried: undefined, id: view.existing?.id ?? saved.id };
   };
   const [draft, setDraft] = useState<Draft>(initial);
-  const [restored] = useState(() => !!(draftKey && loadDraft(draftKey)));
+  const [restored] = useState(() => {
+    const saved = draftKey ? loadDraft<Draft>(draftKey) : null;
+    return !!saved && !saved.carried;
+  });
   const [moreOpen, setMoreOpen] = useState(
     () => !!(draft.hotTake || draft.body || draft.tags.length),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<"idle" | "saving" | "queued">("idle");
+  const [posted, setPosted] = useState<string | null>(null);
   const stationRef = useRef<HTMLSelectElement>(null);
   const scoresRef = useRef<HTMLDivElement>(null);
 
-  // No station in the URL: start from the last one you rated.
+  // No station in the URL: if you checked in somewhere today and haven't reviewed it, that's
+  // almost certainly the one. Otherwise you pick (never silently open an old review to edit).
   useEffect(() => {
     if (station) return;
-    const last = lastStation.get();
-    if (last && view.stations.some((s) => s.id === last)) router.replace(`/rate/${last}`);
-  }, [station, view.stations, router]);
+    const latest = view.toReview[0];
+    if (latest && latest.visitedOn === today) router.replace(`/rate/${latest.stationId}`);
+  }, [station, view.toReview, today, router]);
+
+  // Saved offline: once it goes out, move on to the station like a normal post.
+  useEffect(() => {
+    if (state !== "queued" || !posted || !station) return;
+    const check = () => {
+      if (pending().some((j) => j.key === posted)) return;
+      router.push(
+        outcome(posted) === "rejected" ? `/s/${station.id}` : `/s/${station.id}?posted=review`,
+      );
+    };
+    check();
+    return subscribe(check);
+  }, [state, posted, station, router]);
+
+  const pickStation = (id: string) => {
+    if (!id) return;
+    // Keep what you've tapped so far, unless that building has its own draft already.
+    const typed = Object.values(draft.scores).some(Boolean) || draft.hotTake || draft.body;
+    if (!station && typed && !loadDraft(`review:${id}`)) {
+      saveDraft(`review:${id}`, { ...draft, carried: true });
+    }
+    router.replace(`/rate/${id}`);
+  };
 
   const update = (patch: Partial<Draft>) =>
     setDraft((d) => {
@@ -79,6 +114,16 @@ export function RateForm({ view }: { view: RateView }) {
       delete next.scores;
       return next;
     });
+  };
+
+  const arrowKeys = (e: React.KeyboardEvent, key: CategoryKey, value: Score | undefined) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const next = ((((value ?? (step > 0 ? 0 : 6)) + step - 1 + 5) % 5) + 1) as Score;
+    update({ scores: { ...draft.scores, [key]: next } });
+    const radios = e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]");
+    radios[next - 1]?.focus();
   };
 
   const discardDraft = () => {
@@ -113,10 +158,11 @@ export function RateForm({ view }: { view: RateView }) {
     }
 
     setState("saving");
-    lastStation.set(station.id);
     const firstVisit = !view.visitedIds.includes(station.id);
+    const key = `review:${draft.id}`;
+    setPosted(key);
     const result = await send({
-      key: `review:${draft.id}`,
+      key,
       method: "PUT",
       url: `/api/reviews/${draft.id}`,
       body: {
@@ -128,6 +174,7 @@ export function RateForm({ view }: { view: RateView }) {
         tags: draft.tags,
       },
       label: `Your review of ${station.name}`,
+      draft: draftKey ?? undefined,
     });
 
     if (result.status === "sent") {
@@ -136,7 +183,7 @@ export function RateForm({ view }: { view: RateView }) {
       return;
     }
     if (result.status === "queued") {
-      if (draftKey) clearDraft(draftKey);
+      // The draft stays until the server has it: if it's ever refused, nothing is lost.
       setState("queued");
       return;
     }
@@ -148,12 +195,6 @@ export function RateForm({ view }: { view: RateView }) {
       router.refresh();
       return;
     }
-    if (httpStatus === 401) {
-      setErrors({
-        form: "This phone is signed out. Open your crew's invite link or a pairing link.",
-      });
-      return;
-    }
     const byField = fieldErrors(error);
     setErrors(Object.keys(byField).length ? byField : { form: error.message });
     if (byField.visitedOn || byField.hotTake || byField.body || byField.tags) setMoreOpen(true);
@@ -161,38 +202,56 @@ export function RateForm({ view }: { view: RateView }) {
 
   if (state === "queued") {
     return (
-      <Page title="Saved." back={station ? `/s/${station.id}` : "/"}>
+      <Page title="In the outbox." back={station ? `/s/${station.id}` : "/"}>
         <div className={styles.saved} role="status">
-          <b>Saved on your phone. It&apos;ll post when you&apos;re back online.</b>
-          No signal in the lobby? Classic. Leave the app open or come back later, and it goes out on
-          its own.
+          <b>It posts itself the second you get a bar.</b>
+          No signal in the lobby? Classic. It&apos;s safe on this phone. Keep the app open or come
+          back later; either way it goes out on its own.
         </div>
+        {station && (
+          <ButtonLink href={`/s/${station.id}`} variant="plain">
+            Back to {station.name}
+          </ButtonLink>
+        )}
       </Page>
     );
   }
 
   return (
     <Page
-      title={view.existing ? "Edit your rating" : "Rate a station"}
+      title={
+        view.existing ? "Edit your rating" : station ? `Rate ${station.name}` : "Rate a building"
+      }
       back={station ? `/s/${station.id}` : "/"}
     >
       <form className={styles.form} onSubmit={submit} noValidate>
         <label className={styles.field}>
-          <span>Station</span>
+          <span>Building</span>
           <select
             ref={stationRef}
             className={styles.input}
             value={station?.id ?? ""}
-            onChange={(e) => e.target.value && router.replace(`/rate/${e.target.value}`)}
+            onChange={(e) => pickStation(e.target.value)}
             aria-invalid={!!errors.stationId}
             aria-describedby={errors.stationId ? "err-station" : undefined}
           >
             <option value="">Pick a building…</option>
-            {view.stations.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} · {s.neighborhood}
-              </option>
-            ))}
+            {suggested.length > 0 && (
+              <optgroup label="Checked in lately">
+                {suggested.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} · {s.neighborhood}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="All buildings">
+              {view.stations.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} · {s.neighborhood}
+                </option>
+              ))}
+            </optgroup>
           </select>
           {errors.stationId && (
             <span id="err-station" className={styles.error}>
@@ -218,7 +277,7 @@ export function RateForm({ view }: { view: RateView }) {
           aria-describedby="scores-hint"
         >
           <p id="scores-hint" className={styles.hint}>
-            Tap 1–5 for anything you tried. Skip the rest. Tap again to clear.
+            Rate what you tried. Skip the rest. Tap again to clear.
           </p>
           {errors.scores && <p className={styles.error}>{errors.scores}</p>}
           {CATEGORIES.map((c) => {
@@ -234,7 +293,12 @@ export function RateForm({ view }: { view: RateView }) {
                     {value ? c.quips[value - 1] : c.hint}
                   </span>
                 </div>
-                <div className={styles.tokens} role="radiogroup" aria-labelledby={`cat-${c.key}`}>
+                <div
+                  className={styles.tokens}
+                  role="radiogroup"
+                  aria-labelledby={`cat-${c.key}`}
+                  onKeyDown={(e) => arrowKeys(e, c.key, value)}
+                >
                   {([1, 2, 3, 4, 5] as const).map((n) => (
                     <button
                       key={n}
@@ -242,6 +306,8 @@ export function RateForm({ view }: { view: RateView }) {
                       role="radio"
                       aria-checked={value === n}
                       aria-label={`${n} out of 5`}
+                      // One Tab stop per category; arrow keys move within it (the radio pattern).
+                      tabIndex={(value ?? 1) === n ? 0 : -1}
                       className={value === n ? styles.on : undefined}
                       style={value === n ? { background: SCORE_COLOR[n] } : undefined}
                       onClick={() => setScore(c.key, n)}

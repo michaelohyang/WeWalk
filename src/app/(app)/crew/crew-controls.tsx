@@ -203,8 +203,8 @@ export function RecoveryLinks({ members }: { members: { id: string; name: string
     const member = members.find((m) => m.id === memberId);
     if (!member) return;
     const res = await request<{ url: string }>("POST", "/api/admin/recovery-links", { memberId });
-    if (res.ok) setLink({ name: member.name, url: res.data.url });
-    else setError(res.error.message);
+    setError(res.ok ? null : res.error.message);
+    setLink(res.ok ? { name: member.name, url: res.data.url } : null);
   }
 
   return (

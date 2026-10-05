@@ -134,7 +134,8 @@ export interface StationView {
   myCheckins: { id: string; visitedOn: IsoDate; note: string }[];
   categories: { key: CategoryKey; value: number | null }[];
   reviews: ReviewView[];
-  log: { date: IsoDate; by: string; text: string }[];
+  /** Check-ins and reviews, newest first. */
+  log: { date: IsoDate; by: string; mine: boolean; kind: "checkin" | "review"; note: string }[];
 }
 
 export async function stationView(
@@ -147,6 +148,7 @@ export async function stationView(
   if (!station) return null;
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
   const by = (memberId: string) => names.get(memberId) ?? "someone";
+  const me = session.member.id;
   const reviews = crew.reviews.filter((r) => r.stationId === id);
   const score = scoreStation(reviews);
   const latestFirst = (a: ReviewRecord, b: ReviewRecord) =>
@@ -159,22 +161,37 @@ export async function stationView(
       .sort((a, b) => b.visitedOn.localeCompare(a.visitedOn))
       .map(({ id, visitedOn, note }) => ({ id, visitedOn, note })),
     categories: CATEGORY_KEYS.map((key) => ({ key, value: score.categories[key] })),
-    reviews: [...reviews].sort(latestFirst).map((r) => ({
-      id: r.id,
-      memberId: r.memberId,
-      by: by(r.memberId),
-      visitedOn: r.visitedOn,
-      overall: personOverall(r.scores),
-      hotTake: r.hotTake,
-      body: r.body,
-      tags: r.tags,
-      mine: r.memberId === session.member.id,
-    })),
+    // Yours first: after posting you land here and should see it without scrolling.
+    reviews: [...reviews]
+      .sort((a, b) => Number(b.memberId === me) - Number(a.memberId === me) || latestFirst(a, b))
+      .map((r) => ({
+        id: r.id,
+        memberId: r.memberId,
+        by: by(r.memberId),
+        visitedOn: r.visitedOn,
+        overall: personOverall(r.scores),
+        hotTake: r.hotTake,
+        body: r.body,
+        tags: r.tags,
+        mine: r.memberId === session.member.id,
+      })),
     log: [
       ...crew.checkins
         .filter((c) => c.stationId === id)
-        .map((c) => ({ date: c.visitedOn, by: by(c.memberId), text: c.note || "Checked in" })),
-      ...reviews.map((r) => ({ date: r.visitedOn, by: by(r.memberId), text: "Posted a review" })),
+        .map((c) => ({
+          date: c.visitedOn,
+          by: by(c.memberId),
+          mine: c.memberId === me,
+          kind: "checkin" as const,
+          note: c.note,
+        })),
+      ...reviews.map((r) => ({
+        date: r.visitedOn,
+        by: by(r.memberId),
+        mine: r.memberId === me,
+        kind: "review" as const,
+        note: "",
+      })),
     ].sort((a, b) => b.date.localeCompare(a.date)),
   };
 }
@@ -313,6 +330,8 @@ export interface RateView {
   } | null;
   /** Stations you've been to (for the "first visit: new stamp" moment). */
   visitedIds: string[];
+  /** Your latest check-ins at buildings you haven't reviewed, newest first: likely next to rate. */
+  toReview: { stationId: string; visitedOn: IsoDate }[];
 }
 
 export async function rateView(
@@ -344,5 +363,17 @@ export async function rateView(
         }
       : null,
     visitedIds: [...new Set(visits.map((v) => v.stationId))],
+    toReview: toReview(crew, session.member.id),
   };
+}
+
+function toReview(crew: CrewData, me: string): RateView["toReview"] {
+  const reviewed = new Set(crew.reviews.filter((r) => r.memberId === me).map((r) => r.stationId));
+  const seen = new Set<string>();
+  return crew.checkins
+    .filter((c) => c.memberId === me && !reviewed.has(c.stationId))
+    .sort((a, b) => b.visitedOn.localeCompare(a.visitedOn))
+    .filter((c) => !seen.has(c.stationId) && !!seen.add(c.stationId))
+    .slice(0, 3)
+    .map((c) => ({ stationId: c.stationId, visitedOn: c.visitedOn }));
 }
