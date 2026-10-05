@@ -1,0 +1,110 @@
+"use client";
+
+import { LAND, MAP_HEIGHT, MAP_WIDTH, SQUEEZE_LINE_Y, type Pin } from "@/domain/map";
+import { formatScore, tierOf } from "@/domain/scoring";
+import styles from "./MapView.module.css";
+
+export interface MapStation {
+  id: string;
+  name: string;
+  overall: number | null;
+  visited: boolean;
+}
+
+const TIER_FILL = { great: "var(--s-great)", good: "var(--s-good)", ok: "var(--s-ok)", bad: "var(--s-bad)" };
+
+/**
+ * The schematic map. Rated stations are score bubbles, visited-but-unrated ones are brand
+ * checks, the rest are grey dots. Tap a pin to select it.
+ */
+export function MapView({
+  pins,
+  stations,
+  selected,
+  dimmed,
+  onSelect,
+}: {
+  pins: Pin[];
+  stations: Map<string, MapStation>;
+  selected: string | null;
+  dimmed: Set<string>;
+  onSelect: (id: string | null) => void;
+}) {
+  // Draw unvisited first and the selected pin last, so they stack sensibly.
+  const order = [...pins].sort(
+    (a, b) =>
+      Number(stations.get(a.id)?.visited) - Number(stations.get(b.id)?.visited) ||
+      Number(a.id === selected) - Number(b.id === selected),
+  );
+  return (
+    <div className={styles.card}>
+      <svg
+        className={styles.map}
+        viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+        role="group"
+        aria-label="Map of WeWork locations in Manhattan and Brooklyn"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onSelect(null);
+        }}
+      >
+        {LAND.map((l) => (
+          <path key={l.name} d={l.d} className={l.far ? styles.landFar : styles.land} />
+        ))}
+        <line x1="0" x2={MAP_WIDTH} y1={SQUEEZE_LINE_Y} y2={SQUEEZE_LINE_Y} className={styles.squeeze} />
+        <text x={MAP_WIDTH - 8} y={SQUEEZE_LINE_Y - 5} textAnchor="end" className={styles.geo}>
+          Uptown, not to scale ↑
+        </text>
+        {order.map((pin) => {
+          const s = stations.get(pin.id);
+          if (!s) return null;
+          const isSelected = pin.id === selected;
+          const side = pin.label ?? (isSelected ? "right" : null);
+          const tier = tierOf(s.overall);
+          const label = `${s.name}, ${
+            s.overall !== null ? `${formatScore(s.overall)} out of 5` : s.visited ? "visited, not rated" : "not visited yet"
+          }`;
+          return (
+            <g
+              key={pin.id}
+              transform={`translate(${pin.x} ${pin.y})`}
+              className={`${styles.pin} ${dimmed.has(pin.id) ? styles.dim : ""} ${isSelected ? styles.selected : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-label={label}
+              aria-pressed={isSelected}
+              onClick={() => onSelect(isSelected ? null : pin.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(isSelected ? null : pin.id);
+                }
+              }}
+            >
+              <circle r="16" className={styles.hit} />
+              {s.visited ? (
+                <>
+                  <rect x="-16" y="-10" width="32" height="20" rx="10" className={styles.bubble} fill={tier ? TIER_FILL[tier] : "var(--brand)"} />
+                  <text y="3.6" textAnchor="middle" className={styles.value}>
+                    {tier ? formatScore(s.overall) : "✓"}
+                  </text>
+                </>
+              ) : (
+                <circle r="4.5" className={styles.dot} />
+              )}
+              {side && (
+                <text
+                  x={side === "right" ? (s.visited ? 19 : 8) : s.visited ? -19 : -8}
+                  y="3"
+                  textAnchor={side === "right" ? "start" : "end"}
+                  className={`${styles.name} ${s.visited ? "" : styles.nameDim}`}
+                >
+                  {s.name}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}

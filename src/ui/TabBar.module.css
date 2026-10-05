@@ -1,0 +1,45 @@
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.inner {
+  max-width: 560px;
+  margin: 0 auto;
+  height: var(--tab-h);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  padding-inline: 8px;
+}
+.tab {
+  color: var(--muted);
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  font-weight: 600;
+  font-size: 10.5px;
+  padding: 6px 0;
+  text-decoration: none;
+  min-height: 44px;
+}
+.tab[aria-current="page"] {
+  color: var(--fg);
+}
+.plus {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--brand);
+  color: var(--brand-ink);
+  justify-self: center;
+  display: grid;
+  place-items: center;
+}
