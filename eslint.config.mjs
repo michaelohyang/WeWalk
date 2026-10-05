@@ -59,7 +59,8 @@ export default defineConfig([
             },
             {
               target: "./src/app",
-              from: ["./src/server/repos", "./src/server/db"],
+              // index.ts: a barrel would re-export repos/db past this rule.
+              from: ["./src/server/repos", "./src/server/db", "./src/server/index.ts"],
               message: "Routes call services, not repos or the database.",
             },
           ],
@@ -87,13 +88,8 @@ export default defineConfig([
     },
     { group: DB_DRIVERS, message: "Browser code must not import database drivers." },
   ),
-  banPackages(
-    ["src/app/**"],
-    { group: DB_DRIVERS, message: "Routes call services, not the database." },
-    {
-      // A barrel would re-export repos/db past the path zones above: import modules directly.
-      regex: "^@/server(?:/index)?$",
-      message: "Import the specific server module (e.g. @/server/services/…), not a barrel.",
-    },
-  ),
+  banPackages(["src/app/**"], {
+    group: DB_DRIVERS,
+    message: "Routes call services, not the database.",
+  }),
 ]);

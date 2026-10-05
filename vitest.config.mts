@@ -12,5 +12,7 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.{ts,tsx}", "tests/api/**/*.test.ts"],
     environment: "node",
+    // PGlite (in-memory Postgres) can take a while to boot on a cold CI runner.
+    hookTimeout: 30_000,
   },
 });
