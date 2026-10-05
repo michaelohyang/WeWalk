@@ -9,4 +9,11 @@ describe("connectionOptions", () => {
     expect(connectionOptions("postgres://postgres@127.0.0.1:55432/postgres").ssl).toBe(false);
     expect(connectionOptions("postgres://postgres@localhost/postgres").ssl).toBe(false);
   });
+
+  it("never pipelines queries (Supabase's transaction pooler can mix up their results)", () => {
+    expect(connectionOptions("postgres://u:p@pooler.supabase.com:6543/postgres")).toMatchObject({
+      max_pipeline: 1,
+      connect_timeout: 10,
+    });
+  });
 });
