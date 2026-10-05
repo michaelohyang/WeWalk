@@ -69,7 +69,12 @@ export function errorResponse(error: AppError): NextResponse {
  */
 function assertSameOrigin(req: NextRequest) {
   if (req.method === "GET" || req.method === "HEAD") return;
-  if (req.headers.get("origin") !== req.nextUrl.origin) {
+  const origin = req.headers.get("origin");
+  // Behind Vercel's proxy the public host arrives as x-forwarded-host; either form is ours.
+  const forwarded = req.headers.get("x-forwarded-host");
+  const proto = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");
+  const ours = [req.nextUrl.origin, forwarded && `${proto}://${forwarded}`];
+  if (!origin || !ours.includes(origin)) {
     throw new AppError("forbidden", "Requests must come from WeWalk itself.");
   }
 }

@@ -133,6 +133,19 @@ describe("request hygiene", () => {
     expect(res.status).toBe(403);
   });
 
+  it("accepts the public host a proxy forwards (Vercel), and nothing else", async () => {
+    const phone = await joined("Dana");
+    const write = (headers: Record<string, string>) =>
+      phone.call(putReview, "PUT", "/api/reviews/x", {
+        params: { id: newId() },
+        body: review(),
+        headers,
+      });
+    const proxied = { "x-forwarded-host": "wewalk.example", "x-forwarded-proto": "https" };
+    expect((await write({ ...proxied, origin: "https://wewalk.example" })).status).toBe(201);
+    expect((await write({ ...proxied, origin: "https://evil.example" })).status).toBe(403);
+  });
+
   it("requires JSON and valid JSON", async () => {
     const phone = await joined("Dana");
     const params = { id: newId() };

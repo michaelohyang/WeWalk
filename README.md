@@ -56,12 +56,18 @@ in Phase 3). Unit tests and e2e use [PGlite](https://pglite.dev) in memory too.
 | `pnpm db:generate` | Write a new SQL migration after changing `src/server/db/schema.ts`   |
 | `pnpm db:migrate`  | Apply migrations to `DIRECT_URL`                                     |
 | `pnpm db:seed`     | Upsert the station list into `DIRECT_URL`                            |
+| `pnpm db:deploy`   | Migrate, seed and check RLS on `DIRECT_URL` (runs on prod deploys)   |
+| `pnpm smoke <url>` | Read-only checks against a deployed app                              |
 
 `CI=1 pnpm e2e` tests the production build instead, so run `pnpm build` first.
 CI (`.github/workflows/ci.yml`) runs format, lint, typecheck, unit tests, build and e2e on every
 push.
 
 `vite` is a direct dev dependency only because Vitest requires it as a peer.
+
+## Deploying
+
+See [`docs/DEPLOY.md`](docs/DEPLOY.md): Supabase for the database, Vercel for the app.
 
 ## Code layout
 
