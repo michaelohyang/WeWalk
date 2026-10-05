@@ -4,20 +4,19 @@ import nextTs from "eslint-config-next/typescript";
 
 /**
  * Layer rules (docs/PLAN.md §5): app → services → repos/domain.
- * - domain: pure TypeScript, imports nothing from other layers or frameworks.
+ * - domain: pure TypeScript, imports nothing from other layers, frameworks, drivers or I/O.
  * - ui, client: run in the browser, never touch server code or database drivers.
  * - server: never imports UI, routes or browser code.
  * - app: routes call services, never repos or the database directly.
+ *
+ * Folder rules use import/no-restricted-paths, which checks the file an import resolves to
+ * (alias, relative or barrel alike). Package bans use no-restricted-imports.
  */
-/** A folder itself (barrel/index imports) and anything inside it, via alias or relative path. */
-const dir = (...names) => names.flatMap((n) => [`**/${n}`, `**/${n}/**`]);
-
-const layer = (files, patterns) => ({
+const DB_DRIVERS = ["postgres", "postgres/*", "drizzle-orm", "drizzle-orm/*"];
+const banPackages = (files, ...patterns) => ({
   files,
   rules: { "no-restricted-imports": ["error", { patterns }] },
 });
-
-const DB_DRIVERS = ["postgres", "postgres/*", "drizzle-orm", "drizzle-orm/*"];
 
 export default defineConfig([
   ...nextVitals,
@@ -31,50 +30,63 @@ export default defineConfig([
     "test-results/**",
   ]),
 
-  layer(
+  {
+    files: ["src/**"],
+    settings: {
+      "import/resolver": { typescript: { project: "./tsconfig.json" }, node: true },
+    },
+    rules: {
+      "import/no-restricted-paths": [
+        "error",
+        {
+          zones: [
+            {
+              target: "./src/domain",
+              from: ["./src/server", "./src/ui", "./src/app", "./src/client"],
+              message: "domain/ is pure: it must not import other layers.",
+            },
+            {
+              target: ["./src/ui", "./src/client"],
+              from: "./src/server",
+              message: "Browser code must not import server code.",
+            },
+            {
+              target: "./src/server",
+              from: ["./src/ui", "./src/app", "./src/client"],
+              message: "server/ must not import UI, routes or browser code.",
+            },
+            {
+              target: "./src/app",
+              from: ["./src/server/repos", "./src/server/db"],
+              message: "Routes call services, not repos or the database.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  banPackages(
     ["src/domain/**"],
-    [
-      {
-        group: dir("server", "ui", "app", "client"),
-        message: "domain/ is pure: it must not import other layers.",
-      },
-      {
-        group: ["next", "next/*", "react", "react/*", "react-dom", "react-dom/*", ...DB_DRIVERS],
-        message: "domain/ is pure: no framework or database imports.",
-      },
-      {
-        group: ["node:*", "fs", "fs/*", "path", "child_process", "http", "https", "net"],
-        message: "domain/ is pure: no I/O.",
-      },
-    ],
+    {
+      group: ["next", "next/*", "react", "react/*", "react-dom", "react-dom/*", ...DB_DRIVERS],
+      message: "domain/ is pure: no framework or database imports.",
+    },
+    {
+      group: ["node:*", "fs", "fs/*", "path", "child_process", "http", "https", "net"],
+      message: "domain/ is pure: no I/O.",
+    },
   ),
-  layer(
+  banPackages(
     ["src/ui/**", "src/client/**"],
-    [
-      {
-        group: [...dir("server"), "server-only"],
-        message: "Browser code must not import server code.",
-      },
-      { group: DB_DRIVERS, message: "Browser code must not import database drivers." },
-    ],
+    {
+      group: ["server-only", "react-dom/server"],
+      message: "Browser code must not import server code.",
+    },
+    { group: DB_DRIVERS, message: "Browser code must not import database drivers." },
   ),
-  layer(
-    ["src/server/**"],
-    [
-      {
-        group: dir("ui", "app", "client"),
-        message: "server/ must not import UI, routes or browser code.",
-      },
-    ],
-  ),
-  layer(
-    ["src/app/**"],
-    [
-      {
-        group: dir("server/repos", "server/db"),
-        message: "Routes call services, not repos or the database.",
-      },
-      { group: DB_DRIVERS, message: "Routes call services, not the database." },
-    ],
-  ),
+  banPackages(["src/app/**"], {
+    group: DB_DRIVERS,
+    message: "Routes call services, not the database.",
+  }),
 ]);

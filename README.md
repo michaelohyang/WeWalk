@@ -20,24 +20,39 @@ Requires Node 22.12+ and pnpm 10 (`corepack enable`).
 
 ```sh
 pnpm install
-cp .env.example .env.local   # fill in later phases; Phase 0 needs nothing
+cp .env.example .env.local   # then fill in the values (see below)
 pnpm dev                     # http://localhost:3000
 ```
 
+Tests don't need a database: they run on [PGlite](https://pglite.dev), an in-memory Postgres.
+
+### Database (Supabase)
+
+1. Create a Supabase project. Under **Connect**, copy the **transaction pooler** URL (port 6543)
+   into `DATABASE_URL` and the **direct** URL (port 5432) into `DIRECT_URL`.
+2. `pnpm db:migrate` creates the tables (with row-level security on).
+3. `pnpm db:seed` loads the stations from `src/server/db/seed/stations.ts`. Re-run it after
+   editing that file. It upserts, and never deletes.
+4. Set `CREW_CODE` (`openssl rand -hex 16`). Your crew's invite link is `/j/<CREW_CODE>`. The first
+   person to join becomes the owner.
+
 ## Scripts
 
-| Command           | What it does                                                         |
-| ----------------- | -------------------------------------------------------------------- |
-| `pnpm dev`        | Dev server                                                           |
-| `pnpm build`      | Production build                                                     |
-| `pnpm start`      | Serve the production build                                           |
-| `pnpm check`      | Format check, lint, typecheck and unit tests. Run before pushing     |
-| `pnpm lint`       | ESLint, including the layer rules                                    |
-| `pnpm typecheck`  | TypeScript, no emit                                                  |
-| `pnpm test`       | Unit tests (Vitest): `src/**/*.test.{ts,tsx}`, next to the code      |
-| `pnpm test:watch` | Unit tests in watch mode                                             |
-| `pnpm e2e`        | Browser tests (Playwright) at 390×844, light and dark, on `pnpm dev` |
-| `pnpm format`     | Format everything with Prettier                                      |
+| Command            | What it does                                                         |
+| ------------------ | -------------------------------------------------------------------- |
+| `pnpm dev`         | Dev server                                                           |
+| `pnpm build`       | Production build                                                     |
+| `pnpm start`       | Serve the production build                                           |
+| `pnpm check`       | Format check, lint, typecheck and unit tests. Run before pushing     |
+| `pnpm lint`        | ESLint, including the layer rules                                    |
+| `pnpm typecheck`   | TypeScript, no emit                                                  |
+| `pnpm test`        | Unit tests (Vitest): `src/**/*.test.{ts,tsx}`, next to the code      |
+| `pnpm test:watch`  | Unit tests in watch mode                                             |
+| `pnpm e2e`         | Browser tests (Playwright) at 390×844, light and dark, on `pnpm dev` |
+| `pnpm format`      | Format everything with Prettier                                      |
+| `pnpm db:generate` | Write a new SQL migration after changing `src/server/db/schema.ts`   |
+| `pnpm db:migrate`  | Apply migrations to `DIRECT_URL`                                     |
+| `pnpm db:seed`     | Upsert the station list into `DIRECT_URL`                            |
 
 `CI=1 pnpm e2e` tests the production build instead, so run `pnpm build` first.
 CI (`.github/workflows/ci.yml`) runs format, lint, typecheck, unit tests, build and e2e on every

@@ -1,0 +1,323 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { POST as adminRecovery } from "@/app/api/admin/recovery-links/route";
+import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
+import { POST as join } from "@/app/api/join/route";
+import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
+import { POST as pairLinks } from "@/app/api/me/pair-links/route";
+import { GET as me, PATCH as renameMe } from "@/app/api/me/route";
+import { POST as pair } from "@/app/api/pair/route";
+import { DELETE as deleteReview, PUT as putReview } from "@/app/api/reviews/[id]/route";
+import { setDb, type Db } from "@/server/db/client";
+import { createTestDb, resetTestDb } from "@/server/db/testing";
+import { Phone } from "./client";
+
+const CODE = "crew-code-for-tests-0123456789";
+let db: Db;
+let n = 0;
+const newId = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
+const today = () => new Date().toISOString().slice(0, 10);
+const review = (over: Record<string, unknown> = {}) => ({
+  stationId: "18-w-18th-st",
+  visitedOn: today(),
+  scores: { coffee: 4, wifi: 5 },
+  ...over,
+});
+
+beforeAll(async () => {
+  db = await createTestDb();
+  setDb(db);
+  vi.stubEnv("CREW_CODE", CODE);
+});
+afterAll(() => {
+  setDb(undefined);
+  vi.unstubAllEnvs();
+});
+beforeEach(() => resetTestDb(db));
+
+async function joined(name: string): Promise<Phone> {
+  const phone = new Phone();
+  const res = await phone.call(join, "POST", "/api/join", { body: { code: CODE, name } });
+  expect(res.status).toBe(201);
+  return phone;
+}
+
+describe("joining", () => {
+  it("sets an httpOnly, SameSite=Lax session cookie and returns the member", async () => {
+    const phone = new Phone();
+    const res = await phone.call(join, "POST", "/api/join", {
+      body: { code: CODE, name: " Dana " },
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.member).toMatchObject({ name: "Dana", isOwner: true });
+    expect(res.setCookie).toMatch(/^ww_session=[\w-]{43};/);
+    expect(res.setCookie).toMatch(/HttpOnly/i);
+    expect(res.setCookie).toMatch(/SameSite=lax/i);
+    expect((await phone.call(me, "GET", "/api/me")).body.member.name).toBe("Dana");
+  });
+
+  it("rejects a wrong code (401) and a taken name (409)", async () => {
+    await joined("Dana");
+    const phone = new Phone();
+    expect(
+      (await phone.call(join, "POST", "/api/join", { body: { code: "nope", name: "Sal" } })).status,
+    ).toBe(401);
+    const taken = await phone.call(join, "POST", "/api/join", {
+      body: { code: CODE, name: "dana" },
+    });
+    expect(taken.status).toBe(409);
+    expect(taken.body.error.message).toMatch(/already goes by/);
+    expect(phone.cookie).toBe("");
+  });
+
+  it("validates input with field details", async () => {
+    const res = await new Phone().call(join, "POST", "/api/join", {
+      body: { code: CODE, name: "  " },
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error.details.fields.name).toBeDefined();
+  });
+});
+
+describe("every member route needs a session", () => {
+  it.each([
+    ["GET /api/me", () => new Phone().call(me, "GET", "/api/me")],
+    [
+      "PUT review",
+      () =>
+        new Phone().call(putReview, "PUT", "/api/reviews/x", {
+          params: { id: newId() },
+          body: review(),
+        }),
+    ],
+    [
+      "DELETE review",
+      () => new Phone().call(deleteReview, "DELETE", "/api/reviews/x", { params: { id: newId() } }),
+    ],
+    [
+      "PUT checkin",
+      () =>
+        new Phone().call(putCheckin, "PUT", "/api/checkins/x", {
+          params: { id: newId() },
+          body: { stationId: "dock-72", visitedOn: today() },
+        }),
+    ],
+    ["POST pair link", () => new Phone().call(pairLinks, "POST", "/api/me/pair-links")],
+    [
+      "POST recovery",
+      () =>
+        new Phone().call(adminRecovery, "POST", "/api/admin/recovery-links", {
+          body: { memberId: newId() },
+        }),
+    ],
+  ])("%s → 401", async (_, call) => expect((await call()).status).toBe(401));
+
+  it("treats a forged cookie as signed out", async () => {
+    const phone = new Phone();
+    phone.cookie = "ww_session=forged-token-value-forged-token-value-forged";
+    expect((await phone.call(me, "GET", "/api/me")).status).toBe(401);
+  });
+});
+
+describe("request hygiene", () => {
+  it("rejects cross-site writes", async () => {
+    const phone = await joined("Dana");
+    const res = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+      headers: { origin: "https://evil.example" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("requires JSON and valid JSON", async () => {
+    const phone = await joined("Dana");
+    const params = { id: newId() };
+    const form = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params,
+      raw: "stationId=x",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+    });
+    expect(form.status).toBe(400);
+    const broken = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params,
+      raw: "{not json",
+      headers: { "content-type": "application/json" },
+    });
+    expect(broken.status).toBe(400);
+  });
+
+  it("rejects a malformed id", async () => {
+    const phone = await joined("Dana");
+    const res = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: "1; drop table" },
+      body: review(),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("reviews", () => {
+  it("creates (201), edits (200), conflicts on a second review (409 + existingId), deletes (204)", async () => {
+    const phone = await joined("Dana");
+    const id = newId();
+    const created = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id },
+      body: review(),
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.review).toMatchObject({ id, scores: { coffee: 4, wifi: 5 } });
+
+    const edited = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id },
+      body: review({ hotTake: "solid" }),
+    });
+    expect(edited.status).toBe(200);
+    expect(edited.body.review.hotTake).toBe("solid");
+
+    const dupe = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+    });
+    expect(dupe.status).toBe(409);
+    expect(dupe.body.error.details.existingId).toBe(id);
+
+    expect(
+      (await phone.call(deleteReview, "DELETE", "/api/reviews/x", { params: { id } })).status,
+    ).toBe(204);
+    expect(
+      (await phone.call(deleteReview, "DELETE", "/api/reviews/x", { params: { id } })).status,
+    ).toBe(204);
+  });
+
+  it("forbids editing or deleting someone else's review (403)", async () => {
+    const dana = await joined("Dana");
+    const sal = await joined("Sal");
+    const id = newId();
+    await dana.call(putReview, "PUT", "/api/reviews/x", { params: { id }, body: review() });
+    expect(
+      (await sal.call(putReview, "PUT", "/api/reviews/x", { params: { id }, body: review() }))
+        .status,
+    ).toBe(403);
+    expect(
+      (await sal.call(deleteReview, "DELETE", "/api/reviews/x", { params: { id } })).status,
+    ).toBe(403);
+  });
+
+  it("rejects bad scores and unknown stations", async () => {
+    const phone = await joined("Dana");
+    const bad = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review({ scores: {} }),
+    });
+    expect(bad.status).toBe(400);
+    const nowhere = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review({ stationId: "nowhere" }),
+    });
+    expect(nowhere.status).toBe(404);
+  });
+});
+
+describe("check-ins", () => {
+  it("201 first, 200 on retry with the same id, 409 on a second id the same day", async () => {
+    const phone = await joined("Dana");
+    const body = { stationId: "dock-72", visitedOn: today() };
+    const id = newId();
+    expect(
+      (await phone.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body })).status,
+    ).toBe(201);
+    expect(
+      (await phone.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body })).status,
+    ).toBe(200);
+    expect(
+      (await phone.call(putCheckin, "PUT", "/api/checkins/x", { params: { id: newId() }, body }))
+        .status,
+    ).toBe(409);
+  });
+});
+
+describe("phones", () => {
+  it("pairs a second phone with a one-time link, lists both, signs one out", async () => {
+    const first = await joined("Dana");
+    const link = await first.call(pairLinks, "POST", "/api/me/pair-links");
+    expect(link.status).toBe(201);
+    expect(link.body.url).toMatch(/^http:\/\/wewalk\.test\/pair\/[\w-]{43}$/);
+    const token = link.body.url.split("/").pop();
+
+    const second = new Phone();
+    const paired = await second.call(pair, "POST", "/api/pair", { body: { token } });
+    expect(paired.status).toBe(200);
+    expect(paired.body.member.name).toBe("Dana");
+    expect((await new Phone().call(pair, "POST", "/api/pair", { body: { token } })).status).toBe(
+      410,
+    );
+
+    const { devices } = (await first.call(me, "GET", "/api/me")).body;
+    expect(devices).toHaveLength(2);
+    const other = devices.find((d: { current: boolean }) => !d.current);
+    expect(
+      (await first.call(signOutDevice, "DELETE", "/api/me/devices/x", { params: { id: other.id } }))
+        .status,
+    ).toBe(204);
+    expect((await second.call(me, "GET", "/api/me")).status).toBe(401);
+  });
+
+  it("signing out this phone clears its cookie", async () => {
+    const phone = await joined("Dana");
+    const { devices } = (await phone.call(me, "GET", "/api/me")).body;
+    const res = await phone.call(signOutDevice, "DELETE", "/api/me/devices/x", {
+      params: { id: devices[0].id },
+    });
+    expect(res.status).toBe(204);
+    expect(res.setCookie).toMatch(/ww_session=;/);
+  });
+
+  it("renames, refusing a taken name", async () => {
+    const dana = await joined("Dana");
+    await joined("Sal");
+    expect(
+      (await dana.call(renameMe, "PATCH", "/api/me", { body: { name: "Dana K" } })).body.member
+        .name,
+    ).toBe("Dana K");
+    expect((await dana.call(renameMe, "PATCH", "/api/me", { body: { name: "SAL" } })).status).toBe(
+      409,
+    );
+  });
+
+  it("recovery links are owner-only (403) and work once", async () => {
+    const owner = await joined("Owner");
+    const dana = await joined("Dana");
+    const danaId = (await dana.call(me, "GET", "/api/me")).body.member.id;
+    expect(
+      (
+        await dana.call(adminRecovery, "POST", "/api/admin/recovery-links", {
+          body: { memberId: danaId },
+        })
+      ).status,
+    ).toBe(403);
+
+    const link = await owner.call(adminRecovery, "POST", "/api/admin/recovery-links", {
+      body: { memberId: danaId },
+    });
+    expect(link.status).toBe(201);
+    const fresh = new Phone();
+    const res = await fresh.call(pair, "POST", "/api/pair", {
+      body: { token: link.body.url.split("/").pop() },
+    });
+    expect(res.body.member.name).toBe("Dana");
+  });
+});
+
+describe("failures inside the server", () => {
+  it("returns a generic 500 without leaking details", async () => {
+    const phone = await joined("Dana");
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    setDb(undefined);
+    vi.stubEnv("DATABASE_URL", "");
+    const res = await phone.call(me, "GET", "/api/me");
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(res.body)).not.toMatch(/DATABASE_URL/);
+    setDb(db);
+    spy.mockRestore();
+  });
+});
