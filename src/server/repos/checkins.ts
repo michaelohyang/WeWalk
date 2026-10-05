@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { CheckinInput } from "@/domain/schemas";
 import type { CheckinRecord } from "@/domain/records";
 import type { Db } from "../db/client";
@@ -32,4 +32,29 @@ export async function insertCheckin(db: Db, id: string, memberId: string, input:
 
 export async function listCheckins(db: Db): Promise<CheckinRecord[]> {
   return (await db.select().from(checkins)).map(toRecord);
+}
+
+/** Returns undefined if the check-in no longer exists. */
+export async function updateCheckinNote(db: Db, id: string, note: string) {
+  const [row] = await db.update(checkins).set({ note }).where(eq(checkins.id, id)).returning();
+  return row && toRecord(row);
+}
+
+export async function findCheckinOn(
+  db: Db,
+  memberId: string,
+  stationId: string,
+  visitedOn: string,
+) {
+  const [row] = await db
+    .select()
+    .from(checkins)
+    .where(
+      and(
+        eq(checkins.memberId, memberId),
+        eq(checkins.stationId, stationId),
+        eq(checkins.visitedOn, visitedOn),
+      ),
+    );
+  return row && toRecord(row);
 }

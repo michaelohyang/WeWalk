@@ -1,0 +1,102 @@
+/* Shared form bits for the join, pairing and crew screens. */
+.card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.lede {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: 14px;
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field > span:first-child {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--fg-2);
+}
+.input {
+  width: 100%;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 12px 14px;
+  font-size: 16px;
+  min-height: 48px;
+  min-width: 0;
+}
+.input:focus {
+  border-color: var(--brand);
+  background: var(--card);
+  outline: none;
+}
+.input[aria-invalid="true"] {
+  border-color: var(--s-bad);
+}
+.error {
+  color: var(--s-bad-ink);
+  font-weight: 700;
+  font-size: 13.5px;
+  margin: 0;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  min-height: 48px;
+  padding-inline: 20px;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+}
+.primary {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+.secondary {
+  background: var(--surface);
+  color: var(--fg);
+}
+.primary[disabled],
+.secondary[disabled] {
+  opacity: 0.6;
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.link {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 13px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.textBtn {
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: 44px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--fg-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.danger {
+  color: var(--s-bad-ink);
+}

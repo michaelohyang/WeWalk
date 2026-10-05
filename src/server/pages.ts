@@ -3,7 +3,15 @@ import type { AreaKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { getSession } from "./session";
-import { crewView, exploreView, passportView, ranksView, stationView } from "./services/views";
+import { MIN_CREW_CODE_LENGTH } from "./services/auth";
+import {
+  crewView,
+  exploreView,
+  passportView,
+  ranksView,
+  rateView,
+  stationView,
+} from "./services/views";
 
 /*
  * Data loaders for pages. Each one checks the session itself: layouts and pages render in
@@ -39,5 +47,16 @@ export async function loadPassport() {
 export async function loadCrew() {
   const session = await getSession();
   if (!session) return null;
-  return crewView(await getDb(), session);
+  const code = process.env.CREW_CODE;
+  return crewView(
+    await getDb(),
+    session,
+    code && code.length >= MIN_CREW_CODE_LENGTH ? code : null,
+  );
+}
+
+export async function loadRate(stationId: string | undefined) {
+  const session = await getSession();
+  if (!session) return null;
+  return rateView(await getDb(), session, stationId);
 }

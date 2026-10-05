@@ -5,6 +5,7 @@ import { Empty } from "@/ui/Empty";
 import { plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import { ThemeSwitch } from "@/ui/ThemeSwitch";
+import { AddPhone, InviteFriends, RecoveryLinks, Rename, SignOutPhone } from "./crew-controls";
 import styles from "./crew.module.css";
 
 export const metadata: Metadata = { title: "Crew" };
@@ -15,7 +16,8 @@ const lastSeen = (iso: string) =>
 export default async function CrewPage() {
   const view = await loadCrew();
   if (!view) return null;
-  const { me, devices, leaderboard } = view;
+  const { me, devices, leaderboard, invitePath, members } = view;
+  const top = leaderboard[0]?.stations;
 
   return (
     <Page title="Crew">
@@ -28,19 +30,6 @@ export default async function CrewPage() {
           </div>
         </div>
       </div>
-
-      <Section title="Your phones" note={devices.length}>
-        <ul className={styles.devices}>
-          {devices.map((d) => (
-            <li key={d.id}>
-              <span>{d.current ? "This phone" : d.label || "Another phone"}</span>
-              <span className={styles.sub}>
-                {d.current ? "signed in now" : `last seen ${lastSeen(d.lastSeenAt)}`}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Section>
 
       <Section title="Leaderboard" note="by stations visited">
         {leaderboard.length ? (
@@ -55,9 +44,7 @@ export default async function CrewPage() {
                   </span>
                   {m.hotTake && <span className={styles.take}>“{m.hotTake}”</span>}
                 </div>
-                <span
-                  className={`${styles.count} ${m.stations === leaderboard[0]!.stations ? styles.first : ""}`}
-                >
+                <span className={`${styles.count} ${m.stations === top ? styles.first : ""}`}>
                   {m.stations}
                   <small>{m.stations === 1 ? "station" : "stations"}</small>
                 </span>
@@ -70,6 +57,38 @@ export default async function CrewPage() {
           </Empty>
         )}
       </Section>
+
+      <Section title="Invite friends">
+        <InviteFriends invitePath={invitePath} />
+      </Section>
+
+      <Section title="You">
+        <Rename name={me.name} />
+      </Section>
+
+      <Section title="Your phones" note={devices.length}>
+        <ul className={styles.devices}>
+          {devices.map((d) => (
+            <li key={d.id}>
+              <span>
+                {d.current ? "This phone" : d.label || "Another phone"}
+                <span className={styles.sub}>
+                  {" "}
+                  · {d.current ? "signed in now" : `last seen ${lastSeen(d.lastSeenAt)}`}
+                </span>
+              </span>
+              <SignOutPhone deviceId={d.id} current={d.current} />
+            </li>
+          ))}
+        </ul>
+        <AddPhone />
+      </Section>
+
+      {me.isOwner && members.length > 0 && (
+        <Section title="Lost phone help">
+          <RecoveryLinks members={members} />
+        </Section>
+      )}
 
       <Section title="Appearance">
         <ThemeSwitch />

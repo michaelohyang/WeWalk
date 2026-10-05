@@ -18,6 +18,11 @@ export const MIN_CREW_CODE_LENGTH = 16;
 
 const NAME_TAKEN = "Someone in the crew already goes by that. Add an initial?";
 
+/** Whether `code` is this crew's invite code (and joining is switched on). */
+export function isInviteCode(code: string, crewCode: string | undefined): boolean {
+  return !!crewCode && crewCode.length >= MIN_CREW_CODE_LENGTH && safeEqual(code, crewCode);
+}
+
 /** A new phone session for `memberId`. Returns the raw token for the cookie. */
 async function startDevice(db: Db, memberId: string): Promise<string> {
   const token = newToken();

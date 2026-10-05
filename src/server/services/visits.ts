@@ -80,7 +80,12 @@ export async function deleteReview(db: Db, session: Session, id: string): Promis
   await reviewRepo.deleteReview(db, id);
 }
 
-/** One check-in per person per station per day. Repeating the same id returns the original. */
+/**
+ * One check-in per person per station per day. PUT is an upsert keyed by the client's id:
+ * sending the same id again updates the note (that's how "Add a note" works after a one-tap
+ * check-in), and an identical retry is a no-op. A second id for the same station and day is a
+ * conflict, with `details.existingId` pointing at the check-in to add a note to instead.
+ */
 export async function putCheckin(
   db: Db,
   session: Session,
@@ -93,7 +98,14 @@ export async function putCheckin(
     if (existing.memberId !== session.member.id) {
       throw new AppError("forbidden", "That's someone else's check-in.");
     }
-    return { checkin: existing, created: false };
+    if (existing.stationId !== input.stationId || existing.visitedOn !== input.visitedOn) {
+      const message = "A check-in can't move to another building or day.";
+      throw new AppError("invalid", message, { fields: { visitedOn: [message] } });
+    }
+    if (existing.note === input.note) return { checkin: existing, created: false };
+    const updated = await checkinRepo.updateCheckinNote(db, id, input.note);
+    if (!updated) throw new AppError("not_found", "That check-in was just deleted.");
+    return { checkin: updated, created: false };
   }
 
   await assertVisitable(db, input.stationId, input.visitedOn, now);
@@ -102,9 +114,13 @@ export async function putCheckin(
     if (created) return { checkin: created, created: true };
     return putCheckin(db, session, id, input, now); // raced with a retry of this request
   } catch (e) {
-    if (isUniqueViolation(e, "checkins_one_per_member_station_day")) {
-      throw new AppError("conflict", "You already checked in here today.");
-    }
-    throw e;
+    if (!isUniqueViolation(e, "checkins_one_per_member_station_day")) throw e;
+    const today = await checkinRepo.findCheckinOn(
+      db,
+      session.member.id,
+      input.stationId,
+      input.visitedOn,
+    );
+    throw new AppError("conflict", "You already checked in here today.", { existingId: today?.id });
   }
 }

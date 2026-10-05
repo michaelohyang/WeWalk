@@ -1,5 +1,7 @@
 import { getSession } from "@/server/session";
 import { NavTracker } from "@/ui/BackLink";
+import { OutboxStatus } from "@/ui/OutboxStatus";
+import { ToastProvider } from "@/ui/Toast";
 import { Empty } from "@/ui/Empty";
 import { Page } from "@/ui/Page";
 import { TabBar } from "@/ui/TabBar";
@@ -25,10 +27,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     );
   }
   return (
-    <>
+    <ToastProvider>
       <NavTracker />
       {children}
+      <OutboxStatus />
       <TabBar />
-    </>
+    </ToastProvider>
   );
 }

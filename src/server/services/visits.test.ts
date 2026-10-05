@@ -164,15 +164,53 @@ describe("deleteReview", () => {
 });
 
 describe("putCheckin", () => {
-  it("checks in once per day; the same id again returns the original", async () => {
+  it("checks in once per day; a second id that day conflicts and points at the first", async () => {
     const id = newId();
-    expect((await putCheckin(db, dana, id, checkinOf({ note: "quiet" }), NOW)).created).toBe(true);
-    const retry = await putCheckin(db, dana, id, checkinOf(), NOW);
-    expect(retry).toMatchObject({ created: false, checkin: { note: "quiet" } });
-    expect((await failure(putCheckin(db, dana, newId(), checkinOf(), NOW)))?.code).toBe("conflict");
+    expect((await putCheckin(db, dana, id, checkinOf(), NOW)).created).toBe(true);
+    expect(await failure(putCheckin(db, dana, newId(), checkinOf(), NOW))).toEqual({
+      code: "conflict",
+      details: { existingId: id },
+    });
+    const yesterday = await putCheckin(
+      db,
+      dana,
+      newId(),
+      checkinOf({ visitedOn: "2026-10-04" }),
+      NOW,
+    );
+    expect(yesterday.created).toBe(true);
+  });
+
+  it("the same id again adds or changes the note; an identical retry is a no-op", async () => {
+    const id = newId();
+    await putCheckin(db, dana, id, checkinOf(), NOW);
+    const noted = await putCheckin(
+      db,
+      dana,
+      id,
+      checkinOf({ note: "4th floor was dead quiet" }),
+      NOW,
+    );
+    expect(noted).toMatchObject({ created: false, checkin: { note: "4th floor was dead quiet" } });
+    const retry = await putCheckin(
+      db,
+      dana,
+      id,
+      checkinOf({ note: "4th floor was dead quiet" }),
+      NOW,
+    );
+    expect(retry).toMatchObject({ created: false, checkin: { note: "4th floor was dead quiet" } });
+  });
+
+  it("won't move a check-in to another building or day", async () => {
+    const id = newId();
+    await putCheckin(db, dana, id, checkinOf(), NOW);
     expect(
-      (await putCheckin(db, dana, newId(), checkinOf({ visitedOn: "2026-10-04" }), NOW)).created,
-    ).toBe(true);
+      (await failure(putCheckin(db, dana, id, checkinOf({ stationId: "dock-72" }), NOW)))?.code,
+    ).toBe("invalid");
+    expect(
+      (await failure(putCheckin(db, dana, id, checkinOf({ visitedOn: "2026-10-04" }), NOW)))?.code,
+    ).toBe("invalid");
   });
 
   it("won't return someone else's check-in for a reused id", async () => {

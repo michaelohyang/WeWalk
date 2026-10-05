@@ -1,0 +1,29 @@
+.region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  z-index: 60;
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+  padding-inline: 16px;
+}
+.toast {
+  background: var(--fg);
+  color: var(--bg);
+  padding: 12px 18px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: var(--shadow);
+  animation: drop 0.25s ease-out;
+  max-width: 100%;
+  text-align: center;
+}
+@keyframes drop {
+  from {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}

@@ -130,6 +130,8 @@ export interface ReviewView {
 
 export interface StationView {
   station: StationCard;
+  /** Your check-ins here (newest first), so the page knows if you're checked in today. */
+  myCheckins: { id: string; visitedOn: IsoDate; note: string }[];
   categories: { key: CategoryKey; value: number | null }[];
   reviews: ReviewView[];
   log: { date: IsoDate; by: string; text: string }[];
@@ -152,6 +154,10 @@ export async function stationView(
 
   return {
     station,
+    myCheckins: crew.checkins
+      .filter((c) => c.stationId === id && c.memberId === session.member.id)
+      .sort((a, b) => b.visitedOn.localeCompare(a.visitedOn))
+      .map(({ id, visitedOn, note }) => ({ id, visitedOn, note })),
     categories: CATEGORY_KEYS.map((key) => ({ key, value: score.categories[key] })),
     reviews: [...reviews].sort(latestFirst).map((r) => ({
       id: r.id,
@@ -237,6 +243,10 @@ export async function passportView(db: Db, session: Session): Promise<PassportVi
 
 export interface CrewView {
   me: { id: string; name: string; isOwner: boolean };
+  /** Path of the crew's invite link (`/j/<code>`), or null if joining is switched off. */
+  invitePath: string | null;
+  /** Everyone, for the owner's recovery links. Empty for non-owners. */
+  members: { id: string; name: string }[];
   devices: { id: string; label: string; lastSeenAt: string; current: boolean }[];
   leaderboard: {
     memberId: string;
@@ -248,7 +258,11 @@ export interface CrewView {
   }[];
 }
 
-export async function crewView(db: Db, session: Session): Promise<CrewView> {
+export async function crewView(
+  db: Db,
+  session: Session,
+  crewCode: string | null,
+): Promise<CrewView> {
   const [crew, devices] = await Promise.all([loadCrew(db), listDevices(db, session)]);
   const board = crew.members.map((m) => {
     const rs = crew.reviews.filter((r) => r.memberId === m.id);
@@ -267,6 +281,8 @@ export async function crewView(db: Db, session: Session): Promise<CrewView> {
   });
   return {
     me: { id: session.member.id, name: session.member.name, isOwner: session.member.isOwner },
+    invitePath: crewCode ? `/j/${encodeURIComponent(crewCode)}` : null,
+    members: session.member.isOwner ? crew.members.filter((m) => m.id !== session.member.id) : [],
     devices: devices.map((d) => ({
       id: d.id,
       label: d.label,
@@ -278,5 +294,55 @@ export async function crewView(db: Db, session: Session): Promise<CrewView> {
       .sort(
         (a, b) => b.stations - a.stations || b.reviews - a.reviews || a.name.localeCompare(b.name),
       ),
+  };
+}
+
+export interface RateView {
+  /** Everything you can rate, A–Z. */
+  stations: { id: string; name: string; neighborhood: string }[];
+  /** The station being rated, if the URL named a real one. */
+  stationId: string | null;
+  /** Your existing review of it: the form opens in edit mode. */
+  existing: {
+    id: string;
+    visitedOn: IsoDate;
+    scores: ReviewRecord["scores"];
+    hotTake: string;
+    body: string;
+    tags: Tag[];
+  } | null;
+  /** Stations you've been to (for the "first visit: new stamp" moment). */
+  visitedIds: string[];
+}
+
+export async function rateView(
+  db: Db,
+  session: Session,
+  stationId: string | undefined,
+): Promise<RateView> {
+  const crew = await loadCrew(db);
+  const station = crew.stations.find((s) => s.id === stationId);
+  const mine =
+    station &&
+    crew.reviews.find((r) => r.stationId === station.id && r.memberId === session.member.id);
+  const visits = [...crew.reviews, ...crew.checkins].filter(
+    (v) => v.memberId === session.member.id,
+  );
+  return {
+    stations: [...crew.stations]
+      .sort((a, b) => a.name.localeCompare(b.name, "en-US", { numeric: true }))
+      .map((s) => ({ id: s.id, name: s.name, neighborhood: s.neighborhood })),
+    stationId: station?.id ?? null,
+    existing: mine
+      ? {
+          id: mine.id,
+          visitedOn: mine.visitedOn,
+          scores: mine.scores,
+          hotTake: mine.hotTake,
+          body: mine.body,
+          tags: mine.tags,
+        }
+      : null,
+    visitedIds: [...new Set(visits.map((v) => v.stationId))],
   };
 }
