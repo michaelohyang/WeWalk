@@ -2,6 +2,7 @@ import "server-only";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { connectionOptions } from "./connection";
 import * as schema from "./schema";
 
 /** Any Drizzle Postgres database with our schema: postgres-js in the app, PGlite locally. */
@@ -33,7 +34,7 @@ async function open(url: string | undefined): Promise<Db> {
     const { openLocalDb } = await import("./local");
     return openLocalDb(dir === "memory" ? undefined : dir);
   }
-  return drizzle(postgres(url, { prepare: false }), { schema });
+  return drizzle(postgres(url, { prepare: false, ...connectionOptions(url) }), { schema });
 }
 
 /** Tests swap in their own database. */

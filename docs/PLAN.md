@@ -285,6 +285,10 @@ nothing to rewire later.
 - **Product review:** walk journeys A and C on a throttled phone profile.
 
 ### Phase 4: Ship
+Step-by-step guide: [`docs/DEPLOY.md`](DEPLOY.md). In the repo: `pnpm db:deploy` (migrations, seed,
+RLS check) runs before production builds only (`vercel.json`); `pnpm smoke <url>` is a read-only
+production check; security headers (no-referrer, so invite codes in URLs never leak),
+noindex everywhere, a generic Open Graph card, TLS to the database.
 - Create the Supabase project and the Vercel project. Set `CREW_CODE`, `DATABASE_URL` (pooled) and
   `DIRECT_URL` (migrations). Run migrations in the deploy step. Confirm row-level security is on
   for every table.
