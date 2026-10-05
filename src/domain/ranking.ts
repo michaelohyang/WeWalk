@@ -1,5 +1,5 @@
 import type { CategoryKey } from "./categories";
-import type { StationScore } from "./scoring";
+import { roundScore, type StationScore } from "./scoring";
 
 export type RankKey = "overall" | CategoryKey;
 
@@ -11,8 +11,8 @@ export interface RankedStation {
 }
 
 /**
- * Stations with a score for `key`, best first. Ties go to more reviews, then name A–Z.
- * Stations without a score for `key` are left out.
+ * Stations with a score for `key`, best first. Stations showing the same (rounded) score are
+ * ordered by more reviews, then name A–Z. Stations without a score for `key` are left out.
  */
 export function rankStations(
   stations: readonly { id: string; name: string }[],
@@ -27,7 +27,7 @@ export function rankStations(
 
   rows.sort(
     (a, b) =>
-      b.value - a.value ||
+      roundScore(b.value) - roundScore(a.value) ||
       b.reviewCount - a.reviewCount ||
       a.station.name.localeCompare(b.station.name, "en-US"),
   );

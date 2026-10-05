@@ -20,7 +20,12 @@ const STATUS: Record<AppErrorCode, number> = {
   not_found: 404,
   conflict: 409,
   gone: 410,
+  too_large: 413,
 };
+
+/** Our bodies are a review at most (~3 KB). Anything near this is a mistake or abuse. */
+const MAX_BODY_BYTES = 64 * 1024;
+const TOO_LARGE = "That's too much to send at once.";
 
 export interface Ctx {
   req: NextRequest;
@@ -49,11 +54,14 @@ export function errorResponse(error: AppError): NextResponse {
   );
 }
 
-/** Writes must come from our own pages: a cross-site form or script can't use your cookie. */
+/**
+ * Writes must come from our own pages. Browsers always send Origin on these requests; a missing
+ * one means a non-browser client, which we don't need to support. SameSite=Lax cookies and the
+ * JSON content type already stop cross-site requests; this is defense in depth.
+ */
 function assertSameOrigin(req: NextRequest) {
   if (req.method === "GET" || req.method === "HEAD") return;
-  const origin = req.headers.get("origin");
-  if (origin && origin !== req.nextUrl.origin) {
+  if (req.headers.get("origin") !== req.nextUrl.origin) {
     throw new AppError("forbidden", "Requests must come from WeWalk itself.");
   }
 }
@@ -93,9 +101,14 @@ export async function readJson<S extends z.ZodType>(
   if (!req.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
     throw new AppError("invalid", "Send JSON.");
   }
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    throw new AppError("too_large", TOO_LARGE);
+  }
+  const raw = await req.text();
+  if (raw.length > MAX_BODY_BYTES) throw new AppError("too_large", TOO_LARGE);
   let body: unknown;
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
     throw new AppError("invalid", "That request body isn't valid JSON.");
   }

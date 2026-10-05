@@ -19,9 +19,12 @@ async function assertVisitable(db: Db, stationId: string, visitedOn: string, now
   if (!station || station.hidden)
     throw new AppError("not_found", "That building isn't on the map.");
   if (!isPlausibleVisitDate(visitedOn, now)) {
-    throw new AppError("invalid", "That visit date doesn't look right.", { field: "visitedOn" });
+    throw new AppError("invalid", BAD_DATE, { fields: { visitedOn: [BAD_DATE] } });
   }
 }
+
+const BAD_DATE = "That visit date doesn't look right.";
+const GONE = "That review was just deleted.";
 
 /**
  * Create or update your review. One review per person per station: a second review of the same
@@ -53,17 +56,18 @@ export async function putReview(
     }
   }
 
-  const current = existing ?? (await reviewRepo.findReview(db, id))!;
+  const current = existing ?? (await reviewRepo.findReview(db, id));
+  if (!current) throw new AppError("not_found", GONE);
   if (current.memberId !== me) throw new AppError("forbidden", "That's someone else's review.");
   if (current.stationId !== input.stationId) {
-    throw new AppError("invalid", "A review can't move to another building.", {
-      field: "stationId",
-    });
+    const message = "A review can't move to another building.";
+    throw new AppError("invalid", message, { fields: { stationId: [message] } });
   }
-  if (!isPlausibleVisitDate(input.visitedOn, now)) {
-    throw new AppError("invalid", "That visit date doesn't look right.", { field: "visitedOn" });
-  }
-  return { review: await reviewRepo.updateReview(db, id, input, now), created: false };
+  // A hidden (removed) station keeps its reviews, but they're frozen.
+  await assertVisitable(db, input.stationId, input.visitedOn, now);
+  const updated = await reviewRepo.updateReview(db, id, input, now);
+  if (!updated) throw new AppError("not_found", GONE);
+  return { review: updated, created: false };
 }
 
 /** Deleting a review that's already gone succeeds, so retries are safe. */

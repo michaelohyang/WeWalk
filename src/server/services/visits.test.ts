@@ -109,6 +109,26 @@ describe("putReview", () => {
     ).toBe("invalid");
   });
 
+  it("freezes reviews of a removed (hidden) station", async () => {
+    const id = newId();
+    await putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW);
+    await db.update(stations).set({ hidden: true }).where(eq(stations.id, "250-broadway"));
+    const edit = await failure(
+      putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW),
+    );
+    await db.update(stations).set({ hidden: false }).where(eq(stations.id, "250-broadway"));
+    expect(edit?.code).toBe("not_found");
+  });
+
+  it("reports field problems in details.fields", async () => {
+    const id = newId();
+    await putReview(db, dana, id, reviewOf(), NOW);
+    const moved = await failure(
+      putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW),
+    );
+    expect(moved?.details).toEqual({ fields: { stationId: [expect.any(String)] } });
+  });
+
   it("rejects an implausible date on edit too", async () => {
     const id = newId();
     await putReview(db, dana, id, reviewOf(), NOW);

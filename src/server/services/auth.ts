@@ -138,7 +138,9 @@ export async function signOutDevice(db: Db, session: Session, deviceId: string):
 /** `name` must already be normalized (see domain/schemas). */
 export async function rename(db: Db, session: Session, name: string): Promise<Member> {
   try {
-    return (await repo.renameMember(db, session.member.id, name, nameKey(name)))!;
+    const renamed = await repo.renameMember(db, session.member.id, name, nameKey(name));
+    if (!renamed) throw new AppError("unauthorized", "You're signed out.");
+    return renamed;
   } catch (e) {
     if (isUniqueViolation(e, "members_name_key_unique")) throw new AppError("conflict", NAME_TAKEN);
     throw e;

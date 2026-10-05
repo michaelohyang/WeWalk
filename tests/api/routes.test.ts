@@ -156,6 +156,37 @@ describe("request hygiene", () => {
   });
 });
 
+describe("request limits and odd input", () => {
+  it("rejects a write with no Origin header", async () => {
+    const phone = await joined("Dana");
+    const res = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+      headers: { origin: "" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects bodies over 64 KB with 413", async () => {
+    const phone = await joined("Dana");
+    const res = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review({ body: "x".repeat(70_000) }),
+    });
+    expect(res.status).toBe(413);
+  });
+
+  it("saves text containing a NUL byte with the control character removed", async () => {
+    const phone = await joined("Dana");
+    const res = await phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review({ hotTake: "a\u0000b" }),
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.review.hotTake).toBe("ab");
+  });
+});
+
 describe("reviews", () => {
   it("creates (201), edits (200), conflicts on a second review (409 + existingId), deletes (204)", async () => {
     const phone = await joined("Dana");

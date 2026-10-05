@@ -61,4 +61,11 @@ describe("tiers and formatting agree on the rounded value", () => {
     expect(tierOf(13 / 3)).toBe("great");
     expect(roundScore(3.449)).toBe(3.4);
   });
+
+  it("isn't fooled by float noise from summing", () => {
+    expect(roundScore(3.4499999999999993)).toBe(3.5); // a true 3.45
+    expect(tierOf(3.4499999999999993)).toBe("good");
+    expect(tierOf(2.7499999999999996)).toBe("ok"); // a true 2.75
+    expect(formatScore(3.4499999999999993)).toBe("3.5");
+  });
 });

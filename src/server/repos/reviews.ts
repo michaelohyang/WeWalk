@@ -68,13 +68,14 @@ export async function insertReview(
   return row && toReviewRecord(row);
 }
 
+/** Returns undefined if the review no longer exists (deleted meanwhile). */
 export async function updateReview(db: Db, id: string, input: ReviewInput, now: Date) {
   const [row] = await db
     .update(reviews)
     .set({ ...columns(input), updatedAt: now })
     .where(eq(reviews.id, id))
     .returning();
-  return toReviewRecord(row!);
+  return row && toReviewRecord(row);
 }
 
 export async function deleteReview(db: Db, id: string) {

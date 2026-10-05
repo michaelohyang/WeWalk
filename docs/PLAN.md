@@ -156,6 +156,8 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
 - **Locked out of every phone:** the owner (`members.is_owner`) creates a one-time recovery link
   for that member. It uses the same mechanism as pairing, with a 24-hour expiry.
 - **Names:** reviews point at `member_id`, so renaming yourself updates your name everywhere.
+- **Writes** must carry an `Origin` header equal to the site's own origin (browsers always send
+  it), have a JSON body, and be at most 64 KB.
 - **Access:** every page and API route needs a session. Without one, you see a "Get an invite
   link from your crew" screen.
 
@@ -165,10 +167,12 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
 - **A building's overall score** is the average of each person's overall score, so each friend
   counts once however many categories they rated.
 - **A category score** is the average of the people who rated that category.
-- **Ties in rankings** go to the building with more reviews, then to the name in A–Z order.
+- **Ties in rankings:** buildings that show the same score (one decimal) are ordered by more
+  reviews, then name A–Z. What you see decides, not hidden digits.
 - This intentionally differs from the prototype, which averaged the category averages. That let
   someone who rated all nine categories outweigh someone who rated one. Rankings and Station of
-  the Month otherwise follow the prototype's rules (`domain/activity.ts`).
+  the Month otherwise follow the prototype's rules (`domain/activity.ts`). `domain/parity.test.ts`
+  checks this against the prototype's own code.
 - **Score colors:** 4.3 and up green, 3.5 and up lime, 2.8 and up amber, below that red.
 
 **Passport (decided: personal).** You get a stamp the first time you check in at or review a
@@ -297,6 +301,7 @@ tap targets.
 |---|---|
 | The invite code leaks | Rotate the env var. Existing device sessions keep working |
 | The Supabase free tier pauses a project after a stretch of no activity (about a week, last checked), and it has to be restored by hand | Either a scheduled Vercel cron that pings the database daily, or the Pro plan ($25/mo). Check Supabase's current policy at Phase 4 |
+| Behind Vercel's proxy, `req.nextUrl.origin` doesn't match the public https origin, so every write gets 403 | Check a write against the production URL in the Phase 4 smoke test |
 | Serverless functions run out of database connections | Always use the transaction pooler URL in the app. The direct URL is for migrations only |
 | Supabase's auto-generated API exposes tables | Row-level security on with no policies. Keys stay server-side. Checked at the Phase 1 gate |
 | Cold starts make the first load feel slow | Static shell. Measured at the Phase 2 gate |

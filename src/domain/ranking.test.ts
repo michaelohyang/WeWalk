@@ -42,3 +42,34 @@ describe("rankStations", () => {
     expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["a", "d"]);
   });
 });
+
+describe("ties use the displayed score, not float noise", () => {
+  it("orders stations that show the same score by review count, then name", () => {
+    // Both are truly 3.0833…, but summing in a different order gives different floats.
+    const a = scoreStation([
+      { scores: { coffee: 3, wifi: 3, booths: 3, light: 3, noise: 3, seating: 3 } },
+      { scores: { coffee: 3, wifi: 4 } },
+      { scores: { coffee: 2, wifi: 3, booths: 3, light: 3 } },
+    ]);
+    const b = scoreStation([
+      { scores: { coffee: 2, wifi: 3, booths: 3, light: 3 } },
+      { scores: { coffee: 3, wifi: 4 } },
+      { scores: { coffee: 3, wifi: 3, booths: 3, light: 3, noise: 3, seating: 3 } },
+    ]);
+    const scores = new Map([
+      ["b", b],
+      ["a", a],
+    ]);
+    expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["a", "b"]);
+  });
+
+  it("puts more reviews first among equal displayed scores, even if the hidden digits differ", () => {
+    const scores = new Map([
+      // 4.333… shows as 4.3, one review
+      ["a", scoreStation([{ scores: { coffee: 4, wifi: 5, booths: 4 } }])],
+      // (4 + 4.5) / 2 = 4.25 also shows as 4.3, two reviews
+      ["b", scoreStation([{ scores: { vibe: 4 } }, { scores: { coffee: 4, wifi: 5 } }])],
+    ]);
+    expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["b", "a"]);
+  });
+});

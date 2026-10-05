@@ -1,11 +1,16 @@
-/** Failures a caller can act on. Routes map `code` to an HTTP status; anything else is a 500. */
+/**
+ * Failures a caller can act on. Routes map `code` to an HTTP status; anything else is a 500.
+ * Field-level problems go in `details.fields` as `{ [field]: string[] }`, the same shape for
+ * validation and service errors.
+ */
 export type AppErrorCode =
   | "invalid" // 400: the input breaks a rule
   | "unauthorized" // 401: no valid session or invite code
   | "forbidden" // 403: signed in, but not allowed
   | "not_found" // 404
   | "conflict" // 409: clashes with existing data
-  | "gone"; // 410: a one-time link that expired or was used
+  | "gone" // 410: a one-time link that expired or was used
+  | "too_large"; // 413: request body over the limit
 
 export class AppError extends Error {
   constructor(

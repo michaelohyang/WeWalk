@@ -16,9 +16,13 @@ export type Tier = "great" | "good" | "ok" | "bad";
 const mean = (xs: readonly number[]): number | null =>
   xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 
-/** Scores are shown with one decimal; tiers and ties use the same rounding so they agree. */
+/**
+ * Scores are shown with one decimal, and tiers and ranking ties use the same rounded value, so
+ * what you see is what decides. The epsilon absorbs float noise from summing in different
+ * orders (a true 3.45 can arrive as 3.4499999999999993).
+ */
 export function roundScore(value: number): number {
-  return Math.round(value * 10) / 10;
+  return Math.round(value * 10 + 1e-9) / 10;
 }
 
 /** A reviewer's overall: the average of the categories they rated. */

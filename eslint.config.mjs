@@ -1,3 +1,4 @@
+import { builtinModules } from "node:module";
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
@@ -13,6 +14,7 @@ import nextTs from "eslint-config-next/typescript";
  * (alias, relative or barrel alike). Package bans use no-restricted-imports.
  */
 const DB_DRIVERS = ["postgres", "postgres/*", "drizzle-orm", "drizzle-orm/*"];
+const NODE_BUILTINS = ["node:*", ...builtinModules, ...builtinModules.map((m) => `${m}/*`)];
 const banPackages = (files, ...patterns) => ({
   files,
   rules: { "no-restricted-imports": ["error", { patterns }] },
@@ -73,7 +75,7 @@ export default defineConfig([
       message: "domain/ is pure: no framework or database imports.",
     },
     {
-      group: ["node:*", "fs", "fs/*", "path", "child_process", "http", "https", "net"],
+      group: NODE_BUILTINS,
       message: "domain/ is pure: no I/O.",
     },
   ),
@@ -85,8 +87,13 @@ export default defineConfig([
     },
     { group: DB_DRIVERS, message: "Browser code must not import database drivers." },
   ),
-  banPackages(["src/app/**"], {
-    group: DB_DRIVERS,
-    message: "Routes call services, not the database.",
-  }),
+  banPackages(
+    ["src/app/**"],
+    { group: DB_DRIVERS, message: "Routes call services, not the database." },
+    {
+      // A barrel would re-export repos/db past the path zones above: import modules directly.
+      regex: "^@/server(?:/index)?$",
+      message: "Import the specific server module (e.g. @/server/services/…), not a barrel.",
+    },
+  ),
 ]);
