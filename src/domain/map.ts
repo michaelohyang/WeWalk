@@ -101,7 +101,7 @@ export const MAP_GEOMETRY: MapGeometry = {
   labels: [
     { text: "Hudson", x: 32, y: 430, rotate: -90, water: true },
     { text: "East River", x: 230, y: 320, rotate: -70, water: true },
-    { text: "New Jersey · no comment", x: 9, y: 380, rotate: -90, water: false },
+    { text: "New Jersey · no comment", x: 13, y: 380, rotate: -90, water: false },
     { text: "Brooklyn", x: 300, y: 500, rotate: 0, water: false },
     { text: "Queens", x: 300, y: 150, rotate: 0, water: false },
   ],
