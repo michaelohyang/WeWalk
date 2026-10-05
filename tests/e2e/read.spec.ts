@@ -6,7 +6,7 @@ import { checkIn, joinAs, review, uniqueName } from "./helpers";
 const SCREENS = [
   "/",
   "/?view=list",
-  "/s/18-w-18th-st",
+  "/stations/18-w-18th-st",
   "/ranks",
   "/ranks?by=coffee&area=downtown",
   "/passport",
@@ -25,10 +25,10 @@ const listRows = (page: Page, name: RegExp) => page.getByRole("main").getByRole(
 const chip = (page: Page, name: string) => page.getByRole("link", { name, exact: true });
 
 test.describe("signed out", () => {
-  test("every screen shows the members-only gate and no crew data", async ({ page }) => {
+  test("every screen asks you to log in and shows no crew data", async ({ page }) => {
     for (const path of SCREENS) {
       await page.goto(path);
-      await expect(page.getByText("Members only.")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
       // The page HTML itself must not carry crew data (not just hide it).
       expect(await page.content(), path).not.toContain("Crew favorites");
@@ -44,11 +44,11 @@ test.describe("signed in", () => {
   test("deep links open a station; unknown ones show not found", async ({ page }) => {
     const take = uniqueName("Cold brew slaps");
     await review(page.request, "dock-72", { scores: { coffee: 5, vibe: 4 }, hotTake: take });
-    await page.goto("/s/dock-72");
+    await page.goto("/stations/dock-72");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Dock 72");
     await expect(page.getByText(take).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Edit your rating" })).toBeVisible();
-    await page.goto("/s/not-a-real-station");
+    await page.goto("/stations/not-a-real-station");
     await expect(page.getByText("That page isn't on the map.")).toBeVisible();
   });
 
@@ -63,35 +63,35 @@ test.describe("signed in", () => {
     await expect(listRows(page, /1460 Broadway/)).toHaveCount(0);
 
     await rows.filter({ hasText: "Dock 72" }).click();
-    await expect(page).toHaveURL(/\/s\/dock-72$/);
+    await expect(page).toHaveURL(/\/stations\/dock-72$/);
     await page.goBack();
     await expect(page).toHaveURL(/area=brooklyn/);
     await expect(chip(page, "Brooklyn")).toHaveAttribute("aria-current", "true");
 
     // The in-app Back button returns to the same filtered list, not bare Explore.
     await listRows(page, /Dumbo Heights/).click();
-    await expect(page).toHaveURL(/\/s\/dumbo-heights$/);
+    await expect(page).toHaveURL(/\/stations\/dumbo-heights$/);
     await page.getByRole("link", { name: "Back" }).click();
     await expect(page).toHaveURL(/area=brooklyn/);
     await expect(page).toHaveURL(/view=list/);
   });
 
   test("the in-app Back button on a shared link goes to Explore", async ({ page }) => {
-    await page.goto("/s/dock-72");
+    await page.goto("/stations/dock-72");
     await page.getByRole("link", { name: "Back" }).click();
     await expect(page).toHaveURL(/\/$/);
   });
 
   test("the in-app Back button never leaves the app", async ({ page }) => {
     // Shared link → Explore tab → browser Back → in-app Back: the entry before is not WeWalk.
-    await page.goto("/s/dock-72");
+    await page.goto("/stations/dock-72");
     await page
       .getByRole("navigation", { name: "Main" })
       .getByRole("link", { name: "Explore" })
       .click();
     await expect(page).toHaveURL(/\/$/);
     await page.goBack();
-    await expect(page).toHaveURL(/\/s\/dock-72$/);
+    await expect(page).toHaveURL(/\/stations\/dock-72$/);
     await page.getByRole("link", { name: "Back" }).click();
     await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/$/);
   });
@@ -142,7 +142,7 @@ test.describe("signed in", () => {
     await expect(sheet).toHaveCount(0);
     await page.getByRole("button", { name: /^33 Irving Pl,/ }).click();
     await sheet.getByRole("link", { name: "View station" }).click();
-    await expect(page).toHaveURL(/\/s\/33-irving-pl$/);
+    await expect(page).toHaveURL(/\/stations\/33-irving-pl$/);
   });
 
   test("ranks sort by a category, then narrow to a neighborhood", async ({ page }) => {

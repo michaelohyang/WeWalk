@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
-export const E2E_CREW_CODE = "e2e-crew-code-0123456789";
 export const BASE_URL = `http://localhost:${PORT}`;
 const isCI = !!process.env.CI;
 
@@ -27,7 +26,7 @@ export default defineConfig({
     command: isCI ? `pnpm start -p ${PORT}` : `pnpm dev -p ${PORT}`,
     url: BASE_URL,
     // An embedded, in-memory Postgres: every run starts from the seeded stations only.
-    env: { DATABASE_URL: "pglite:memory", CREW_CODE: E2E_CREW_CODE },
+    env: { DATABASE_URL: "pglite:memory" },
     reuseExistingServer: !isCI,
     timeout: 120_000,
   },

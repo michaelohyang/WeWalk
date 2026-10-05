@@ -80,10 +80,29 @@ export const checkinInputSchema = z
   .strict();
 export type CheckinInput = z.infer<typeof checkinInputSchema>;
 
-export const joinInputSchema = z
-  .object({ code: z.string().min(1).max(200), name: displayNameSchema })
+/** A new password: long enough to be worth hashing, short enough not to be a DoS vector. */
+export const newPasswordSchema = z
+  .string("Pick a password.")
+  .min(8, "At least 8 characters. A short phrase works.")
+  .max(200, "That's a bit much. Keep it under 200 characters.");
+
+export const signupInputSchema = z
+  .object({ name: displayNameSchema, password: newPasswordSchema })
   .strict();
-export type JoinInput = z.infer<typeof joinInputSchema>;
+export type SignupInput = z.infer<typeof signupInputSchema>;
+
+export const loginInputSchema = z
+  .object({
+    name: z.string("Enter your username.").trim().min(1, "Enter your username.").max(200),
+    password: z.string("Enter your password.").min(1, "Enter your password.").max(200),
+  })
+  .strict();
+export type LoginInput = z.infer<typeof loginInputSchema>;
+
+/** `current` is required once you have a password; first-time setup has none. */
+export const setPasswordInputSchema = z
+  .object({ current: z.string().max(200).optional(), password: newPasswordSchema })
+  .strict();
 
 export const renameInputSchema = z.object({ name: displayNameSchema }).strict();
 

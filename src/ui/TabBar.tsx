@@ -6,7 +6,12 @@ import { Icon, type IconName } from "./Icon";
 import styles from "./TabBar.module.css";
 
 const TABS: { href: string; label: string; icon: IconName; match: (p: string) => boolean }[] = [
-  { href: "/", label: "Explore", icon: "explore", match: (p) => p === "/" || p.startsWith("/s/") },
+  {
+    href: "/",
+    label: "Explore",
+    icon: "explore",
+    match: (p) => p === "/" || p.startsWith("/stations/"),
+  },
   { href: "/ranks", label: "Ranks", icon: "ranks", match: (p) => p.startsWith("/ranks") },
   {
     href: "/passport",
@@ -22,7 +27,7 @@ export function TabBar() {
   const path = usePathname();
   // The rate form gets the whole screen (and the keyboard's room) for its Post button.
   if (path.startsWith("/rate")) return null;
-  const station = path.match(/^\/s\/([^/]+)/)?.[1];
+  const station = path.match(/^\/stations\/([^/]+)/)?.[1];
   const tab = (t: (typeof TABS)[number]) => (
     <Link
       key={t.href}

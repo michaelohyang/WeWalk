@@ -51,6 +51,14 @@ export const members = pgTable(
     name: text("name").notNull(),
     nameKey: text("name_key").notNull(),
     isOwner: boolean("is_owner").notNull().default(false),
+    /**
+     * A salted scrypt hash (see server/auth/passwords.ts), never the password itself: it can't be
+     * turned back into the password, by anyone. Null for people who joined before passwords.
+     */
+    passwordHash: text("password_hash"),
+    /** Wrong passwords in a row, and the lockout they trigger (slows down guessing). */
+    failedLogins: smallint("failed_logins").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [

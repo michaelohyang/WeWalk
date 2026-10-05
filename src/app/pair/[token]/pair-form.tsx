@@ -23,7 +23,8 @@ export function PairForm({
     const res = await request<{ member: { name: string } }>("POST", "/api/pair", { token });
     setBusy(false);
     if (res.ok) {
-      router.replace("/");
+      // A recovery link clears the old password: go straight to setting a new one.
+      router.replace("/crew");
       router.refresh();
       return;
     }
@@ -34,8 +35,8 @@ export function PairForm({
     return (
       <div className={styles.card}>
         <p className={styles.lede}>
-          That link expired or was already used. On a phone that&apos;s signed in, open Crew and
-          make a new one. Lost every phone? Ask whoever runs the crew for a recovery link.
+          That link expired or was already used. Ask whoever runs the crew for a new one, or{" "}
+          <a href="/login">log in</a> if you remember your password.
         </p>
       </div>
     );
@@ -44,8 +45,8 @@ export function PairForm({
   return (
     <div className={styles.card}>
       <p className={styles.lede}>
-        You&apos;re about to be <b>{link.name}</b> on this phone. The link works once
-        {link.purpose === "pair" ? " and dies 15 minutes after it was made" : ""}.
+        You&apos;re about to log in as <b>{link.name}</b>. The link works once, and then you pick a
+        new password.
         {signedInAs &&
           signedInAs !== link.name &&
           ` Right now this phone is ${signedInAs}; this switches it.`}

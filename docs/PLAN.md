@@ -41,7 +41,7 @@ Prototype problems the rebuild has to fix, most important first:
 | **MUST** | M1 Shared backend behind a crew invite code. Stations seeded on the server |
 | | M2 Identity: join from an invite link, pick a display name once (unique ignoring case), add another phone with a one-time pairing link, sign out a lost phone |
 | | M3 Lobby-proof rate flow: one review per person per station (posting again edits it), scores first with text folded under "Add more", draft autosave, offline outbox |
-| | M4 Real URLs: `/`, `/s/[id]`, `/rate/[id]`, `/ranks`, `/passport`, `/crew` |
+| | M4 Real URLs: `/`, `/stations/[id]`, `/rate/[id]`, `/ranks`, `/passport`, `/crew` |
 | | M5 One-tap check-in with an optional note |
 | | M6 Port Explore (list and map), Station, Ranks, Passport and Crew as designed |
 | **SHOULD (v1.1)** | Photos on object storage (with delete). A dot for activity since your last visit. Bigger map tap targets |
@@ -99,10 +99,10 @@ tests, no Docker), Playwright (end-to-end tests at 390px), and GitHub Actions fo
 src/
   app/                      # routes only: thin, no business logic
     (app)/page.tsx          # Explore
-    (app)/s/[id]/page.tsx   # Station
+    (app)/stations/[id]/page.tsx  # Station
     (app)/rate/[id]/page.tsx
     (app)/ranks|passport|crew/page.tsx
-    j/[code]/page.tsx       # invite link → pick a name
+    login/ signup/             # username + password
     pair/[token]/page.tsx   # one-time link page; its button POSTs /api/pair (Phase 3)
     api/…/route.ts          # JSON endpoints (writes)
   domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport,
@@ -138,33 +138,32 @@ The offline outbox simply replays the same request. After a write, `router.refre
 data. No realtime in v1: friends see new posts when they refresh or navigate, which meets the
 "within 5 seconds" criterion.
 
-**Auth (no passwords, no email).**
-- **Joining:** the invite code is part of the shared link (`/j/<CREW_CODE>`). The page checks it,
-  then asks for a display name. Changing the `CREW_CODE` env var stops new joins and leaves
-  existing sessions alone. `CREW_CODE` must be at least 16 characters, or joining is refused.
-  Generate one with `openssl rand -hex 16`.
-- **Owner:** the first person to join becomes the owner. A partial unique index guarantees
-  there's only ever one. Join first after deploying.
-- **Sessions:** each phone gets a random 32-byte device token. Its SHA-256 hash is stored in
-  `devices`, and the token itself goes in an httpOnly, Secure, SameSite=Lax cookie.
+**Auth (username + password; revised after launch, replacing invite codes and pairing links).**
+- **Accounts:** sign up at `/signup` with a username (the display name; unique ignoring case) and
+  a password of 8+ characters. Log in anywhere at `/login`. No email.
+- **Passwords** are stored only as salted scrypt hashes (`members.password_hash`,
+  `scrypt$15$8$1$<salt>$<hash>`): nobody reading the database can recover them. Login failures all
+  say "Wrong username or password." and an unknown name is checked against a decoy hash, so
+  neither the message nor the timing reveals who has an account. Five wrong passwords in a row
+  lock the account for 15 minutes.
+- **Owner:** the first person to sign up becomes the owner. A partial unique index guarantees
+  there's only ever one. Sign up first after deploying.
+- **Sessions:** each login gets a random 32-byte device token. Its SHA-256 hash is stored in
+  `devices`, and the token itself goes in an httpOnly, Secure, SameSite=Lax cookie. Crew lists
+  the devices you're logged in on and signs any of them out.
 - **Shared phones:** a second, readable cookie (`ww_member`, just the member id) lets the client
   keep drafts and the offline outbox per member. Queued writes carry their author in an
   `x-wewalk-member` header; the server answers 401 if it isn't the signed-in member, and the
   outbox holds the write (it never posts under someone else's name, and never drops it).
-- **Adding a phone:** "Add a phone" in Crew creates a **one-time pairing link**
-  (`/pair/<token>`). It expires after 15 minutes and stops working after its first use. Opening
-  the link shows a "Sign in on this phone" button that POSTs the token. A plain GET would let
-  chat apps that fetch link previews use the link up first. There are
-  no permanent personal links, because a link left in a chat would let anyone post as you.
-- **Lost phone:** Crew lists your phones and you can sign out any of them, which deletes that
-  device row.
-- **Locked out of every phone:** the owner (`members.is_owner`) creates a one-time recovery link
-  for that member. It uses the same mechanism as pairing, with a 24-hour expiry.
+- **Forgot password:** the owner creates a one-time recovery link (`/pair/<token>`, 24 hours,
+  redeemed by POST so link previews can't use it up). It logs that person in once and clears
+  their password, and they set a new one in Crew. People who joined before passwords existed
+  also set theirs in Crew.
 - **Names:** reviews point at `member_id`, so renaming yourself updates your name everywhere.
 - **Writes** must carry an `Origin` header equal to the site's own origin (browsers always send
   it), have a JSON body, and be at most 64 KB.
-- **Access:** every page and API route needs a session. Without one, you see a "Get an invite
-  link from your crew" screen.
+- **Access:** every page and API route needs a session. Signed out, any page shows the login
+  form, and logging in reloads that page (so shared station links work).
 
 **Scoring (decided: one scale, out of 5).**
 - You tap 1–5 per category, and every score is shown out of 5 with one decimal.
@@ -209,13 +208,14 @@ plain SQL and the database rejects bad values.
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/join` | `{code, name}` → sets cookie. 409 if the name is taken |
-| POST | `/api/pair` | `{token}` → uses a one-time pairing or recovery link, sets cookie. 410 if expired or used |
+| POST | `/api/signup` | `{name, password}` → sets cookie. 409 if the name is taken |
+| POST | `/api/login` | `{name, password}` → sets cookie. 401 for a wrong name or password alike |
+| PUT | `/api/me/password` | `{current?, password}`: set your first password, or change it with the current one |
+| POST | `/api/pair` | `{token}` → uses a one-time recovery link, sets cookie. 410 if expired or used |
 | GET | `/api/me` | you, plus the phones you're signed in on |
 | PUT | `/api/reviews/:id` | create or update your review. 409 if you already reviewed this station under a different id (the client then switches to edit) |
 | DELETE | `/api/reviews/:id` | only your own |
 | PUT | `/api/checkins/:id` | create, or add/change the note when the same id is sent again (an identical retry is a no-op). 409 with `existingId` on a second id for the same station and day |
-| POST | `/api/me/pair-links` | creates a one-time pairing link (15 min) |
 | DELETE | `/api/me/devices/:id` | signs out one of your phones |
 | PATCH | `/api/me` | renames you. 409 if the name is taken |
 | POST | `/api/admin/recovery-links` | owner only: `{memberId}` → one-time recovery link (24 h) |
@@ -268,7 +268,7 @@ nothing to rewire later.
 - **Product review:** walk journeys B and D.
 
 ### Phase 3: Frontend, write paths
-- Invite-link onboarding (`/j/<code>`), pairing links and the device list in Crew.
+- Invite-link onboarding (`/join/<code>`), pairing links and the device list in Crew.
 - Rate flow (M3): prefilled station, scores first, "Add more" collapsed, sticky Post button, draft
   autosave, outbox, edit mode when you've already reviewed. After posting, land on the station
   page with your review on top, plus the pin glow and stamp animation.
@@ -327,7 +327,7 @@ tap targets.
 | 1 | Stack and hosting | Next.js on Vercel, Supabase for Postgres and Storage, accessed only from our server |
 | 2 | Scoring | One scale: tap 1–5, every score shown out of 5 (section 5) |
 | 3 | Passport | Personal, with crew coverage as a secondary stat. The map stays crew-wide |
-| 4 | Identity | Invite link, unique display name, one-time pairing links, device sign-out, owner-issued recovery links |
+| 4 | Identity | Username + password (scrypt-hashed), device sign-out, owner-issued recovery links. Replaced the original invite code and pairing links after launch |
 | 5 | Stations | Owner only, through the seed file. Removing a station hides it and keeps its data. "Suggest a building" comes later |
 | 6 | Building list | The owner's list of 29 (appendix A) |
 | 7 | Size budget | First-load JS + CSS ≤ 200 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Revisit if performance becomes a problem |

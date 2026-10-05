@@ -3,7 +3,23 @@ import { and, count, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { devices, links, members } from "../db/schema";
 
-export type MemberRow = typeof members.$inferSelect;
+/** Everything about a member except their password: what the rest of the app may see. */
+const memberColumns = {
+  id: members.id,
+  name: members.name,
+  nameKey: members.nameKey,
+  isOwner: members.isOwner,
+  hasPassword: sql<boolean>`${members.passwordHash} is not null`,
+  createdAt: members.createdAt,
+};
+export type MemberRow = {
+  id: string;
+  name: string;
+  nameKey: string;
+  isOwner: boolean;
+  hasPassword: boolean;
+  createdAt: Date;
+};
 export type LinkPurpose = "pair" | "recover";
 
 export async function countMembers(db: Db): Promise<number> {
@@ -13,15 +29,73 @@ export async function countMembers(db: Db): Promise<number> {
 
 export async function insertMember(
   db: Db,
-  values: { name: string; nameKey: string; isOwner: boolean },
+  values: { name: string; nameKey: string; isOwner: boolean; passwordHash: string },
 ): Promise<MemberRow> {
-  const [row] = await db.insert(members).values(values).returning();
+  const [row] = await db.insert(members).values(values).returning(memberColumns);
   return row!;
 }
 
 export async function findMember(db: Db, id: string): Promise<MemberRow | undefined> {
-  const [row] = await db.select().from(members).where(eq(members.id, id));
+  const [row] = await db.select(memberColumns).from(members).where(eq(members.id, id));
   return row;
+}
+
+/** Login only: the stored hash and lockout state for a username. */
+export async function findCredentials(db: Db, nameKey: string) {
+  const [row] = await db
+    .select({
+      id: members.id,
+      passwordHash: members.passwordHash,
+      failedLogins: members.failedLogins,
+      lockedUntil: members.lockedUntil,
+    })
+    .from(members)
+    .where(eq(members.nameKey, nameKey));
+  return row;
+}
+
+export async function findPasswordHash(db: Db, id: string): Promise<string | null | undefined> {
+  const [row] = await db
+    .select({ passwordHash: members.passwordHash })
+    .from(members)
+    .where(eq(members.id, id));
+  return row?.passwordHash;
+}
+
+export async function setPasswordHash(db: Db, id: string, passwordHash: string) {
+  await db
+    .update(members)
+    .set({ passwordHash, failedLogins: 0, lockedUntil: null })
+    .where(eq(members.id, id));
+}
+
+/** Counts a wrong password; locks the account for `lockMs` once `max` are reached in a row. */
+export async function recordFailedLogin(
+  db: Db,
+  id: string,
+  now: Date,
+  max: number,
+  lockMs: number,
+) {
+  await db
+    .update(members)
+    .set({
+      failedLogins: sql`${members.failedLogins} + 1`,
+      lockedUntil: sql`case when ${members.failedLogins} + 1 >= ${max}
+        then ${new Date(now.getTime() + lockMs)}::timestamptz else ${members.lockedUntil} end`,
+    })
+    .where(eq(members.id, id));
+}
+
+export async function clearPassword(db: Db, id: string) {
+  await db
+    .update(members)
+    .set({ passwordHash: null, failedLogins: 0, lockedUntil: null })
+    .where(eq(members.id, id));
+}
+
+export async function clearFailedLogins(db: Db, id: string) {
+  await db.update(members).set({ failedLogins: 0, lockedUntil: null }).where(eq(members.id, id));
 }
 
 export async function listMembers(db: Db): Promise<Pick<MemberRow, "id" | "name">[]> {
@@ -33,7 +107,7 @@ export async function renameMember(db: Db, id: string, name: string, nameKey: st
     .update(members)
     .set({ name, nameKey })
     .where(eq(members.id, id))
-    .returning();
+    .returning(memberColumns);
   return row;
 }
 
@@ -44,7 +118,7 @@ export async function insertDevice(db: Db, memberId: string, tokenHash: string, 
 
 export async function findDeviceWithMember(db: Db, tokenHash: string) {
   const [row] = await db
-    .select({ device: devices, member: members })
+    .select({ device: devices, member: memberColumns })
     .from(devices)
     .innerJoin(members, eq(devices.memberId, members.id))
     .where(eq(devices.tokenHash, tokenHash));

@@ -181,4 +181,5 @@ export const memberJson = (m: Session["member"]) => ({
   id: m.id,
   name: m.name,
   isOwner: m.isOwner,
+  hasPassword: m.hasPassword,
 });

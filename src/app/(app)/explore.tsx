@@ -282,7 +282,7 @@ function Preview({ station, onClose }: { station: StationCard; onClose: () => vo
       </div>
       <p className={styles.verdict}>{verdict}</p>
       <div className={styles.sheetActions}>
-        <ButtonLink href={`/s/${station.id}`} variant="dark">
+        <ButtonLink href={`/stations/${station.id}`} variant="dark">
           View station
         </ButtonLink>
         <ButtonLink href={`/rate/${station.id}`} variant="primary">

@@ -1,17 +1,18 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as adminRecovery } from "@/app/api/admin/recovery-links/route";
 import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
-import { POST as join } from "@/app/api/join/route";
+import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
-import { POST as pairLinks } from "@/app/api/me/pair-links/route";
+import { PUT as setPassword } from "@/app/api/me/password/route";
 import { GET as me, PATCH as renameMe } from "@/app/api/me/route";
 import { POST as pair } from "@/app/api/pair/route";
 import { DELETE as deleteReview, PUT as putReview } from "@/app/api/reviews/[id]/route";
+import { POST as signup } from "@/app/api/signup/route";
 import { setDb, type Db } from "@/server/db/client";
 import { createTestDb, resetTestDb } from "@/server/db/testing";
 import { Phone } from "./client";
 
-const CODE = "crew-code-for-tests-0123456789";
+const PASSWORD = "correct horse battery";
 let db: Db;
 let n = 0;
 const newId = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
@@ -26,29 +27,32 @@ const review = (over: Record<string, unknown> = {}) => ({
 beforeAll(async () => {
   db = await createTestDb();
   setDb(db);
-  vi.stubEnv("CREW_CODE", CODE);
 });
-afterAll(() => {
-  setDb(undefined);
-  vi.unstubAllEnvs();
-});
+afterAll(() => setDb(undefined));
 beforeEach(() => resetTestDb(db));
 
 async function joined(name: string): Promise<Phone> {
   const phone = new Phone();
-  const res = await phone.call(join, "POST", "/api/join", { body: { code: CODE, name } });
+  const res = await phone.call(signup, "POST", "/api/signup", {
+    body: { name, password: PASSWORD },
+  });
   expect(res.status).toBe(201);
   return phone;
 }
 
-describe("joining", () => {
+describe("signing up and logging in", () => {
   it("sets an httpOnly, SameSite=Lax session cookie and returns the member", async () => {
     const phone = new Phone();
-    const res = await phone.call(join, "POST", "/api/join", {
-      body: { code: CODE, name: " Dana " },
+    const res = await phone.call(signup, "POST", "/api/signup", {
+      body: { name: " Dana ", password: PASSWORD },
     });
     expect(res.status).toBe(201);
-    expect(res.body.member).toMatchObject({ name: "Dana", isOwner: true });
+    expect(res.body.member).toEqual({
+      id: expect.any(String),
+      name: "Dana",
+      isOwner: true,
+      hasPassword: true,
+    });
     expect(res.setCookie).toMatch(/^ww_session=[\w-]{43};/);
     expect(res.setCookie).toMatch(/HttpOnly/i);
     expect(res.setCookie).toMatch(/SameSite=lax/i);
@@ -59,26 +63,47 @@ describe("joining", () => {
     expect(member).not.toMatch(/HttpOnly/i);
   });
 
-  it("rejects a wrong code (401) and a taken name (409)", async () => {
+  it("refuses a taken name (409) and a short password (400)", async () => {
     await joined("Dana");
     const phone = new Phone();
-    expect(
-      (await phone.call(join, "POST", "/api/join", { body: { code: "nope", name: "Sal" } })).status,
-    ).toBe(401);
-    const taken = await phone.call(join, "POST", "/api/join", {
-      body: { code: CODE, name: "dana" },
+    const taken = await phone.call(signup, "POST", "/api/signup", {
+      body: { name: "dana", password: PASSWORD },
     });
     expect(taken.status).toBe(409);
     expect(taken.body.error.message).toMatch(/already goes by/);
+    const short = await phone.call(signup, "POST", "/api/signup", {
+      body: { name: "Sal", password: "short" },
+    });
+    expect(short.status).toBe(400);
+    expect(short.body.error.details.fields.password).toBeDefined();
     expect(phone.cookie).toBe("");
   });
 
-  it("validates input with field details", async () => {
-    const res = await new Phone().call(join, "POST", "/api/join", {
-      body: { code: CODE, name: "  " },
+  it("logs in on another device; a wrong password is 401 and sets nothing", async () => {
+    await joined("Dana");
+    const laptop = new Phone();
+    const wrong = await laptop.call(login, "POST", "/api/login", {
+      body: { name: "Dana", password: "nope" },
     });
-    expect(res.status).toBe(400);
-    expect(res.body.error.details.fields.name).toBeDefined();
+    expect(wrong.status).toBe(401);
+    expect(wrong.body.error.message).toBe("Wrong username or password.");
+    expect(laptop.cookie).toBe("");
+    const ok = await laptop.call(login, "POST", "/api/login", {
+      body: { name: "dana", password: PASSWORD },
+    });
+    expect(ok.status).toBe(200);
+    expect((await laptop.call(me, "GET", "/api/me")).body.devices).toHaveLength(2);
+  });
+
+  it("changes the password with the current one", async () => {
+    const phone = await joined("Dana");
+    const put = (body: unknown) => phone.call(setPassword, "PUT", "/api/me/password", { body });
+    expect((await put({ current: "nope", password: "new password" })).status).toBe(400);
+    expect((await put({ current: PASSWORD, password: "new password" })).status).toBe(204);
+    const res = await new Phone().call(login, "POST", "/api/login", {
+      body: { name: "Dana", password: "new password" },
+    });
+    expect(res.status).toBe(200);
   });
 });
 
@@ -105,7 +130,13 @@ describe("every member route needs a session", () => {
           body: { stationId: "dock-72", visitedOn: today() },
         }),
     ],
-    ["POST pair link", () => new Phone().call(pairLinks, "POST", "/api/me/pair-links")],
+    [
+      "PUT password",
+      () =>
+        new Phone().call(setPassword, "PUT", "/api/me/password", {
+          body: { password: "new password" },
+        }),
+    ],
     [
       "POST recovery",
       () =>
@@ -294,21 +325,11 @@ describe("check-ins", () => {
   });
 });
 
-describe("phones", () => {
-  it("pairs a second phone with a one-time link, lists both, signs one out", async () => {
+describe("devices and accounts", () => {
+  it("lists the devices you're logged in on, and signs one out", async () => {
     const first = await joined("Dana");
-    const link = await first.call(pairLinks, "POST", "/api/me/pair-links");
-    expect(link.status).toBe(201);
-    expect(link.body.url).toMatch(/^http:\/\/wewalk\.test\/pair\/[\w-]{43}$/);
-    const token = link.body.url.split("/").pop();
-
     const second = new Phone();
-    const paired = await second.call(pair, "POST", "/api/pair", { body: { token } });
-    expect(paired.status).toBe(200);
-    expect(paired.body.member.name).toBe("Dana");
-    expect((await new Phone().call(pair, "POST", "/api/pair", { body: { token } })).status).toBe(
-      410,
-    );
+    await second.call(login, "POST", "/api/login", { body: { name: "Dana", password: PASSWORD } });
 
     const { devices } = (await first.call(me, "GET", "/api/me")).body;
     expect(devices).toHaveLength(2);
@@ -358,11 +379,14 @@ describe("phones", () => {
       body: { memberId: danaId },
     });
     expect(link.status).toBe(201);
+    expect(link.body.url).toMatch(/^http:\/\/wewalk\.test\/pair\/[\w-]{43}$/);
+    const token = link.body.url.split("/").pop();
     const fresh = new Phone();
-    const res = await fresh.call(pair, "POST", "/api/pair", {
-      body: { token: link.body.url.split("/").pop() },
-    });
-    expect(res.body.member.name).toBe("Dana");
+    const res = await fresh.call(pair, "POST", "/api/pair", { body: { token } });
+    expect(res.body.member).toMatchObject({ name: "Dana", hasPassword: false });
+    expect((await new Phone().call(pair, "POST", "/api/pair", { body: { token } })).status).toBe(
+      410,
+    );
   });
 });
 

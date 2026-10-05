@@ -51,22 +51,17 @@ function ShareLink({ url, title }: { url: string; title: string }) {
   );
 }
 
-export function InviteFriends({ invitePath }: { invitePath: string | null }) {
+export function InviteFriends() {
   const [origin, setOrigin] = useState("");
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the public origin is only known in the browser
   useEffect(() => setOrigin(location.origin), []);
-  if (!invitePath) {
-    return (
-      <p className={styles.lede}>Joining is switched off right now (no invite code is set up).</p>
-    );
-  }
   return (
     <div className={styles.card}>
       <p className={styles.lede}>
-        Anyone with this link can join the crew and post. Send it to people you&apos;d share a phone
-        booth with.
+        Send this to people you&apos;d share a phone booth with. They pick a username and password,
+        and they&apos;re in.
       </p>
-      {origin && <ShareLink url={`${origin}${invitePath}`} title="Join our WeWalk crew" />}
+      {origin && <ShareLink url={`${origin}/signup`} title="Join me on WeWalk" />}
     </div>
   );
 }
@@ -88,14 +83,14 @@ export function Rename({ name }: { name: string }) {
       setError(fieldErrors(res.error).name ?? res.error.message);
       return;
     }
-    toast("Name updated everywhere.");
+    toast("Username updated everywhere. Log in with the new one.");
     router.refresh();
   }
 
   return (
     <form className={styles.row} onSubmit={submit} noValidate>
       <label className={styles.field}>
-        <span>Display name</span>
+        <span>Username</span>
         <input
           className={styles.input}
           value={value}
@@ -125,33 +120,82 @@ export function Rename({ name }: { name: string }) {
   );
 }
 
-export function AddPhone() {
-  const [link, setLink] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+/** Set your first password, or change it (which needs the current one). */
+export function SetPassword({ hasPassword }: { hasPassword: boolean }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [current, setCurrent] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
-  async function make() {
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) {
+      setErrors({ password: "At least 8 characters. A short phrase works." });
+      return;
+    }
     setBusy(true);
-    const res = await request<{ url: string }>("POST", "/api/me/pair-links");
+    const res = await request("PUT", "/api/me/password", {
+      ...(hasPassword && { current }),
+      password,
+    });
     setBusy(false);
-    if (res.ok) setLink(res.data.url);
-    else setError(res.error.message);
+    if (!res.ok) {
+      const byField = fieldErrors(res.error);
+      setErrors(Object.keys(byField).length ? byField : { form: res.error.message });
+      return;
+    }
+    setCurrent("");
+    setPassword("");
+    setErrors({});
+    toast(hasPassword ? "Password changed." : "Password set. Log in anywhere with it.");
+    router.refresh();
   }
 
   return (
-    <div className={styles.card}>
-      <p className={styles.lede}>
-        Open this link on your other phone to sign in there as you. It works once, for 15 minutes.
-      </p>
-      {link ? (
-        <ShareLink url={link} title="Sign in to WeWalk" />
-      ) : (
-        <button type="button" className={styles.secondary} onClick={make} disabled={busy}>
-          {busy ? "Making a link…" : "Add a phone"}
-        </button>
+    <form className={styles.card} onSubmit={submit} noValidate>
+      {!hasPassword && (
+        <p className={styles.lede}>
+          You don&apos;t have a password yet. Set one to log in on another phone or laptop.
+        </p>
       )}
-      {error && <p className={styles.error}>{error}</p>}
-    </div>
+      {hasPassword && (
+        <label className={styles.field}>
+          <span>Current password</span>
+          <input
+            type="password"
+            className={styles.input}
+            value={current}
+            autoComplete="current-password"
+            onChange={(e) => setCurrent(e.target.value)}
+            aria-invalid={!!errors.current}
+          />
+          {errors.current && <span className={styles.error}>{errors.current}</span>}
+        </label>
+      )}
+      <label className={styles.field}>
+        <span>{hasPassword ? "New password" : "Password"}</span>
+        <input
+          type="password"
+          className={styles.input}
+          value={password}
+          autoComplete="new-password"
+          placeholder="8+ characters"
+          onChange={(e) => setPassword(e.target.value)}
+          aria-invalid={!!errors.password}
+        />
+        {errors.password && <span className={styles.error}>{errors.password}</span>}
+      </label>
+      {errors.form && (
+        <p className={styles.error} role="alert">
+          {errors.form}
+        </p>
+      )}
+      <button type="submit" className={styles.secondary} disabled={busy}>
+        {busy ? "Saving…" : hasPassword ? "Change password" : "Set password"}
+      </button>
+    </form>
   );
 }
 
@@ -210,8 +254,8 @@ export function RecoveryLinks({ members }: { members: { id: string; name: string
   return (
     <form className={styles.card} onSubmit={make}>
       <p className={styles.lede}>
-        Someone lost every phone? Make them a one-time sign-in link (good for 24 hours) and send it
-        to them directly.
+        Someone forgot their password? Make them a one-time sign-in link (good for 24 hours) and
+        send it to them directly. It logs them in once, and they pick a new password.
       </p>
       <div className={styles.row}>
         <label className={styles.field}>

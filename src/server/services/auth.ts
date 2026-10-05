@@ -2,7 +2,8 @@ import "server-only";
 import { nameKey } from "@/domain/names";
 import type { Db } from "../db/client";
 import { AppError, isUniqueViolation } from "../errors";
-import { hashToken, newToken, safeEqual } from "../auth/tokens";
+import { decoyHash, hashPassword, verifyPassword } from "../auth/passwords";
+import { hashToken, newToken } from "../auth/tokens";
 import * as repo from "../repos/members";
 
 export type Member = repo.MemberRow;
@@ -13,15 +14,12 @@ export interface Session {
 
 const LINK_TTL_MS = { pair: 15 * 60 * 1000, recover: 24 * 60 * 60 * 1000 } as const;
 const TOUCH_EVERY_MS = 60 * 60 * 1000;
-/** The invite code is the only thing between the internet and the crew; keep it unguessable. */
-export const MIN_CREW_CODE_LENGTH = 16;
+/** Wrong passwords in a row before the account locks, and for how long. */
+export const MAX_FAILED_LOGINS = 5;
+export const LOCKOUT_MS = 15 * 60 * 1000;
 
-const NAME_TAKEN = "Someone in the crew already goes by that. Add an initial?";
-
-/** Whether `code` is this crew's invite code (and joining is switched on). */
-export function isInviteCode(code: string, crewCode: string | undefined): boolean {
-  return !!crewCode && crewCode.length >= MIN_CREW_CODE_LENGTH && safeEqual(code, crewCode);
-}
+const NAME_TAKEN = "Someone already goes by that. Add an initial?";
+const BAD_LOGIN = "Wrong username or password.";
 
 /** A new phone session for `memberId`. Returns the raw token for the cookie. */
 async function startDevice(db: Db, memberId: string): Promise<string> {
@@ -31,35 +29,23 @@ async function startDevice(db: Db, memberId: string): Promise<string> {
 }
 
 /**
- * Join the crew from the invite link. The first person to join becomes the owner.
+ * Sign up with a username and password. The first person to sign up becomes the owner.
  * `name` must already be normalized (see domain/schemas).
  */
-export async function joinCrew(
+export async function signUp(
   db: Db,
-  input: { code: string; name: string },
-  crewCode: string | undefined,
+  input: { name: string; password: string },
 ): Promise<{ member: Member; token: string }> {
-  if (!crewCode || crewCode.length < MIN_CREW_CODE_LENGTH) {
-    // Misconfigured deploy: refuse rather than accept a guessable code.
-    console.error(`CREW_CODE must be set and at least ${MIN_CREW_CODE_LENGTH} characters.`);
-    throw new AppError(
-      "unauthorized",
-      "Joining is switched off right now. Ask whoever runs WeWalk.",
-    );
-  }
-  if (!safeEqual(input.code, crewCode)) {
-    throw new AppError(
-      "unauthorized",
-      "That invite link doesn't work. Ask the crew for a fresh one.",
-    );
-  }
-
-  const values = { name: input.name, nameKey: nameKey(input.name) };
+  const values = {
+    name: input.name,
+    nameKey: nameKey(input.name),
+    passwordHash: await hashPassword(input.password),
+  };
   let member: Member;
   try {
     const isOwner = (await repo.countMembers(db)) === 0;
     member = await repo.insertMember(db, { ...values, isOwner }).catch((e: unknown) => {
-      // Two people raced to be first: the loser joins as a regular member.
+      // Two people raced to be first: the loser signs up as a regular member.
       if (isOwner && isUniqueViolation(e, "members_one_owner")) {
         return repo.insertMember(db, { ...values, isOwner: false });
       }
@@ -69,8 +55,56 @@ export async function joinCrew(
     if (isUniqueViolation(e, "members_name_key_unique")) throw new AppError("conflict", NAME_TAKEN);
     throw e;
   }
-
   return { member, token: await startDevice(db, member.id) };
+}
+
+/**
+ * Log in with a username and password. Every failure says the same thing and takes about as
+ * long, so the response never reveals whether a username exists. After MAX_FAILED_LOGINS wrong
+ * passwords in a row the account locks for LOCKOUT_MS.
+ */
+export async function logIn(
+  db: Db,
+  input: { name: string; password: string },
+  now: Date,
+): Promise<{ member: Member; token: string }> {
+  const found = await repo.findCredentials(db, nameKey(input.name));
+  if (!found?.passwordHash) {
+    await verifyPassword(input.password, await decoyHash());
+    throw new AppError("unauthorized", BAD_LOGIN);
+  }
+  if (found.lockedUntil && found.lockedUntil > now) {
+    throw new AppError(
+      "unauthorized",
+      "Too many wrong passwords. Try again in 15 minutes, or ask the crew owner for a recovery link.",
+    );
+  }
+  if (!(await verifyPassword(input.password, found.passwordHash))) {
+    await repo.recordFailedLogin(db, found.id, now, MAX_FAILED_LOGINS, LOCKOUT_MS);
+    throw new AppError("unauthorized", BAD_LOGIN);
+  }
+  if (found.failedLogins) await repo.clearFailedLogins(db, found.id);
+  const member = (await repo.findMember(db, found.id))!;
+  return { member, token: await startDevice(db, member.id) };
+}
+
+/**
+ * Set or change your password. Changing it needs the current one. People who joined before
+ * passwords existed, or came back through a recovery link, have none and just set one.
+ */
+export async function setPassword(
+  db: Db,
+  session: Session,
+  input: { current?: string; password: string },
+): Promise<void> {
+  const stored = await repo.findPasswordHash(db, session.member.id);
+  if (stored) {
+    if (!input.current || !(await verifyPassword(input.current, stored))) {
+      const message = "That's not your current password.";
+      throw new AppError("invalid", message, { fields: { current: [message] } });
+    }
+  }
+  await repo.setPasswordHash(db, session.member.id, await hashPassword(input.password));
 }
 
 /** The session for a cookie token, or null. */
@@ -84,11 +118,6 @@ export async function authenticate(
   if (!found) return null;
   await repo.touchDevice(db, found.device.id, now, TOUCH_EVERY_MS);
   return { member: found.member, deviceId: found.device.id };
-}
-
-/** A one-time link to sign in a new phone as yourself. Returns the raw token for the URL. */
-export async function createPairLink(db: Db, session: Session, now: Date): Promise<string> {
-  return issueLink(db, session.member.id, "pair", now);
 }
 
 /** Owner only: a one-time link for a member who lost every phone. */
@@ -124,9 +153,14 @@ export async function redeemLink(
   const link = await repo.consumeLink(db, hashToken(token), now);
   const member = link && (await repo.findMember(db, link.memberId));
   if (!member) {
-    throw new AppError("gone", "That link expired or was already used. Make a new one from Crew.");
+    throw new AppError("gone", "That link expired or was already used. Ask for a new one.");
   }
-  return { member, token: await startDevice(db, member.id) };
+  // A recovery link is for a forgotten password: clear it, so the person picks a new one.
+  if (link.purpose === "recover") await repo.clearPassword(db, member.id);
+  return {
+    member: { ...member, hasPassword: link.purpose === "recover" ? false : member.hasPassword },
+    token: await startDevice(db, member.id),
+  };
 }
 
 /**
@@ -142,9 +176,6 @@ export async function peekLink(
   const member = link && (await repo.findMember(db, link.memberId));
   return member && link ? { name: member.name, purpose: link.purpose as repo.LinkPurpose } : null;
 }
-
-/** How many people are in the crew, for the join page. */
-export const crewSize = (db: Db) => repo.countMembers(db);
 
 export async function listDevices(db: Db, session: Session) {
   const rows = await repo.listDevices(db, session.member.id);
