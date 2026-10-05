@@ -82,6 +82,20 @@ test.describe("signed in", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
+  test("the in-app Back button never leaves the app", async ({ page }) => {
+    // Shared link → Explore tab → browser Back → in-app Back: the entry before is not WeWalk.
+    await page.goto("/s/dock-72");
+    await page
+      .getByRole("navigation", { name: "Main" })
+      .getByRole("link", { name: "Explore" })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/s\/dock-72$/);
+    await page.getByRole("link", { name: "Back" }).click();
+    await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/$/);
+  });
+
   test("filters and search work before JavaScript loads (plain links and a GET form)", async ({
     browser,
   }, info) => {

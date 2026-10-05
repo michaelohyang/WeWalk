@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
-import { layoutPins, MAP_HEIGHT, MAP_WIDTH, project, SQUEEZE_LINE_Y } from "./map";
+import { layoutPins, MAP_GEOMETRY, MAP_HEIGHT, MAP_WIDTH, project, SQUEEZE_LINE_Y } from "./map";
 import { STATIONS } from "./stations";
 
 /** Ray-casting point-in-polygon, in projected map units. */
@@ -89,4 +89,48 @@ describe("layoutPins", () => {
   it("is deterministic", () => {
     expect(layoutPins(STATIONS)).toEqual(pins);
   });
+});
+
+describe("map labels", () => {
+  type Box = { x1: number; y1: number; x2: number; y2: number };
+  const hit = (a: Box, b: Box) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+  // 8px uppercase with letter-spacing: ~6.2 units per character; rotated labels run vertically.
+  const labelBox = (l: (typeof MAP_GEOMETRY.labels)[number]): Box => {
+    const long = l.text.length * 6.2;
+    return l.rotate === 0
+      ? { x1: l.x - long / 2, y1: l.y - 5, x2: l.x + long / 2, y2: l.y + 5 }
+      : { x1: l.x - 5, y1: l.y - long / 2, x2: l.x + 5, y2: l.y + long / 2 };
+  };
+  // Worst case: every station visited, so every pin is a bubble with a label.
+  const pins = layoutPins(
+    STATIONS.map((s) => ({ ...s, name: s.short })),
+    { priority: () => 1, lit: () => true },
+  );
+  const taken: Box[] = pins.flatMap((p) => {
+    const w = STATIONS.find((s) => s.id === p.id)!.short.length * 4.9;
+    const boxes = [{ x1: p.x - 16, y1: p.y - 10, x2: p.x + 16, y2: p.y + 10 }];
+    if (p.label === "right")
+      boxes.push({ x1: p.x + 19, y1: p.y - 6, x2: p.x + 19 + w, y2: p.y + 6 });
+    if (p.label === "left")
+      boxes.push({ x1: p.x - 19 - w, y1: p.y - 6, x2: p.x - 19, y2: p.y + 6 });
+    return boxes;
+  });
+
+  it.each(MAP_GEOMETRY.labels.map((l) => [l.text, l] as const))(
+    "%s fits and stays clear",
+    (_, l) => {
+      const b = labelBox(l);
+      expect(b.x1).toBeGreaterThanOrEqual(2);
+      expect(b.x2).toBeLessThanOrEqual(MAP_GEOMETRY.width - 2);
+      expect(b.y1).toBeGreaterThanOrEqual(2);
+      expect(b.y2).toBeLessThanOrEqual(MAP_GEOMETRY.height - 2);
+      for (const t of taken) expect(hit(b, t)).toBe(false);
+      // Not on the "Uptown, not to scale" marker (right-aligned, just above the squeeze line).
+      expect(
+        hit(b, { x1: 230, y1: MAP_GEOMETRY.squeezeY - 14, x2: 360, y2: MAP_GEOMETRY.squeezeY + 2 }),
+      ).toBe(false);
+      for (const other of MAP_GEOMETRY.labels)
+        if (other !== l) expect(hit(b, labelBox(other))).toBe(false);
+    },
+  );
 });

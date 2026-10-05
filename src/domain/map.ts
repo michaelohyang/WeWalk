@@ -91,22 +91,19 @@ export const LAND = [
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-const label = (text: string, at: LatLng, rotate = 0, water = false) => {
-  const p = project(at);
-  return { text, x: round1(p.x), y: round1(p.y), rotate, water };
-};
-
 export const MAP_GEOMETRY: MapGeometry = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
   squeezeY: SQUEEZE_LINE_Y,
   land: LAND,
+  // Placed by hand in map units (checked by map.test.ts: inside the map, clear of every pin,
+  // pin label and each other at 390px).
   labels: [
-    label("Hudson", [40.733, -74.0175], -90, true),
-    label("East River", [40.722, -73.9705], -70, true),
-    label("New Jersey · no comment", [40.745, -74.034], -90),
-    label("Brooklyn", [40.688, -73.968]),
-    label("Queens", [40.757, -73.93]),
+    { text: "Hudson", x: 32, y: 430, rotate: -90, water: true },
+    { text: "East River", x: 230, y: 320, rotate: -70, water: true },
+    { text: "New Jersey · no comment", x: 9, y: 380, rotate: -90, water: false },
+    { text: "Brooklyn", x: 300, y: 500, rotate: 0, water: false },
+    { text: "Queens", x: 300, y: 150, rotate: 0, water: false },
   ],
 };
 
