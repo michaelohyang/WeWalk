@@ -1,6 +1,6 @@
 # WeWalk v1: product and engineering plan
 
-Status: **draft, waiting on owner decisions** (section 9). Database host decided: Supabase. No production code until it's approved.
+Status: **approved.** All owner decisions are made (section 9). Phase 0 is in progress. No production code until it's approved.
 
 The prototype in `src/app.html` is now the spec for design and flow. This plan covers turning
 it into a real web app that a group of friends can share from one link.
@@ -9,11 +9,11 @@ it into a real web app that a group of friends can share from one link.
 
 ## 1. Product goals
 
-- One link, shared by about 5–15 friends, covering about 25 NYC WeWork buildings.
+- One link, shared by about 5–15 friends, covering 29 NYC WeWork buildings.
 - Rating a building from a lobby, one-handed, on a weak signal, takes **under 20 seconds**.
 - When you're deciding where to work tomorrow, the answer ("best Wi-Fi near Flatiron?") is two
   taps away.
-- Keep the Beli-style design (white canvas, teal, 0–10 score circles) and the casual copy.
+- Keep the Beli-style design (white canvas, teal, colored score circles) and the casual copy.
 
 **Not goals for v1:** public sign-ups, email or passwords, social features (comments, likes),
 native apps, real street maps.
@@ -39,7 +39,7 @@ Prototype problems the rebuild has to fix, most important first:
 | | Item |
 |---|---|
 | **MUST** | M1 Shared backend behind a crew invite code. Stations seeded on the server |
-| | M2 Identity: pick a display name once, names unique ignoring case, a personal "device link" to sign in on another phone |
+| | M2 Identity: join from an invite link, pick a display name once (unique ignoring case), add another phone with a one-time pairing link, sign out a lost phone |
 | | M3 Lobby-proof rate flow: one review per person per station (posting again edits it), scores first with text folded under "Add more", draft autosave, offline outbox |
 | | M4 Real URLs: `/`, `/s/[id]`, `/rate/[id]`, `/ranks`, `/passport`, `/crew` |
 | | M5 One-tap check-in with an optional note |
@@ -102,8 +102,8 @@ src/
     (app)/s/[id]/page.tsx   # Station
     (app)/rate/[id]/page.tsx
     (app)/ranks|passport|crew/page.tsx
-    join/page.tsx           # invite code + pick a name
-    link/[token]/route.ts   # device link → sets session cookie
+    j/[code]/page.tsx       # invite link → pick a name
+    pair/[token]/route.ts   # one-time pairing or recovery link → sets session cookie
     api/…/route.ts          # JSON endpoints (writes)
   domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport
   server/
@@ -128,7 +128,7 @@ policies**, on every table, and the Supabase keys never ship to the browser. Eve
 auto-generated API is reachable, it returns nothing.
 
 **Reads.** Server Components load station and review rows and compute aggregates in `domain/`.
-With about 25 stations and a few hundred reviews, that's microseconds. The scoring logic stays
+With 29 stations and a few hundred reviews, that's microseconds. The scoring logic stays
 pure and unit-tested instead of buried in SQL.
 
 **Writes.** JSON `PUT` with **client-generated UUIDs**, so a retry can never create a duplicate.
@@ -136,19 +136,45 @@ The offline outbox simply replays the same request. After a write, `router.refre
 data. No realtime in v1: friends see new posts when they refresh or navigate, which meets the
 "within 5 seconds" criterion.
 
-**Auth (no passwords).**
-- `CREW_CODE` env var. `/join` checks it, then asks for a display name.
-- A random 32-byte device token is created, its SHA-256 hash is stored in the database, and the
-  token itself goes in an httpOnly cookie.
-- Crew page: "Use on another phone" shows your personal link `/link/<token>`.
-- Every API route requires a session. Without one, you're sent to `/join`.
+**Auth (no passwords, no email).**
+- **Joining:** the invite code is part of the shared link (`/j/<CREW_CODE>`). The page checks it,
+  then asks for a display name. Changing the `CREW_CODE` env var stops new joins and leaves
+  existing sessions alone.
+- **Sessions:** each phone gets a random 32-byte device token. Its SHA-256 hash is stored in
+  `devices`, and the token itself goes in an httpOnly, Secure, SameSite=Lax cookie.
+- **Adding a phone:** "Add a phone" in Crew creates a **one-time pairing link**
+  (`/pair/<token>`). It expires after 15 minutes and stops working after its first use. There are
+  no permanent personal links, because a link left in a chat would let anyone post as you.
+- **Lost phone:** Crew lists your phones and you can sign out any of them, which deletes that
+  device row.
+- **Locked out of every phone:** the owner (`members.is_owner`) creates a one-time recovery link
+  for that member. It uses the same mechanism as pairing, with a 24-hour expiry.
+- **Names:** reviews point at `member_id`, so renaming yourself updates your name everywhere.
+- **Access:** every page and API route needs a session. Without one, you see a "Get an invite
+  link from your crew" screen.
+
+**Scoring (decided: one scale, out of 5).**
+- You tap 1–5 per category, and every score is shown out of 5 with one decimal.
+- **A person's overall score** for a building is the average of the categories they rated.
+- **A building's overall score** is the average of each person's overall score, so each friend
+  counts once however many categories they rated.
+- **A category score** is the average of the people who rated that category.
+- **Ties in rankings** go to the building with more reviews, then to the name in A–Z order.
+- **Score colors:** 4.3 and up green, 3.5 and up lime, 2.8 and up amber, below that red.
+
+**Passport (decided: personal).** You get a stamp the first time you check in at or review a
+building, dated that day. A line underneath shows crew coverage ("Crew: 14 / 29"). The map stays
+crew-wide: a building shows as visited if anyone in the crew has been.
 
 ### Data model
 
 ```
-stations  id (slug PK) · name · address · hood · map_x · map_y · label_side · active · created_at
-members   id uuid PK · name · name_key (lower/trimmed, UNIQUE) · created_at
-devices   id uuid PK · member_id FK · token_hash UNIQUE · created_at · last_seen_at
+stations  id (slug PK) · name · address · neighborhood · area · map_x · map_y · label_side
+          · hidden bool · created_at          -- hidden keeps reviews and stamps
+members   id uuid PK · name · name_key (lower/trimmed, UNIQUE) · is_owner · created_at
+devices   id uuid PK · member_id FK · token_hash UNIQUE · label · created_at · last_seen_at
+links     id uuid PK · member_id FK · token_hash UNIQUE · purpose (pair|recover)
+          · expires_at · used_at              -- one-time pairing and recovery links
 reviews   id uuid PK (client-generated) · station_id FK · member_id FK · visited_on date
           · coffee … vibe  smallint NULL CHECK 1..5 (9 columns) · hot_take · body · tags text[]
           · created_at · updated_at · UNIQUE(station_id, member_id)
@@ -168,7 +194,10 @@ plain SQL and the database rejects bad values.
 | PUT | `/api/reviews/:id` | create or update your review. 409 if you already reviewed this station under a different id (the client then switches to edit) |
 | DELETE | `/api/reviews/:id` | only your own |
 | PUT | `/api/checkins/:id` | idempotent. 409 on a second check-in at the same station on the same day |
-| GET | `/api/me/link` | your device link |
+| POST | `/api/me/pair-links` | creates a one-time pairing link (15 min) |
+| DELETE | `/api/me/devices/:id` | signs out one of your phones |
+| PATCH | `/api/me` | renames you. 409 if the name is taken |
+| POST | `/api/admin/recovery-links` | owner only: `{memberId}` → one-time recovery link (24 h) |
 
 ## 6. Phases
 
@@ -204,6 +233,8 @@ nothing to rewire later.
   - every table has row-level security enabled (a test checks `pg_class.relrowsecurity`).
 
 ### Phase 2: Frontend, read paths
+- The schematic map is redrawn to reach Harlem (126th St) and the Upper East Side, and pins are
+  re-placed for the 29 real buildings. Labels and tap targets get checked at 390px.
 - The `ui/` components, routing (M4), and the Explore list and map, Station, Ranks, Passport and
   Crew screens (read-only) wired to real data.
 - **QA gate:** Playwright at 390×844 in light and dark:
@@ -215,7 +246,7 @@ nothing to rewire later.
 - **Product review:** walk journeys B and D.
 
 ### Phase 3: Frontend, write paths
-- `/join` onboarding and the device link.
+- Invite-link onboarding (`/j/<code>`), pairing links and the device list in Crew.
 - Rate flow (M3): prefilled station, scores first, "Add more" collapsed, sticky Post button, draft
   autosave, outbox, edit mode when you've already reviewed. After posting, land on the station
   page with your review on top, plus the pin glow and stamp animation.
@@ -260,13 +291,51 @@ tap targets.
 | The station list is out of date | Seed file plus an `active` flag. The owner fixes it in one PR |
 | The repo can't be pushed from this environment | The Claude GitHub App needs access to `michaelohyang/WeWalk` before Phase 0 |
 
-## 9. Decisions needed from the owner
+## 9. Owner decisions (made)
 
-| # | Decision | Recommended default |
+| # | Decision | Outcome |
 |---|---|---|
-| 1 | Stack and hosting | **Decided:** Next.js on Vercel, Supabase for Postgres and Storage, accessed only from our server |
-| 2 | Scoring display | Tap 1–5 per category, category scores shown /5, overall station score shown as the /10 circle |
-| 3 | Passport | Personal ("your stamps"), with crew coverage as a secondary stat |
-| 4 | Identity | Invite code + display name + personal device link, no email |
-| 5 | Station management | Only the owner, through the seed file. No add or remove in the app for v1 |
-| 6 | Building list | Send the real list. Otherwise we launch with the 25 in the prototype |
+| 1 | Stack and hosting | Next.js on Vercel, Supabase for Postgres and Storage, accessed only from our server |
+| 2 | Scoring | One scale: tap 1–5, every score shown out of 5 (section 5) |
+| 3 | Passport | Personal, with crew coverage as a secondary stat. The map stays crew-wide |
+| 4 | Identity | Invite link, unique display name, one-time pairing links, device sign-out, owner-issued recovery links |
+| 5 | Stations | Owner only, through the seed file. Removing a station hides it and keeps its data. "Suggest a building" comes later |
+| 6 | Building list | The owner's list of 29 (appendix A) |
+
+## Appendix A: Stations (seed data, from the owner)
+
+`neighborhood` is shown on rows. `area` drives the filter chips: five chips instead of 16.
+
+| # | Name | Address | Neighborhood | Area |
+|---|---|---|---|---|
+| 1 | 250 Broadway | 250 Broadway, New York, NY 10007 | Financial District | Downtown |
+| 2 | 199 Water St | 199 Water St, New York, NY 10038 | Financial District | Downtown |
+| 3 | 450 Lexington Ave | 450 Lexington Ave, New York, NY 10017 | Midtown East | Midtown |
+| 4 | 368 9th Ave | 368 9th Ave, New York, NY 10001 | Midtown West | Midtown |
+| 5 | 8 W 126th St | 8 W 126th St, New York, NY 10027 | Harlem | Uptown |
+| 6 | 430 Park Ave | 430 Park Ave, New York, NY 10022 | Upper East Side | Uptown |
+| 7 | 18 W 18th St | 18 W 18th St, New York, NY 10011 | Flatiron | Flatiron |
+| 8 | 135 Madison Ave | 135 Madison Ave, New York, NY 10016 | NoMad | Flatiron |
+| 9 | 500 7th Ave | 500 7th Ave, New York, NY 10018 | Midtown West | Midtown |
+| 10 | 85 Broad St | 85 Broad St, New York, NY 10004 | Financial District | Downtown |
+| 11 | 575 Lexington Ave | 575 Lexington Ave, New York, NY 10022 | Midtown East | Midtown |
+| 12 | 148 Lafayette St | 148 Lafayette St, New York, NY 10013 | SoHo | Downtown |
+| 13 | 160 Varick St | 160 Varick St, New York, NY 10013 | Greenwich Village | Downtown |
+| 14 | 1450 Broadway | 1450 Broadway, New York, NY 10018 | Midtown West | Midtown |
+| 15 | Dock 72 | Dock 72 Way, Brooklyn, NY 11205 | Brooklyn Navy Yard | Brooklyn |
+| 16 | 450 Park Ave S | 450 Park Ave S, New York, NY 10016 | NoMad | Flatiron |
+| 17 | 408 Broadway | 408 Broadway, New York, NY 10013 | SoHo | Downtown |
+| 18 | 154 W 14th St | 154 W 14th St, New York, NY 10011 | Chelsea | Flatiron |
+| 19 | 750 Lexington Ave | 750 Lexington Ave, New York, NY 10022 | Upper East Side | Uptown |
+| 20 | 115 Broadway | 115 Broadway, New York, NY 10006 | Financial District | Downtown |
+| 21 | 134 N 4th St | 134 N 4th St, Brooklyn, NY 11249 | Williamsburg | Brooklyn |
+| 22 | 575 Fifth | 575 5th Ave, New York, NY 10017 | Midtown East | Midtown |
+| 23 | 33 Irving Pl | 33 Irving Pl, New York, NY 10003 | Gramercy | Flatiron |
+| 24 | 379 W Broadway | 379 W Broadway, New York, NY 10012 | SoHo | Downtown |
+| 25 | 195 Montague St | 195 Montague St, 14th Fl, Brooklyn, NY 11201 | Brooklyn Heights | Brooklyn |
+| 26 | 1460 Broadway | 1460 Broadway, New York, NY 10036 | Times Square | Midtown |
+| 27 | Dumbo Heights | 77 Sands St, Brooklyn, NY 11201 | Dumbo | Brooklyn |
+| 28 | 524 Broadway | 524 Broadway, New York, NY 10012 | SoHo | Downtown |
+| 29 | 135 W 41st St | 135 W 41st St, New York, NY 10036 | Midtown West | Midtown |
+
+WeWork lists Dock 72 and 195 Montague under "Dumbo". We keep their real neighborhoods.
