@@ -194,7 +194,9 @@ describe("street grids", () => {
   });
 
   it("draws streets in both boroughs", () => {
-    expect(MAP_GEOMETRY.streets.manhattan.grid.length).toBeGreaterThan(1000);
-    expect(MAP_GEOMETRY.streets.brooklyn.grid.length).toBeGreaterThan(1000);
+    for (const b of [MAP_GEOMETRY.streets.manhattan, MAP_GEOMETRY.streets.brooklyn]) {
+      expect(b.minor.length).toBeGreaterThan(1000);
+      expect(b.major.length).toBeGreaterThan(500);
+    }
   });
 });

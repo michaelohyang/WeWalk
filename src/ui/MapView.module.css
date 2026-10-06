@@ -99,12 +99,27 @@
 .selected .name {
   font-weight: 800;
 }
-/* Manhattan's street grid and Broadway: texture under the pins, never competing with them. */
-.grid {
+/* Street grids and Broadway: texture under the pins, never competing with them. */
+.street,
+.mainStreet {
   fill: none;
-  stroke: color-mix(in srgb, var(--fg) 7%, transparent);
-  stroke-width: 0.8;
+  stroke-linecap: round;
+  shape-rendering: geometricPrecision;
   pointer-events: none;
+}
+.street {
+  stroke: color-mix(in srgb, var(--fg) 5%, transparent);
+  stroke-width: 0.6;
+}
+.mainStreet {
+  stroke: color-mix(in srgb, var(--fg) 9%, transparent);
+  stroke-width: 1.1;
+}
+/* White keeps, black hides: the land, with a black rim that the blur turns into a soft edge. */
+.shoreMask {
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 7;
 }
 .broadway {
   fill: none;

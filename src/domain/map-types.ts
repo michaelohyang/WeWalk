@@ -8,14 +8,23 @@ export interface MapGeometry {
   width: number;
   height: number;
   land: readonly { name: string; far: boolean; d: string }[];
-  /** Street texture: each borough's grids, clipped to its shore (`clip`), and Broadway. */
+  /**
+   * Street texture: each borough's grid lines (`major` every few, drawn bolder), faded out at its
+   * `shore`, and Broadway.
+   */
   streets: {
-    manhattan: { grid: string; clip: string };
-    brooklyn: { grid: string; clip: string };
+    manhattan: BoroughStreets;
+    brooklyn: BoroughStreets;
     broadway: string;
   };
   /** Water and borough names, with a rotation for the rivers. */
   labels: readonly { text: string; x: number; y: number; rotate: number; water: boolean }[];
+}
+
+export interface BoroughStreets {
+  minor: string;
+  major: string;
+  shore: string;
 }
 
 export type LabelSide =

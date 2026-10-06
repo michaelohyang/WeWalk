@@ -84,24 +84,33 @@ export function MapView({
         {land.map((l) => (
           <path key={l.name} d={l.d} className={l.far ? styles.landFar : styles.land} />
         ))}
-        <clipPath id="streets-manhattan">
-          <path d={geometry.streets.manhattan.clip} />
-        </clipPath>
-        <clipPath id="streets-brooklyn">
-          <path d={geometry.streets.brooklyn.clip} />
-        </clipPath>
-        <g clipPath="url(#streets-brooklyn)" aria-hidden="true">
-          <path d={geometry.streets.brooklyn.grid} className={styles.grid} />
-        </g>
-        <g clipPath="url(#streets-manhattan)" aria-hidden="true">
-          <path d={geometry.streets.manhattan.grid} className={styles.grid} />
-          <path d={geometry.streets.broadway} className={styles.broadway} />
-        </g>
         <defs>
           <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodOpacity="0.25" />
           </filter>
+          {/* Streets fade out just short of the shore instead of stopping hard at it. */}
+          <filter id="shore-fade" x="-5%" y="-5%" width="110%" height="110%">
+            <feGaussianBlur stdDeviation="2" />
+          </filter>
+          {(["manhattan", "brooklyn"] as const).map((b) => (
+            <mask key={b} id={`streets-${b}`} maskUnits="userSpaceOnUse">
+              <path
+                d={geometry.streets[b].shore}
+                className={styles.shoreMask}
+                filter="url(#shore-fade)"
+              />
+            </mask>
+          ))}
         </defs>
+        {(["brooklyn", "manhattan"] as const).map((b) => (
+          <g key={b} mask={`url(#streets-${b})`} aria-hidden="true">
+            <path d={geometry.streets[b].minor} className={styles.street} />
+            <path d={geometry.streets[b].major} className={styles.mainStreet} />
+            {b === "manhattan" && (
+              <path d={geometry.streets.broadway} className={styles.broadway} />
+            )}
+          </g>
+        ))}
         {geometry.labels.map((l) => (
           <text
             key={l.text}

@@ -33,7 +33,6 @@ export function Page({
         </header>
       )}
       {children}
-      <p className={styles.foot}>Unofficial. Not affiliated with WeWork. Just opinions.</p>
     </main>
   );
 }

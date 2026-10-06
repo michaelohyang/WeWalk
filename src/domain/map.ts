@@ -142,11 +142,18 @@ export function insideSpans(a: Pt, b: Pt, ring: readonly Pt[]): [number, number]
   return spans;
 }
 
+/** Every this many lines, a main street or avenue, drawn bolder. */
+const MAJOR_EVERY = 3;
+/** Lines stop this many meters short of a neighborhood's edge, so neighboring grids don't collide. */
+const SEAM_GAP_M = 35;
+
+type Lines = { minor: string[]; major: string[] };
+
 /**
  * One neighborhood's grid: avenues along its tilt, streets across them, cut to its outline.
- * Clipped to the shore by the drawing code.
+ * Faded out at the shore by the drawing code.
  */
-function gridPatch(patch: GridPatch): string {
+function gridPatch(patch: GridPatch, out: Lines) {
   const tilt = (patch.tilt * Math.PI) / 180;
   // Work in the patch's own frame, where its avenues run up.
   const ring = patch.area.map((at) => turn(meters(at), tilt));
@@ -154,38 +161,27 @@ function gridPatch(patch: GridPatch): string {
   const [minX, maxX] = [Math.min(...ring.map((p) => p.x)), Math.max(...ring.map((p) => p.x))];
   const [minY, maxY] = [Math.min(...ring.map((p) => p.y)), Math.max(...ring.map((p) => p.y))];
   const back = (p: Pt) => turn(turn(p, -tilt), GRID_TILT);
-  const lines: [Pt, Pt][] = [];
-  for (
-    let x = origin.x - Math.ceil((origin.x - minX) / patch.avenue) * patch.avenue;
-    x <= maxX;
-    x += patch.avenue
-  ) {
-    lines.push([
-      { x, y: minY },
-      { x, y: maxY },
-    ]);
+  const lines: { a: Pt; b: Pt; major: boolean }[] = [];
+  const firstX = Math.ceil((minX - origin.x) / patch.avenue);
+  for (let i = firstX; origin.x + i * patch.avenue <= maxX; i++) {
+    const x = origin.x + i * patch.avenue;
+    lines.push({ a: { x, y: minY }, b: { x, y: maxY }, major: i % MAJOR_EVERY === 0 });
   }
-  for (
-    let y = origin.y - Math.ceil((origin.y - minY) / patch.street) * patch.street;
-    y <= maxY;
-    y += patch.street
-  ) {
-    lines.push([
-      { x: minX, y },
-      { x: maxX, y },
-    ]);
+  const firstY = Math.ceil((minY - origin.y) / patch.street);
+  for (let i = firstY; origin.y + i * patch.street <= maxY; i++) {
+    const y = origin.y + i * patch.street;
+    lines.push({ a: { x: minX, y }, b: { x: maxX, y }, major: i % MAJOR_EVERY === 0 });
   }
-  const lerp = (a: Pt, b: Pt, t: number) => ({
-    x: a.x + (b.x - a.x) * t,
-    y: a.y + (b.y - a.y) * t,
-  });
-  return lines
-    .flatMap(([a, b]) =>
-      insideSpans(a, b, ring).map(([t0, t1]) =>
-        segment(back(lerp(a, b, t0)), back(lerp(a, b, t1))),
-      ),
-    )
-    .join("");
+  const at = (a: Pt, b: Pt, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  for (const { a, b, major } of lines) {
+    const gap = SEAM_GAP_M / Math.hypot(b.x - a.x, b.y - a.y);
+    for (const [t0, t1] of insideSpans(a, b, ring)) {
+      if (t1 - t0 <= 2 * gap) continue;
+      (major ? out.major : out.minor).push(
+        segment(back(at(a, b, t0 + gap)), back(at(a, b, t1 - gap))),
+      );
+    }
+  }
 }
 
 /**
@@ -193,16 +189,25 @@ function gridPatch(patch: GridPatch): string {
  * city, not navigation. North of the squeeze the streets bunch up, which also shows the scale
  * change.
  */
-function streetGrid(borough: GridPatch["borough"]): string {
-  return STREET_GRIDS.filter((p) => p.borough === borough)
-    .map(gridPatch)
-    .join("");
+function streetGrid(borough: GridPatch["borough"]) {
+  const out: Lines = { minor: [], major: [] };
+  for (const patch of STREET_GRIDS) if (patch.borough === borough) gridPatch(patch, out);
+  return { minor: out.minor.join(""), major: out.major.join("") };
 }
 
-/** Broadway, as a smooth open line. */
+/** Broadway, as a smooth open curve (Catmull-Rom, ends held in place). */
 function broadway(): string {
   const p = BROADWAY.map(project);
-  return p.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join("");
+  const at = (i: number) => p[Math.min(Math.max(i, 0), p.length - 1)]!;
+  const f = (n: number) => n.toFixed(1);
+  let d = `M${f(p[0]!.x)} ${f(p[0]!.y)}`;
+  for (let i = 0; i < p.length - 1; i++) {
+    const [a, b, c, e] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    const c1 = { x: b.x + (c.x - a.x) / 6, y: b.y + (c.y - a.y) / 6 };
+    const c2 = { x: c.x - (e.x - b.x) / 6, y: c.y - (e.y - b.y) / 6 };
+    d += `C${f(c1.x)} ${f(c1.y)} ${f(c2.x)} ${f(c2.y)} ${f(c.x)} ${f(c.y)}`;
+  }
+  return d;
 }
 
 export const MAP_GEOMETRY: MapGeometry = {
@@ -210,8 +215,8 @@ export const MAP_GEOMETRY: MapGeometry = {
   height: MAP_HEIGHT,
   land: LAND,
   streets: {
-    manhattan: { grid: streetGrid("manhattan"), clip: toPath(MANHATTAN) },
-    brooklyn: { grid: streetGrid("brooklyn"), clip: toPath(BROOKLYN) },
+    manhattan: { ...streetGrid("manhattan"), shore: toPath(MANHATTAN) },
+    brooklyn: { ...streetGrid("brooklyn"), shore: toPath(BROOKLYN) },
     broadway: broadway(),
   },
   // Placed by hand in map units (checked by map.test.ts: inside the map, clear of every pin,
