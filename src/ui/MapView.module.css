@@ -99,33 +99,24 @@
 .selected .name {
   font-weight: 800;
 }
-/* Street grids and Broadway: texture under the pins, never competing with them. */
-.street,
-.mainStreet {
-  fill: none;
-  stroke-linecap: round;
-  shape-rendering: geometricPrecision;
+/* Area tints in the chips' colors: a quiet wash under the pins, never competing with them. */
+.zones {
   pointer-events: none;
 }
-.street {
-  stroke: color-mix(in srgb, var(--fg) 5%, transparent);
-  stroke-width: 0.6;
+.zone {
+  fill-opacity: var(--zone-tint);
 }
-.mainStreet {
-  stroke: color-mix(in srgb, var(--fg) 9%, transparent);
-  stroke-width: 1.1;
+.zoneOn {
+  fill-opacity: var(--zone-tint-on);
 }
-/* White keeps, black hides: the land, with a black rim that the blur turns into a soft edge. */
-.shoreMask {
-  fill: #fff;
-  stroke: #000;
-  stroke-width: 7;
+.zoneOff {
+  fill-opacity: var(--zone-tint-off);
 }
-.broadway {
-  fill: none;
-  stroke: color-mix(in srgb, var(--fg) 12%, transparent);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  pointer-events: none;
+.zone,
+.zoneOn,
+.zoneOff {
+  transition: fill-opacity 0.25s ease;
+}
+.park {
+  fill: var(--park);
 }

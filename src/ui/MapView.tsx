@@ -1,7 +1,9 @@
 "use client";
 
+import type { AreaKey } from "@/domain/areas";
 import type { LabelSide, MapGeometry, Pin } from "@/domain/map-types";
 import { formatScore, tierOf } from "@/domain/scoring";
+import { areaColor } from "./format";
 import styles from "./MapView.module.css";
 
 export interface MapStation {
@@ -53,6 +55,7 @@ export function MapView({
   stations,
   selected,
   dimmed,
+  area,
   onSelect,
 }: {
   /** Land shapes and size, computed on the server so the projection code never ships. */
@@ -61,9 +64,14 @@ export function MapView({
   stations: Map<string, MapStation>;
   selected: string | null;
   dimmed: Set<string>;
+  /** The area filter, if any: its zone is tinted more strongly. */
+  area?: AreaKey | null;
   onSelect: (id: string | null) => void;
 }) {
-  const { width, height, land } = geometry;
+  const { width, height, land, zones } = geometry;
+  // With an area picked, its zone stands out and the rest fade back.
+  const zoneClass = (a: AreaKey) =>
+    !area ? styles.zone : a === area ? styles.zoneOn : styles.zoneOff;
   // Draw unvisited first and the selected pin last, so they stack sensibly.
   const order = [...pins].sort(
     (a, b) =>
@@ -88,29 +96,34 @@ export function MapView({
           <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodOpacity="0.25" />
           </filter>
-          {/* Streets fade out just short of the shore instead of stopping hard at it. */}
-          <filter id="shore-fade" x="-5%" y="-5%" width="110%" height="110%">
-            <feGaussianBlur stdDeviation="2" />
+          <clipPath id="zones-manhattan">
+            <path d={zones.manhattan.shore} />
+          </clipPath>
+          {/* Soft edges where one area meets the next. */}
+          <filter id="zone-blur" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="6" />
           </filter>
-          {(["manhattan", "brooklyn"] as const).map((b) => (
-            <mask key={b} id={`streets-${b}`} maskUnits="userSpaceOnUse">
-              <path
-                d={geometry.streets[b].shore}
-                className={styles.shoreMask}
-                filter="url(#shore-fade)"
-              />
-            </mask>
-          ))}
         </defs>
-        {(["brooklyn", "manhattan"] as const).map((b) => (
-          <g key={b} mask={`url(#streets-${b})`} aria-hidden="true">
-            <path d={geometry.streets[b].minor} className={styles.street} />
-            <path d={geometry.streets[b].major} className={styles.mainStreet} />
-            {b === "manhattan" && (
-              <path d={geometry.streets.broadway} className={styles.broadway} />
-            )}
+        <g aria-hidden="true" className={styles.zones}>
+          <g clipPath="url(#zones-manhattan)">
+            <g filter="url(#zone-blur)">
+              {zones.manhattan.areas.map((z) => (
+                <path
+                  key={z.area}
+                  d={z.d}
+                  style={{ fill: areaColor(z.area) }}
+                  className={zoneClass(z.area)}
+                />
+              ))}
+            </g>
           </g>
-        ))}
+          <path
+            d={zones.brooklyn}
+            style={{ fill: areaColor("brooklyn") }}
+            className={zoneClass("brooklyn")}
+          />
+          <rect {...zones.park} rx={6} className={styles.park} />
+        </g>
         {geometry.labels.map((l) => (
           <text
             key={l.text}

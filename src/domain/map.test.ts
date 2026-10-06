@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BROOKLYN, MANHATTAN, STREET_GRIDS, type LatLng } from "./geo";
+import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
 import {
   geoLabelBox,
   geoLabelPoints,
-  insideSpans,
   isOnLand,
   labelBoxes,
   layoutPins,
@@ -159,44 +158,33 @@ describe("map labels", () => {
   );
 });
 
-describe("street grids", () => {
-  it("cuts a line to the stretches inside an outline", () => {
-    const square = [
-      { x: 0, y: 0 },
-      { x: 4, y: 0 },
-      { x: 4, y: 4 },
-      { x: 0, y: 4 },
-    ];
-    expect(insideSpans({ x: -4, y: 2 }, { x: 12, y: 2 }, square)).toEqual([[0.25, 0.5]]);
-    const u = [
-      { x: 0, y: 0 },
-      { x: 6, y: 0 },
-      { x: 6, y: 6 },
-      { x: 4, y: 6 },
-      { x: 4, y: 2 },
-      { x: 2, y: 2 },
-      { x: 2, y: 6 },
-      { x: 0, y: 6 },
-    ];
-    expect(insideSpans({ x: -1, y: 4 }, { x: 7, y: 4 }, u)).toEqual([
-      [1 / 8, 3 / 8],
-      [5 / 8, 7 / 8],
-    ]);
-    expect(insideSpans({ x: -1, y: 9 }, { x: 7, y: 9 }, u)).toEqual([]);
-  });
-
-  // Downtown and Brooklyn had no streets once; every building should sit in a grid.
-  it.each(STATIONS.map((s) => [s.short, s] as const))("%s has streets around it", (_, s) => {
-    const at: LatLng = [s.lat, s.lng];
-    const borough = inside(at, BROOKLYN) ? "brooklyn" : "manhattan";
-    const patches = STREET_GRIDS.filter((g) => g.borough === borough && inside(at, g.area));
-    expect(patches.length).toBe(1);
-  });
-
-  it("draws streets in both boroughs", () => {
-    for (const b of [MAP_GEOMETRY.streets.manhattan, MAP_GEOMETRY.streets.brooklyn]) {
-      expect(b.minor.length).toBeGreaterThan(1000);
-      expect(b.major.length).toBeGreaterThan(500);
+describe("area zones", () => {
+  const zones = MAP_GEOMETRY.zones.manhattan.areas;
+  /** Ray-casting point-in-polygon on a zone's path ("Mx yLx y…Z"). */
+  const inZone = (d: string, p: { x: number; y: number }) => {
+    const ring = d
+      .slice(1, -1)
+      .split("L")
+      .map((xy) => xy.split(" ").map(Number) as [number, number]);
+    let hit = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [ax, ay] = ring[i]!;
+      const [bx, by] = ring[j]!;
+      if (ay > p.y !== by > p.y && p.x < ((bx - ax) * (p.y - ay)) / (by - ay) + ax) hit = !hit;
     }
+    return hit;
+  };
+
+  it("has one zone per Manhattan area, north first", () => {
+    expect(zones.map((z) => z.area)).toEqual(["uptown", "midtown", "flatiron", "downtown"]);
   });
+
+  // The tint under a station should match its filter chip.
+  it.each(STATIONS.filter((s) => s.area !== "brooklyn").map((s) => [s.short, s] as const))(
+    "%s sits in its own area's zone, and only that one",
+    (_, s) => {
+      const p = project([s.lat, s.lng]);
+      expect(zones.filter((z) => inZone(z.d, p)).map((z) => z.area)).toEqual([s.area]);
+    },
+  );
 });

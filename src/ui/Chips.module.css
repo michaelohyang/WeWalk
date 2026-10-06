@@ -6,6 +6,15 @@
   gap: 8px;
   padding-top: 10px;
 }
+.rowLabel {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-inline-end: 2px;
+}
 .chip {
   flex: none;
   border: 1.5px solid var(--line);

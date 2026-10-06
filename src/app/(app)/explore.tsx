@@ -187,7 +187,7 @@ export function Explore({ view }: { view: ExploreView }) {
         })}
       </ChipRow>
       {view.tags.length > 0 && (
-        <ChipRow label="Best for">
+        <ChipRow label="Best for" showLabel>
           {view.tags.map((t) => {
             const tag = filters.tag === t ? null : t;
             return (
@@ -214,6 +214,7 @@ export function Explore({ view }: { view: ExploreView }) {
             stations={byId}
             selected={selected}
             dimmed={dimmed}
+            area={filters.area}
             onSelect={setSelected}
           />
           <ul className={styles.legend} aria-label="Score colors">

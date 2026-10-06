@@ -3,10 +3,23 @@
 import Link from "next/link";
 import styles from "./Chips.module.css";
 
-/** A horizontally scrolling row of chips. */
-export function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
+/** A wrapping row of chips. With `showLabel`, the row's name is printed in front of them. */
+export function ChipRow({
+  label,
+  showLabel,
+  children,
+}: {
+  label: string;
+  showLabel?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className={styles.row} role="group" aria-label={label}>
+      {showLabel && (
+        <span className={styles.rowLabel} aria-hidden="true">
+          {label}
+        </span>
+      )}
       {children}
     </div>
   );
