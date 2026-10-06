@@ -18,7 +18,7 @@ const CREW_TAG = "crew";
  * deployment gives each deploy its own copy: one fresh load after a deploy, then cached again.
  * Bump SHAPE too when changing CrewData, for anywhere VERCEL_DEPLOYMENT_ID isn't set.
  */
-const SHAPE = "v2";
+const SHAPE = "v3";
 const DEPLOYMENT = process.env.VERCEL_DEPLOYMENT_ID ?? "local";
 
 export const crewData = unstable_cache(

@@ -21,6 +21,7 @@ const toRecord = (r: CheckinRow): CheckinRecord => ({
   memberId: r.memberId,
   visitedOn: r.visitedOn,
   note: r.note,
+  checkedInAt: r.createdAt.toISOString(),
 });
 
 export async function findCheckin(db: Db, id: string): Promise<CheckinRecord | undefined> {

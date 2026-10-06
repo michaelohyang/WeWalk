@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { localToday, newId } from "@/client/ids";
+import { queuedCheckin, sendCheckin } from "@/client/checkin";
 import { send, waiting } from "@/client/outbox";
 import { useToast } from "@/ui/Toast";
 import styles from "./actions.module.css";
@@ -35,40 +36,16 @@ export function StationActions({
   // second one gets queued (and refused later).
   useEffect(() => {
     if (checkin) return;
-    for (const job of waiting()) {
-      // Jobs queued before the rename name the station `stationId`.
-      const body = job.body as {
-        stationSlug?: string;
-        stationId?: string;
-        visitedOn?: string;
-        note?: string;
-      };
-      if (
-        job.key.startsWith("checkin:") &&
-        (body.stationSlug ?? body.stationId) === stationSlug &&
-        body.visitedOn === today
-      ) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- read storage once on mount
-        setCheckin({
-          id: job.key.slice("checkin:".length),
-          visitedOn: today,
-          note: body.note ?? "",
-        });
-        setNote(body.note ?? "");
-        return;
-      }
-    }
+    const queued = queuedCheckin(stationSlug, today);
+    if (!queued) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read storage once on mount
+    setCheckin(queued);
+    setNote(queued.note);
   }, [checkin, stationSlug, today]);
 
   async function put(id: string, body: { note: string }, label: string) {
     setBusy(true);
-    const result = await send({
-      key: `checkin:${id}`,
-      method: "PUT",
-      url: `/api/checkins/${id}`,
-      body: { stationSlug, visitedOn: today, ...body },
-      label,
-    });
+    const result = await sendCheckin(id, { stationSlug, visitedOn: today, ...body }, label);
     setBusy(false);
     return result;
   }

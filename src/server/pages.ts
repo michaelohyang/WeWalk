@@ -23,7 +23,7 @@ import {
 export async function loadExplore() {
   const session = await getSession();
   if (!session) return null;
-  return exploreView(await crewData(), session);
+  return exploreView(await crewData(), session, new Date());
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */

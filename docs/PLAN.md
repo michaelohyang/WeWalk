@@ -199,7 +199,12 @@ reviews   id uuid PK (client-generated) · station_id FK · member_id FK · visi
           · CHECK at least one score not null
 checkins  id uuid PK · station_id FK · member_id FK · visited_on date · note
           · UNIQUE(station_id, member_id, visited_on)
+reactions review_id FK (cascade) · member_id FK · kind (fire, hundred, laugh, disagree)
+          · PK(review_id, member_id, kind)
 ```
+
+"Here today" (Explore) is read from check-ins: each person's latest check-in dated today in New
+York, with the time it was made.
 
 Each category is its own column rather than one JSON field, so sorting rankings by category is
 plain SQL and the database rejects bad values.
@@ -215,6 +220,8 @@ plain SQL and the database rejects bad values.
 | GET | `/api/me` | you, plus the phones you're signed in on |
 | PUT | `/api/reviews/:id` | create or update your review. 409 if you already reviewed this station under a different id (the client then switches to edit) |
 | DELETE | `/api/reviews/:id` | only your own |
+| PUT | `/api/reviews/:id/reactions/:kind` | react to someone else's review (🔥 💯 😂 🙅). Idempotent; 400 on your own review |
+| DELETE | `/api/reviews/:id/reactions/:kind` | take back your reaction. Idempotent |
 | PUT | `/api/checkins/:id` | create, or add/change the note when the same id is sent again (an identical retry is a no-op). 409 with `existingId` on a second id for the same station and day |
 | DELETE | `/api/me/devices/:id` | signs out one of your phones |
 | PATCH | `/api/me` | renames you. 409 if the name is taken |

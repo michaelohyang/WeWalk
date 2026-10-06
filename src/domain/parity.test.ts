@@ -96,6 +96,7 @@ function world(seed: number) {
         memberId: "m9",
         visitedOn: "2026-10-02",
         note: "",
+        checkedInAt: "2026-10-02T13:00:00.000Z",
       });
   }
   return { stations, reviews, checkins };

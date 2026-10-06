@@ -29,3 +29,12 @@ export function isPlausibleVisitDate(value: IsoDate, now: Date): boolean {
 export function monthOf(date: IsoDate): string {
   return date.slice(0, 7);
 }
+
+/** The crew's city: "today" for crew-wide things (who's here today) is New York's date. */
+export const CITY_TIME_ZONE = "America/New_York";
+
+/** The calendar date in New York at an instant. */
+export function cityDate(now: Date): IsoDate {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: CITY_TIME_ZONE }).format(now);
+}

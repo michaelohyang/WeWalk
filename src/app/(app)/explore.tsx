@@ -17,6 +17,7 @@ import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import { StationRow } from "@/ui/StationRow";
 import styles from "./explore.module.css";
+import { HereToday } from "./here-today";
 
 type Filters = { q: string; area: AreaKey | null; tag: Tag | null; view: "map" | "list" };
 
@@ -70,6 +71,11 @@ const matcher = (f: { q: string; area: AreaKey | null; tag: Tag | null }) => (s:
 export function Explore({ view }: { view: ExploreView }) {
   const [filters, setFilters] = useFilters(view.tags);
   const [selected, setSelected] = useState<string | null>(null);
+  const hereCount = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const h of view.hereToday) counts.set(h.stationSlug, (counts.get(h.stationSlug) ?? 0) + 1);
+    return counts;
+  }, [view.hereToday]);
   const bySlug = useMemo(() => new Map(view.stations.map((s) => [s.slug, s])), [view.stations]);
   const matches = matcher(filters);
   const shown = view.stations.filter(matches);
@@ -150,6 +156,8 @@ export function Explore({ view }: { view: ExploreView }) {
         {filters.view === "list" && <input type="hidden" name="view" value="list" />}
       </form>
 
+      <HereToday here={view.hereToday} />
+
       <Segmented
         label="View"
         value={filters.view}
@@ -215,6 +223,7 @@ export function Explore({ view }: { view: ExploreView }) {
             selected={selected}
             dimmed={dimmed}
             area={filters.area}
+            here={hereCount}
             onSelect={setSelected}
           />
           <ul className={styles.legend} aria-label="Score colors">

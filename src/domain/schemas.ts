@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CATEGORY_KEYS, type CategoryKey } from "./categories";
 import { isIsoDate } from "./dates";
 import { displayNameProblem, normalizeDisplayName } from "./names";
+import { REACTION_KEYS } from "./reactions";
 import { TAGS } from "./tags";
 
 /**
@@ -14,6 +15,7 @@ const stationSlugSchema = z
   .string("Pick a building.")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "That building isn't on the map.");
 export const idSchema = z.uuid("That id isn't valid.");
+export const reactionKindSchema = z.enum(REACTION_KEYS, "That reaction isn't one of ours.");
 const isoDateSchema = z.string("Pick a date.").refine(isIsoDate, "That date isn't valid.");
 
 const score = z

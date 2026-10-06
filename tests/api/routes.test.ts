@@ -6,10 +6,15 @@ import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
 import { GET as me, PATCH as renameMe } from "@/app/api/me/route";
 import { POST as recover } from "@/app/api/recover/route";
+import { DELETE as unreact, PUT as react } from "@/app/api/reviews/[id]/reactions/[kind]/route";
 import { DELETE as deleteReview, PUT as putReview } from "@/app/api/reviews/[id]/route";
 import { POST as signup } from "@/app/api/signup/route";
 import { setDb, type Db } from "@/server/db/client";
 import { createTestDb, resetTestDb } from "@/server/db/testing";
+import { cityDate } from "@/domain/dates";
+import type { Session } from "@/server/services/auth";
+import { loadCrew } from "@/server/services/crew";
+import { exploreView, stationView } from "@/server/services/views";
 import { Phone } from "./client";
 
 const PASSWORD = "correct horse battery";
@@ -401,5 +406,89 @@ describe("failures inside the server", () => {
     expect(JSON.stringify(res.body)).not.toMatch(/DATABASE_URL/);
     setDb(db);
     spy.mockRestore();
+  });
+});
+
+describe("reactions", () => {
+  /** Dana posts a review; returns it and both phones. */
+  async function posted() {
+    const dana = await joined("Dana");
+    const sam = await joined("Sam");
+    const id = newId();
+    const res = await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id },
+      body: review(),
+    });
+    expect(res.status).toBe(201);
+    return { dana, sam, id };
+  }
+  const reactAs = (phone: Phone, id: string, kind: string, method: "PUT" | "DELETE" = "PUT") =>
+    phone.call(method === "PUT" ? react : unreact, method, "/api/reviews/x/reactions/y", {
+      params: { id, kind },
+    });
+  const viewAs = async (name: string) => {
+    const crew = await loadCrew(db);
+    const member = crew.members.find((m) => m.name === name)!;
+    const session = { member, deviceId: "d" } as unknown as Session;
+    const station = await stationView(crew, session, "18-w-18th-st");
+    return station!.reviews[0]!.reactions.find((r) => r.key === "fire")!;
+  };
+
+  it("adds once however many times it's sent, shows who, and comes off again", async () => {
+    const { sam, id } = await posted();
+    expect((await reactAs(sam, id, "fire")).status).toBe(204);
+    expect((await reactAs(sam, id, "fire")).status).toBe(204);
+    expect(await viewAs("Dana")).toMatchObject({ count: 1, mine: false, by: ["Sam"] });
+    expect(await viewAs("Sam")).toMatchObject({ count: 1, mine: true });
+
+    expect((await reactAs(sam, id, "fire", "DELETE")).status).toBe(204);
+    expect((await reactAs(sam, id, "fire", "DELETE")).status).toBe(204);
+    expect(await viewAs("Dana")).toMatchObject({ count: 0, by: [] });
+  });
+
+  it("refuses your own review, unknown kinds and missing reviews", async () => {
+    const { dana, sam, id } = await posted();
+    expect((await reactAs(dana, id, "fire")).status).toBe(400);
+    expect((await reactAs(sam, id, "thumbsdown")).status).toBe(400);
+    expect((await reactAs(sam, newId(), "fire")).status).toBe(404);
+    expect((await reactAs(new Phone(), id, "fire")).status).toBe(401);
+  });
+
+  it("go away with the review", async () => {
+    const { dana, sam, id } = await posted();
+    await reactAs(sam, id, "hundred");
+    await dana.call(deleteReview, "DELETE", "/api/reviews/x", { params: { id } });
+    expect((await loadCrew(db)).reactions).toEqual([]);
+  });
+});
+
+describe("here today", () => {
+  // Order (latest first) is covered by domain/today.test.ts; here two check-ins can share a ms.
+  it("shows today's check-ins (New York's date) on Explore", async () => {
+    const now = new Date();
+    const dana = await joined("Dana");
+    const sam = await joined("Sam");
+    const visitedOn = cityDate(now);
+    for (const [phone, stationSlug] of [
+      [dana, "dock-72"],
+      [sam, "18-w-18th-st"],
+    ] as const) {
+      const res = await phone.call(putCheckin, "PUT", "/api/checkins/x", {
+        params: { id: newId() },
+        body: { stationSlug, visitedOn },
+      });
+      expect(res.status).toBe(201);
+    }
+    const crew = await loadCrew(db);
+    const me = crew.members.find((m) => m.name === "Dana")!;
+    const view = await exploreView(crew, { member: me, deviceId: "d" } as unknown as Session, now);
+    const here = view.hereToday.map((h) => [h.name, h.stationSlug, h.mine]);
+    expect(here).toHaveLength(2);
+    expect(here).toEqual(
+      expect.arrayContaining([
+        ["Sam", "18-w-18th-st", false],
+        ["Dana", "dock-72", true],
+      ]),
+    );
   });
 });

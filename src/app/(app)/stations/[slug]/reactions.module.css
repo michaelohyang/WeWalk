@@ -1,0 +1,59 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.reaction,
+.static {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  min-width: 44px;
+  justify-content: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--fg);
+  font: inherit;
+  font-size: 15px;
+}
+.reaction {
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.reaction:active {
+  transform: scale(0.92);
+}
+.reaction[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 12%, var(--card));
+}
+.reaction:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.count {
+  font-size: 13px;
+  font-weight: 700;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reaction {
+    transition: none;
+  }
+}
