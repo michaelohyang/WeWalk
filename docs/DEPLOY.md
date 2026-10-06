@@ -26,9 +26,10 @@ that every table has row-level security on.
    | `DATABASE_URL` | the transaction pooler string (port 6543) |
    | `DIRECT_URL` | the session pooler string (port 5432) |
 
-   For review photos, also create a Blob store: **Storage → Create → Blob**, then connect it to
-   this project. That adds `BLOB_READ_WRITE_TOKEN` for you. Without it the app works, but photo
-   uploads say "Photos aren't set up yet."
+   For review photos, also create a Blob store: **Storage → Create → Blob** (Public), then
+   connect it to this project for Production and Preview. That adds `BLOB_STORE_ID`, and
+   deployments sign in to the store on their own (no token to copy). Redeploy afterwards. Without
+   it the app works, but photo uploads say "Photos aren't set up yet."
 
 3. **Deploy.** The build log should show:
    ```

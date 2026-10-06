@@ -5,16 +5,18 @@ import { AppError } from "./errors";
 
 /*
  * Review photos. The phone shrinks a photo to a JPEG of a few hundred KB before uploading, so
- * the server takes JPEG only. Photos live in Vercel Blob when BLOB_READ_WRITE_TOKEN is set (the
- * Vercel dashboard adds it when a Blob store is connected). Without it, local dev and tests keep
- * photos in memory and serve them from /api/photos/:id; on Vercel, uploads are refused instead.
+ * the server takes JPEG only. Photos live in Vercel Blob once a Blob store is connected to the
+ * project: Vercel then sets BLOB_STORE_ID and the deployment signs in on its own (OIDC); older
+ * stores set BLOB_READ_WRITE_TOKEN instead. @vercel/blob handles either. Without a store, local
+ * dev and tests keep photos in memory and serve them from /api/photos/:id; on Vercel, uploads
+ * are refused instead.
  *
  * Blob URLs are public but unguessable (a random suffix), and only reachable from a review.
  */
 
 export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
-const blobConfigured = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+const blobConfigured = () => !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 /** Never on Vercel (where VERCEL=1): a serverless function's memory doesn't last. */
 const inMemoryAllowed = () => process.env.VERCEL !== "1";
 

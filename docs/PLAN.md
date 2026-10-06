@@ -222,7 +222,7 @@ plain SQL and the database rejects bad values.
 | DELETE | `/api/reviews/:id` | only your own |
 | PUT | `/api/reviews/:id/reactions/:kind` | react to someone else's review (🔥 💯 😂 🙅). Idempotent; 400 on your own review |
 | DELETE | `/api/reviews/:id/reactions/:kind` | take back your reaction. Idempotent |
-| POST | `/api/photos` | a JPEG (≤ 2 MB, shrunk on the phone first) → `{url}` to put on a review as `photoUrl`. Stored in Vercel Blob; in memory locally. 503 when Blob isn't set up on a deployment |
+| POST | `/api/photos` | a JPEG (≤ 2 MB, shrunk on the phone first) → `{url}` to put on a review as `photoUrl`. Stored in Vercel Blob (BLOB_STORE_ID, or a BLOB_READ_WRITE_TOKEN); in memory locally. 503 when Blob isn't set up on a deployment |
 | PUT | `/api/checkins/:id` | create, or add/change the note when the same id is sent again (an identical retry is a no-op). 409 with `existingId` on a second id for the same station and day |
 | DELETE | `/api/me/devices/:id` | signs out one of your phones |
 | PATCH | `/api/me` | renames you. 409 if the name is taken |
