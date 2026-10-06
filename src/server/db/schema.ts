@@ -131,6 +131,8 @@ export const reviews = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    /** One photo, stored in Vercel Blob (see server/photos.ts). */
+    photoUrl: text("photo_url"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -142,6 +144,7 @@ export const reviews = pgTable(
     ...CATEGORY_KEYS.map((k) => check(`reviews_${k}_range`, sql.raw(`${k} between 1 and 5`))),
     check("reviews_hot_take_length", sql`char_length(${t.hotTake}) <= 120`),
     check("reviews_body_length", sql`char_length(${t.body}) <= 1200`),
+    check("reviews_photo_url_length", sql`char_length(${t.photoUrl}) <= 500`),
   ],
 ).enableRLS();
 

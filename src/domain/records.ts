@@ -12,6 +12,8 @@ export interface ReviewRecord {
   hotTake: string;
   body: string;
   tags: Tag[];
+  /** The review's photo, if any. */
+  photoUrl: string | null;
   /** ISO timestamp */
   updatedAt: string;
 }

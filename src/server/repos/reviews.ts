@@ -33,6 +33,7 @@ function toReviewRecord(row: ReviewRow): ReviewRecord {
     hotTake: row.hotTake,
     body: row.body,
     tags: row.tags as Tag[],
+    photoUrl: row.photoUrl,
     updatedAt: row.updatedAt.toISOString(),
   };
 }
@@ -45,6 +46,7 @@ function columns(input: ReviewInput) {
     hotTake: input.hotTake,
     body: input.body,
     tags: input.tags,
+    photoUrl: input.photoUrl,
   };
 }
 

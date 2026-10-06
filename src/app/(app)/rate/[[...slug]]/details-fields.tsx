@@ -1,6 +1,7 @@
 "use client";
 
 import { TAGS } from "@/domain/tags";
+import { PhotoField } from "./photo-field";
 import type { Draft } from "./rate-form";
 import styles from "./rate.module.css";
 
@@ -20,6 +21,7 @@ export function DetailsFields({
 }) {
   return (
     <div id="more" className={styles.moreBody} hidden={!open}>
+      <PhotoField url={draft.photoUrl ?? null} onChange={(photoUrl) => onChange({ photoUrl })} />
       <label className={styles.field}>
         <span>Hot take</span>
         <input

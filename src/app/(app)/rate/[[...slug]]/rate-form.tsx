@@ -25,6 +25,8 @@ export interface Draft {
   body: string;
   tags: Tag[];
   visitedOn: string;
+  /** Uploaded already (see PhotoField); missing in drafts saved before photos existed. */
+  photoUrl?: string | null;
   /** Typed before a building was picked, then carried over: not a draft to "pick up". */
   carried?: boolean;
 }
@@ -54,7 +56,7 @@ export function RateForm({ view }: { view: RateView }) {
     return !!saved && !saved.carried;
   });
   const [moreOpen, setMoreOpen] = useState(
-    () => !!(draft.hotTake || draft.body || draft.tags.length),
+    () => !!(draft.hotTake || draft.body || draft.tags.length || draft.photoUrl),
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<"idle" | "saving" | "queued">("idle");
@@ -157,6 +159,7 @@ export function RateForm({ view }: { view: RateView }) {
         hotTake: draft.hotTake,
         body: draft.body,
         tags: draft.tags,
+        photoUrl: draft.photoUrl ?? null,
       },
       label: `Your review of ${station.name}`,
       draft: draftKey ?? undefined,
@@ -268,7 +271,7 @@ export function RateForm({ view }: { view: RateView }) {
           aria-controls="more"
           onClick={() => setMoreOpen((o) => !o)}
         >
-          {moreOpen ? "Fewer details" : "Add more: hot take, review, tags, date"}
+          {moreOpen ? "Fewer details" : "Add more: photo, hot take, review, tags, date"}
         </button>
 
         <DetailsFields

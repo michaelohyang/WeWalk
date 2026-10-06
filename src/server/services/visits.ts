@@ -7,6 +7,7 @@ import { AppError, isUniqueViolation } from "../errors";
 import * as checkinRepo from "../repos/checkins";
 import * as reviewRepo from "../repos/reviews";
 import { findStation } from "../repos/stations";
+import { deletePhoto, isOurPhoto } from "../photos";
 import type { Session } from "./auth";
 
 /*
@@ -39,6 +40,10 @@ export async function putReview(
   now: Date,
 ): Promise<{ review: ReviewRecord; created: boolean }> {
   const me = session.member.id;
+  if (input.photoUrl && !isOurPhoto(input.photoUrl)) {
+    const message = "That photo didn't upload here.";
+    throw new AppError("invalid", message, { fields: { photoUrl: [message] } });
+  }
   const existing = await reviewRepo.findReview(db, id);
 
   if (!existing) {
@@ -67,6 +72,9 @@ export async function putReview(
   await assertVisitable(db, input.stationSlug, input.visitedOn, now);
   const updated = await reviewRepo.updateReview(db, id, input, now);
   if (!updated) throw new AppError("not_found", GONE);
+  // A replaced or removed photo isn't shown anywhere any more.
+  if (current.photoUrl && current.photoUrl !== updated.photoUrl)
+    await deletePhoto(current.photoUrl);
   return { review: updated, created: false };
 }
 
@@ -78,6 +86,7 @@ export async function deleteReview(db: Db, session: Session, id: string): Promis
     throw new AppError("forbidden", "That's someone else's review.");
   }
   await reviewRepo.deleteReview(db, id);
+  if (existing.photoUrl) await deletePhoto(existing.photoUrl);
 }
 
 /**

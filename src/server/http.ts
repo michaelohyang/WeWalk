@@ -29,6 +29,7 @@ const STATUS: Record<AppErrorCode, number> = {
   conflict: 409,
   gone: 410,
   too_large: 413,
+  unavailable: 503,
 };
 
 /** Our bodies are a review at most (~3 KB). Anything near this is a mistake or abuse. */

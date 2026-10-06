@@ -147,6 +147,15 @@ export default async function StationPage({ params }: Props) {
                 </div>
                 {r.hotTake && <p className={styles.postHot}>“{r.hotTake}”</p>}
                 {r.body && <p className={styles.body}>{r.body}</p>}
+                {r.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- resized on upload
+                  <img
+                    src={r.photoUrl}
+                    alt={`${r.by}'s photo of ${station.name}`}
+                    className={styles.photo}
+                    loading="lazy"
+                  />
+                )}
                 {r.mine && <ReviewActions reviewId={r.id} stationSlug={station.slug} />}
                 {r.tags.length > 0 && (
                   <ul className={styles.tags}>

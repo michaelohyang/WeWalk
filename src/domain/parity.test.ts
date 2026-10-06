@@ -86,6 +86,7 @@ function world(seed: number) {
         hotTake: "",
         body: "",
         tags: [],
+        photoUrl: null,
         updatedAt: "2026-10-01T00:00:00Z",
       });
     }

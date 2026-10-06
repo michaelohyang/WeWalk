@@ -81,6 +81,8 @@ export const reviewInputSchema = z.preprocess(
         .max(TAGS.length)
         .default([])
         .transform((ts) => [...new Set(ts)]),
+      /** From POST /api/photos; the server checks it's one of ours. Leaving it out removes it. */
+      photoUrl: z.string().max(500).nullable().default(null),
     })
     .strict(),
 );
