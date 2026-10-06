@@ -16,9 +16,9 @@ export const SESSION_COOKIE = "ww_session";
  * offline outbox and drafts are kept per member, so one person's queued writes never post
  * under someone else's name on a shared phone.
  */
-export const MEMBER_COOKIE = "ww_member";
+const MEMBER_COOKIE = "ww_member";
 /** Sent with queued writes: the member who made the write. */
-export const MEMBER_HEADER = "x-wewalk-member";
+const MEMBER_HEADER = "x-wewalk-member";
 const SESSION_MAX_AGE = 400 * 24 * 60 * 60; // the longest browsers allow
 
 const STATUS: Record<AppErrorCode, number> = {
@@ -49,7 +49,7 @@ export function json(body: unknown, status = 200): NextResponse {
   return NextResponse.json(body, { status });
 }
 
-export function errorResponse(error: AppError): NextResponse {
+function errorResponse(error: AppError): NextResponse {
   return json(
     {
       error: {

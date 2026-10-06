@@ -6,7 +6,7 @@ import { MAP_GEOMETRY } from "./shapes";
 
 const PIN_GAP = 22; // pins are 32×20 bubbles: keep centers at least this far apart
 /** Distance from a pin's center to its side label: past the 16px half-bubble, or the dot. */
-export const LABEL_GAP = { lit: 19, dot: 8 } as const;
+const LABEL_GAP = { lit: 19, dot: 8 } as const;
 const LABEL_HEIGHT = 11;
 /** Label widths per character, measured: 8.5px semibold for visited pins, 7.5px for the rest. */
 const CHAR_WIDTH = { lit: 5.5, dot: 4.7 } as const;

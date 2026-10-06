@@ -35,7 +35,7 @@ const toPath = (ring: readonly LatLng[]) => {
 };
 
 /** SVG paths for the land, in drawing order. `far` land is drawn lighter. */
-export const LAND = [
+const LAND = [
   { name: "New Jersey", far: true, d: toPath(NEW_JERSEY) },
   { name: "Queens", far: true, d: toPath(QUEENS) },
   { name: "Brooklyn", far: false, d: toPath(BROOKLYN) },
@@ -56,7 +56,7 @@ const ZONE_SLANT = 22;
  * halfway between the nearest stations on either side, so every station's tint matches its
  * filter chip.
  */
-export function manhattanZones(): { area: AreaKey; d: string }[] {
+function manhattanZones(): { area: AreaKey; d: string }[] {
   const order = AREAS.map((a) => a.key).filter((k) => k !== "brooklyn");
   const split = project(FIFTH_AVENUE).x;
   const sides = [(x: number) => x < split, (x: number) => x >= split];

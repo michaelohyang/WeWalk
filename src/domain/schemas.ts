@@ -10,17 +10,17 @@ import { TAGS } from "./tags";
  * name already taken) live in the services.
  */
 
-export const stationSlugSchema = z
+const stationSlugSchema = z
   .string("Pick a building.")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "That building isn't on the map.");
 export const idSchema = z.uuid("That id isn't valid.");
-export const isoDateSchema = z.string("Pick a date.").refine(isIsoDate, "That date isn't valid.");
+const isoDateSchema = z.string("Pick a date.").refine(isIsoDate, "That date isn't valid.");
 
 const score = z
   .int("Scores go from 1 to 5.")
   .min(1, "Scores go from 1 to 5.")
   .max(5, "Scores go from 1 to 5.");
-export const scoresSchema = z
+const scoresSchema = z
   .object(
     Object.fromEntries(CATEGORY_KEYS.map((k) => [k, score.optional()])) as Record<
       CategoryKey,
@@ -30,7 +30,7 @@ export const scoresSchema = z
   .strict()
   .refine((s) => Object.values(s).some((v) => v !== undefined), "Rate at least one thing.");
 
-export const displayNameSchema = z
+const displayNameSchema = z
   .string()
   .transform(normalizeDisplayName)
   .superRefine((name, ctx) => {
@@ -97,7 +97,7 @@ export const checkinInputSchema = z.preprocess(
 export type CheckinInput = z.infer<typeof checkinInputSchema>;
 
 /** A new password: long enough to be worth hashing, short enough not to be a DoS vector. */
-export const newPasswordSchema = z
+const newPasswordSchema = z
   .string("Pick a password.")
   .min(8, "At least 8 characters. A short phrase works.")
   .max(200, "That's a bit much. Keep it under 200 characters.");

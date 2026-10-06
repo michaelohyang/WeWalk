@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 import styles from "./ThemeSwitch.module.css";
 
 type Theme = "system" | "light" | "dark";
-export const THEME_KEY = "wewalk:theme";
+const THEME_KEY = "wewalk:theme";
 
 /** Runs before first paint (inlined in <head>) so a chosen theme never flashes. */
 export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;

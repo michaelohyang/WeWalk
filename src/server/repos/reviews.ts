@@ -18,7 +18,7 @@ const select = (db: Db) =>
     .from(reviews)
     .innerJoin(stations, eq(reviews.stationId, stations.id));
 
-export function toReviewRecord(row: ReviewRow): ReviewRecord {
+function toReviewRecord(row: ReviewRow): ReviewRecord {
   const scores: Scores = {};
   for (const k of CATEGORY_KEYS) {
     const v = row[k];
