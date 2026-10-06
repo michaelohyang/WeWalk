@@ -8,6 +8,12 @@ import styles from "./passport.module.css";
 
 export const metadata: Metadata = { title: "Passport" };
 
+function streakLine({ weeks, thisWeek }: { weeks: number; thisWeek: boolean }) {
+  if (!weeks) return "Visit any building this week to start a streak.";
+  const run = `${weeks}-week streak`;
+  return thisWeek ? `🔥 ${run}` : `🔥 ${run}. Visit this week to keep it going.`;
+}
+
 function quip(pct: number) {
   if (pct === 0) return "Fresh passport. Not a single stamp. Bold.";
   if (pct < 25) return "Barely out of the lobby. Keep going.";
@@ -55,8 +61,36 @@ export default async function PassportPage() {
           <p className={styles.crew}>
             Crew: {view.crewVisited} / {view.total}
           </p>
+          <p className={styles.streak}>{streakLine(view.streak)}</p>
         </div>
       </div>
+
+      <Section
+        title="Badges"
+        note={`${view.badges.filter((b) => b.earned).length} of ${view.badges.length}`}
+      >
+        <ul className={styles.badges}>
+          {view.badges.map((b) => (
+            <li key={b.key} className={b.earned ? styles.earned : styles.locked}>
+              <span className={styles.badgeIcon} aria-hidden="true">
+                {b.emoji}
+              </span>
+              <span className={styles.badgeText}>
+                <b>{b.title}</b>
+                <span>
+                  {b.earned ? b.detail : `${b.detail} · ${b.progress.have} / ${b.progress.need}`}
+                </span>
+                {!b.earned && (
+                  <span className={styles.bar} aria-hidden="true">
+                    <span style={{ width: `${(100 * b.progress.have) / b.progress.need}%` }} />
+                  </span>
+                )}
+              </span>
+              <span className={styles.sr}>{b.earned ? "Earned" : "Not yet"}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
       <Section title="Your stamps" note={mine || undefined}>
         {mine ? (

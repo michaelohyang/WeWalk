@@ -1,4 +1,6 @@
 import "server-only";
+import { CATEGORIES } from "@/domain/categories";
+import { tasteMatch } from "@/domain/taste";
 import type { Db } from "../../db/client";
 import { listDevices, type Session } from "../auth";
 import type { CrewData } from "../crew";
@@ -17,6 +19,15 @@ export interface CrewView {
     reviews: number;
     checkins: number;
     hotTake: string | null;
+  }[];
+  /** How your scores compare with each friend's, best match first. */
+  taste: {
+    memberId: string;
+    name: string;
+    shared: number;
+    agreement: number;
+    closest: string;
+    furthest: { label: string; gap: number } | null;
   }[];
 }
 
@@ -37,7 +48,30 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
       hotTake: hot?.hotTake ?? null,
     };
   });
+  const label = (key: string) => CATEGORIES.find((c) => c.key === key)!.label;
+  const mine = crew.reviews.filter((r) => r.memberId === session.member.id);
+  const taste = crew.members
+    .filter((m) => m.id !== session.member.id)
+    .flatMap((m) => {
+      const t = tasteMatch(
+        mine,
+        crew.reviews.filter((r) => r.memberId === m.id),
+      );
+      if (t.agreement === null || !t.closest) return [];
+      return [
+        {
+          memberId: m.id,
+          name: m.name,
+          shared: t.shared,
+          agreement: t.agreement,
+          closest: label(t.closest),
+          furthest: t.furthest && { label: label(t.furthest.key), gap: t.furthest.gap },
+        },
+      ];
+    })
+    .sort((a, b) => b.agreement - a.agreement || a.name.localeCompare(b.name));
   return {
+    taste,
     me: {
       id: session.member.id,
       name: session.member.name,

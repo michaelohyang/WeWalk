@@ -72,3 +72,33 @@
 .first {
   color: var(--brand);
 }
+
+.taste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.taste li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.taste li + li {
+  border-top: 1px solid var(--line);
+}
+.match {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--brand);
+}
+.match small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-2);
+}

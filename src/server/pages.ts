@@ -42,7 +42,7 @@ export async function loadRanks(key: RankKey, area: AreaKey | null) {
 export async function loadPassport() {
   const session = await getSession();
   if (!session) return null;
-  return passportView(await crewData(), session);
+  return passportView(await crewData(), session, new Date());
 }
 
 export async function loadCrew() {

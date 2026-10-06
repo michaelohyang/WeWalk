@@ -111,3 +111,72 @@
   color: var(--fg-2);
   font-weight: 600;
 }
+
+.streak {
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.earned,
+.locked {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+}
+.earned {
+  border-color: color-mix(in srgb, var(--brand) 35%, transparent);
+  background: color-mix(in srgb, var(--brand) 8%, var(--card));
+}
+.badgeIcon {
+  font-size: 24px;
+  line-height: 1;
+}
+.locked .badgeIcon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.badgeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--fg-2);
+}
+.badgeText b {
+  font-size: 14px;
+  color: var(--fg);
+}
+.bar {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
