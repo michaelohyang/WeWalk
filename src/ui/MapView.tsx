@@ -84,6 +84,13 @@ export function MapView({
         {land.map((l) => (
           <path key={l.name} d={l.d} className={l.far ? styles.landFar : styles.land} />
         ))}
+        <clipPath id="manhattan">
+          <path d={geometry.streets.clip} />
+        </clipPath>
+        <g clipPath="url(#manhattan)" aria-hidden="true">
+          <path d={geometry.streets.grid} className={styles.grid} />
+          <path d={geometry.streets.broadway} className={styles.broadway} />
+        </g>
         <defs>
           <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodOpacity="0.25" />
