@@ -148,7 +148,7 @@ test.describe("signed in", () => {
   test("ranks sort by a category, then narrow to a neighborhood", async ({ page }) => {
     await review(page.request, "524-broadway", { scores: { coffee: 5 } });
     await page.goto("/ranks");
-    await chip(page, "Coffee").click();
+    await page.getByLabel("Rank by").selectOption("coffee");
     await expect(page).toHaveURL(/by=coffee/);
     await expect(page.getByRole("heading", { name: "Best coffee" })).toBeVisible();
     await expect(listRows(page, /524 Broadway/)).toBeVisible();

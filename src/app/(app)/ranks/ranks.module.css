@@ -66,3 +66,43 @@
 .rows li + li {
   border-top: 1px solid var(--line);
 }
+.rankBy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.rankBy label {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--fg-2);
+}
+.rankBy select {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 40px 0 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--card)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 16px center;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  appearance: none;
+  cursor: pointer;
+}
+.rankBy select:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.rankBy button {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--fg);
+  color: var(--bg);
+  font-weight: 700;
+}

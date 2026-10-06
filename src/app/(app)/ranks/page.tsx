@@ -10,6 +10,7 @@ import { areaColor, plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import { StationRow } from "@/ui/StationRow";
+import { RankBy } from "./rank-by";
 import styles from "./ranks.module.css";
 
 export const metadata: Metadata = { title: "Ranks" };
@@ -80,13 +81,11 @@ export default async function RanksPage({
         title={areaLabel ? `${sort.title} · ${areaLabel}` : sort.title}
         note={`${view.rows.length} rated`}
       >
-        <ChipRow label="Rank by">
-          {SORTS.map((s) => (
-            <Chip key={s.key} current={s.key === sort.key} href={ranksHref(s.key, area)}>
-              {s.label}
-            </Chip>
-          ))}
-        </ChipRow>
+        <RankBy
+          options={SORTS.map((s) => ({ key: s.key, label: s.label, href: ranksHref(s.key, area) }))}
+          current={sort.key}
+          area={area}
+        />
         <ChipRow label="Neighborhood">
           <Chip current={!area} href={ranksHref(sort.key, null)}>
             All
