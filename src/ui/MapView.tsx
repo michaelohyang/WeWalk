@@ -84,11 +84,17 @@ export function MapView({
         {land.map((l) => (
           <path key={l.name} d={l.d} className={l.far ? styles.landFar : styles.land} />
         ))}
-        <clipPath id="manhattan">
-          <path d={geometry.streets.clip} />
+        <clipPath id="streets-manhattan">
+          <path d={geometry.streets.manhattan.clip} />
         </clipPath>
-        <g clipPath="url(#manhattan)" aria-hidden="true">
-          <path d={geometry.streets.grid} className={styles.grid} />
+        <clipPath id="streets-brooklyn">
+          <path d={geometry.streets.brooklyn.clip} />
+        </clipPath>
+        <g clipPath="url(#streets-brooklyn)" aria-hidden="true">
+          <path d={geometry.streets.brooklyn.grid} className={styles.grid} />
+        </g>
+        <g clipPath="url(#streets-manhattan)" aria-hidden="true">
+          <path d={geometry.streets.manhattan.grid} className={styles.grid} />
           <path d={geometry.streets.broadway} className={styles.broadway} />
         </g>
         <defs>
