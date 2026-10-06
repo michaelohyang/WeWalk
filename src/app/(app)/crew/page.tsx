@@ -10,13 +10,20 @@ import styles from "./crew.module.css";
 
 export const metadata: Metadata = { title: "Crew" };
 
+/** "Phone booths" → "phone booths" mid-sentence, but "Wi-Fi" stays as it is. */
+const midSentence = (label: string) =>
+  label
+    .split(" ")
+    .map((w) => (/[A-Z].*[A-Z]/.test(w) ? w : w.toLowerCase()))
+    .join(" ");
+
 const lastSeen = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 export default async function CrewPage() {
   const view = await loadCrew();
   if (!view) return null;
-  const { me, devices, leaderboard, members } = view;
+  const { me, devices, leaderboard, members, taste } = view;
   const top = leaderboard[0]?.stations;
 
   return (
@@ -58,6 +65,33 @@ export default async function CrewPage() {
         ) : (
           <Empty title="Leaderboard's empty.">
             Post one review and you&apos;re number one. Easiest win in New York.
+          </Empty>
+        )}
+      </Section>
+
+      <Section title="Taste match" note="from reviews you both wrote">
+        {taste.length ? (
+          <ul className={styles.taste}>
+            {taste.map((t) => (
+              <li key={t.memberId}>
+                <Avatar name={t.name} seed={t.memberId} />
+                <div className={styles.who}>
+                  <b>{t.name}</b>
+                  <span className={styles.sub}>
+                    Most in sync on {midSentence(t.closest)}
+                    {t.furthest && `, at war over ${midSentence(t.furthest.label)}`}
+                    {` · ${plural(t.shared, "building")} in common`}
+                  </span>
+                </div>
+                <span className={styles.match}>
+                  {t.agreement}%<small>match</small>
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty title="No overlap yet.">
+            Review a building a friend has reviewed and you&apos;ll see how your taste compares.
           </Empty>
         )}
       </Section>

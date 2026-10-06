@@ -7,6 +7,7 @@ import { ButtonLink } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Chips";
 import { Empty } from "@/ui/Empty";
 import { areaColor, plural } from "@/ui/format";
+import { formatScore } from "@/domain/scoring";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import { StationRow } from "@/ui/StationRow";
@@ -126,6 +127,25 @@ export default async function RanksPage({
           </p>
         )}
       </Section>
+
+      {view.divisive.length > 0 && (
+        <Section title="Most divisive" note="the crew can't agree">
+          <ol className={styles.divisive}>
+            {view.divisive.map((d) => (
+              <li key={d.station.slug}>
+                <StationRow
+                  station={d.station}
+                  lead={<span className={styles.spread}>±{formatScore(d.spread)}</span>}
+                />
+                <p className={styles.split}>
+                  {d.high.name} gave it {formatScore(d.high.score)}, {d.low.name} gave it{" "}
+                  {formatScore(d.low.score)}.
+                </p>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
     </Page>
   );
 }

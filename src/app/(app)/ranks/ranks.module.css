@@ -106,3 +106,27 @@
   color: var(--bg);
   font-weight: 700;
 }
+
+.divisive {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.spread {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--s-bad) 14%, var(--card));
+  color: var(--fg);
+  font-weight: 800;
+  font-size: 13px;
+}
+.split {
+  margin: -4px 0 10px;
+  padding-left: 56px;
+  font-size: 13px;
+  color: var(--fg-2);
+}
