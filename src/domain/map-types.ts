@@ -2,6 +2,7 @@
  * Types for drawing the map, with no runtime code: browser components import these, while the
  * projection, shoreline and station data (domain/map, geo, stations) stay on the server.
  */
+import type { AreaKey } from "./areas";
 
 /** Everything static the map needs to draw, as plain data. */
 export interface MapGeometry {
@@ -9,22 +10,16 @@ export interface MapGeometry {
   height: number;
   land: readonly { name: string; far: boolean; d: string }[];
   /**
-   * Street texture: each borough's grid lines (`major` every few, drawn bolder), faded out at its
-   * `shore`, and Broadway.
+   * Area tints, in the filter chips' colors: Manhattan as soft-edged zones down the island
+   * (clipped to its `shore`), Brooklyn whole, and Central Park.
    */
-  streets: {
-    manhattan: BoroughStreets;
-    brooklyn: BoroughStreets;
-    broadway: string;
+  zones: {
+    manhattan: { shore: string; areas: readonly { area: AreaKey; d: string }[] };
+    brooklyn: string;
+    park: { x: number; y: number; width: number; height: number };
   };
   /** Water and borough names, with a rotation for the rivers. */
   labels: readonly { text: string; x: number; y: number; rotate: number; water: boolean }[];
-}
-
-export interface BoroughStreets {
-  minor: string;
-  major: string;
-  shore: string;
 }
 
 export type LabelSide =

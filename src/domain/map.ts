@@ -1,15 +1,14 @@
+import { AREAS, type AreaKey } from "./areas";
 import {
-  BROADWAY,
   BROOKLYN,
+  CENTRAL_PARK,
+  FIFTH_AVENUE,
   COMPRESS_NORTH_OF,
   GOVERNORS_ISLAND,
-  GRID_TILT_DEG,
   MANHATTAN,
   NEW_JERSEY,
   QUEENS,
   ROOSEVELT_ISLAND,
-  STREET_GRIDS,
-  type GridPatch,
   type LatLng,
 } from "./geo";
 import type { LabelSide, MapGeometry, Pin } from "./map-types";
@@ -28,7 +27,7 @@ export type { MapGeometry, Pin } from "./map-types";
 
 export const MAP_WIDTH = 360;
 const ORIGIN: LatLng = [40.75, -73.99];
-const GRID_TILT = (GRID_TILT_DEG * Math.PI) / 180;
+const GRID_TILT = (30 * Math.PI) / 180;
 const NORTH_SQUEEZE = 0.3;
 const M_PER_DEG_LAT = 110_574;
 const M_PER_DEG_LNG = 111_320 * Math.cos((ORIGIN[0] * Math.PI) / 180);
@@ -108,116 +107,69 @@ export const LAND = [
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-/** Map meters (after step 2) to SVG units. */
-const toSvg = (p: Pt) => {
-  const q = squeezed(p);
-  return `${((q.x - BOX.minX) * SCALE).toFixed(1)} ${((BOX.maxY - q.y) * SCALE).toFixed(1)}`;
-};
-
-/** A straight segment (map frame) as SVG, bent where it crosses into the squeezed north. */
-function segment(a: Pt, b: Pt): string {
-  const crosses = (a.y - SQUEEZE_FROM) * (b.y - SQUEEZE_FROM) < 0;
-  if (!crosses) return `M${toSvg(a)}L${toSvg(b)}`;
-  const t = (SQUEEZE_FROM - a.y) / (b.y - a.y);
-  return `M${toSvg(a)}L${toSvg({ x: a.x + (b.x - a.x) * t, y: SQUEEZE_FROM })}L${toSvg(b)}`;
-}
-
-/** The stretches of the line a→b inside `ring` (even-odd), as [from, to] fractions of it. */
-export function insideSpans(a: Pt, b: Pt, ring: readonly Pt[]): [number, number][] {
-  const hits: number[] = [];
-  const d = { x: b.x - a.x, y: b.y - a.y };
-  for (let i = 0; i < ring.length; i++) {
-    const p = ring[i]!;
-    const q = ring[(i + 1) % ring.length]!;
-    const e = { x: q.x - p.x, y: q.y - p.y };
-    const den = d.x * e.y - d.y * e.x;
-    if (den === 0) continue;
-    const t = ((p.x - a.x) * e.y - (p.y - a.y) * e.x) / den;
-    const u = ((p.x - a.x) * d.y - (p.y - a.y) * d.x) / den;
-    if (t >= 0 && t <= 1 && u >= 0 && u < 1) hits.push(t);
-  }
-  hits.sort((m, n) => m - n);
-  const spans: [number, number][] = [];
-  for (let i = 0; i + 1 < hits.length; i += 2) spans.push([hits[i]!, hits[i + 1]!]);
-  return spans;
-}
-
-/** Every this many lines, a main street or avenue, drawn bolder. */
-const MAJOR_EVERY = 3;
-/** Lines stop this many meters short of a neighborhood's edge, so neighboring grids don't collide. */
-const SEAM_GAP_M = 35;
-
-type Lines = { minor: string[]; major: string[] };
+/** Zones reach this far past the map's edges, so their blurred edges never show there. */
+const ZONE_BLEED = 40;
+/** Half the width (map units) of the slant where a boundary steps across Fifth Avenue. */
+const ZONE_SLANT = 22;
 
 /**
- * One neighborhood's grid: avenues along its tilt, streets across them, cut to its outline.
- * Faded out at the shore by the drawing code.
+ * Manhattan's areas as zones down the island, north first, each a staircase that steps at Fifth
+ * Avenue: west and east sides get their own boundaries, since neighborhoods don't end on the
+ * same street on both sides (Midtown West runs further south than NoMad). Each boundary sits
+ * halfway between the nearest stations on either side, so every station's tint matches its
+ * filter chip.
  */
-function gridPatch(patch: GridPatch, out: Lines) {
-  const tilt = (patch.tilt * Math.PI) / 180;
-  // Work in the patch's own frame, where its avenues run up.
-  const ring = patch.area.map((at) => turn(meters(at), tilt));
-  const origin = ring[0]!;
-  const [minX, maxX] = [Math.min(...ring.map((p) => p.x)), Math.max(...ring.map((p) => p.x))];
-  const [minY, maxY] = [Math.min(...ring.map((p) => p.y)), Math.max(...ring.map((p) => p.y))];
-  const back = (p: Pt) => turn(turn(p, -tilt), GRID_TILT);
-  const lines: { a: Pt; b: Pt; major: boolean }[] = [];
-  const firstX = Math.ceil((minX - origin.x) / patch.avenue);
-  for (let i = firstX; origin.x + i * patch.avenue <= maxX; i++) {
-    const x = origin.x + i * patch.avenue;
-    lines.push({ a: { x, y: minY }, b: { x, y: maxY }, major: i % MAJOR_EVERY === 0 });
-  }
-  const firstY = Math.ceil((minY - origin.y) / patch.street);
-  for (let i = firstY; origin.y + i * patch.street <= maxY; i++) {
-    const y = origin.y + i * patch.street;
-    lines.push({ a: { x: minX, y }, b: { x: maxX, y }, major: i % MAJOR_EVERY === 0 });
-  }
-  const at = (a: Pt, b: Pt, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-  for (const { a, b, major } of lines) {
-    const gap = SEAM_GAP_M / Math.hypot(b.x - a.x, b.y - a.y);
-    for (const [t0, t1] of insideSpans(a, b, ring)) {
-      if (t1 - t0 <= 2 * gap) continue;
-      (major ? out.major : out.minor).push(
-        segment(back(at(a, b, t0 + gap)), back(at(a, b, t1 - gap))),
-      );
-    }
-  }
+export function manhattanZones(): { area: AreaKey; d: string }[] {
+  const order = AREAS.map((a) => a.key).filter((k) => k !== "brooklyn");
+  const split = project(FIFTH_AVENUE).x;
+  const sides = [(x: number) => x < split, (x: number) => x >= split];
+  const pts = STATIONS.map((s) => ({ area: s.area, ...project([s.lat, s.lng]) }));
+  const cut = (north: AreaKey, south: AreaKey, onSide: (x: number) => boolean) => {
+    const pick = (k: AreaKey, side: boolean) =>
+      pts.filter((p) => p.area === k && (!side || onSide(p.x))).map((p) => p.y);
+    const n = pick(north, true).length ? pick(north, true) : pick(north, false);
+    const s = pick(south, true).length ? pick(south, true) : pick(south, false);
+    return round1((Math.max(...n) + Math.min(...s)) / 2);
+  };
+  // cuts[side][i]: the boundary between order[i] and order[i + 1] on that side.
+  const cuts = sides.map((side) => order.slice(1).map((k, i) => cut(order[i]!, k, side)));
+  const [left, right] = [-ZONE_BLEED, MAP_WIDTH + ZONE_BLEED];
+  const edge = (side: 0 | 1, i: number) =>
+    i < 0 ? -ZONE_BLEED : i >= order.length - 1 ? MAP_HEIGHT + ZONE_BLEED : cuts[side]![i]!;
+  return order.map((area, i) => {
+    const [wTop, eTop, wBottom, eBottom] = [edge(0, i - 1), edge(1, i - 1), edge(0, i), edge(1, i)];
+    // The step from the west side's boundary to the east side's is a gentle slant, not a notch.
+    const [w, e] = [split - ZONE_SLANT, split + ZONE_SLANT];
+    const ring = [
+      [left, wTop],
+      [w, wTop],
+      [e, eTop],
+      [right, eTop],
+      [right, eBottom],
+      [e, eBottom],
+      [w, wBottom],
+      [left, wBottom],
+    ];
+    return { area, d: `M${ring.map(([x, y]) => `${round1(x!)} ${round1(y!)}`).join("L")}Z` };
+  });
 }
 
-/**
- * Street texture: each neighborhood's grid at its own angle, every block or few, so it reads as
- * city, not navigation. North of the squeeze the streets bunch up, which also shows the scale
- * change.
- */
-function streetGrid(borough: GridPatch["borough"]) {
-  const out: Lines = { minor: [], major: [] };
-  for (const patch of STREET_GRIDS) if (patch.borough === borough) gridPatch(patch, out);
-  return { minor: out.minor.join(""), major: out.major.join("") };
-}
-
-/** Broadway, as a smooth open curve (Catmull-Rom, ends held in place). */
-function broadway(): string {
-  const p = BROADWAY.map(project);
-  const at = (i: number) => p[Math.min(Math.max(i, 0), p.length - 1)]!;
-  const f = (n: number) => n.toFixed(1);
-  let d = `M${f(p[0]!.x)} ${f(p[0]!.y)}`;
-  for (let i = 0; i < p.length - 1; i++) {
-    const [a, b, c, e] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
-    const c1 = { x: b.x + (c.x - a.x) / 6, y: b.y + (c.y - a.y) / 6 };
-    const c2 = { x: c.x - (e.x - b.x) / 6, y: c.y - (e.y - b.y) / 6 };
-    d += `C${f(c1.x)} ${f(c1.y)} ${f(c2.x)} ${f(c2.y)} ${f(c.x)} ${f(c.y)}`;
-  }
-  return d;
+/** Central Park as a rectangle in map units (it lines up with the map's grid). */
+function park() {
+  const p = CENTRAL_PARK.map(project);
+  const [x1, x2] = [Math.min(...p.map((q) => q.x)), Math.max(...p.map((q) => q.x))];
+  const [y1, y2] = [Math.min(...p.map((q) => q.y)), Math.max(...p.map((q) => q.y))];
+  return { x: round1(x1), y: round1(y1), width: round1(x2 - x1), height: round1(y2 - y1) };
 }
 
 export const MAP_GEOMETRY: MapGeometry = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
   land: LAND,
-  streets: {
-    manhattan: { ...streetGrid("manhattan"), shore: toPath(MANHATTAN) },
-    brooklyn: { ...streetGrid("brooklyn"), shore: toPath(BROOKLYN) },
-    broadway: broadway(),
+  zones: {
+    manhattan: { shore: toPath(MANHATTAN), areas: manhattanZones() },
+    brooklyn: toPath(BROOKLYN),
+    park: park(),
   },
   // Placed by hand in map units (checked by map.test.ts: inside the map, clear of every pin,
   // pin label and each other at 390px).
