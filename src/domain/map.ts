@@ -8,7 +8,7 @@ import {
   ROOSEVELT_ISLAND,
   type LatLng,
 } from "./geo";
-import type { MapGeometry, Pin } from "./map-types";
+import type { LabelSide, MapGeometry, Pin } from "./map-types";
 import { STATIONS } from "./stations";
 
 export type { MapGeometry, Pin } from "./map-types";
@@ -68,16 +68,23 @@ export function project(at: LatLng): Pt {
   return { x: (p.x - BOX.minX) * SCALE, y: (BOX.maxY - p.y) * SCALE };
 }
 
-/** Where the squeeze starts, for drawing a "compressed" marker. */
-export const SQUEEZE_LINE_Y = (BOX.maxY - SQUEEZE_FROM) * SCALE;
-
-const toPath = (ring: readonly LatLng[]) =>
-  ring
-    .map((ll, i) => {
-      const { x, y } = project(ll);
-      return `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join("") + "Z";
+/**
+ * A closed, smooth outline through the shoreline points (Catmull-Rom as cubic Béziers): soft
+ * coasts instead of a jagged polygon.
+ */
+const toPath = (ring: readonly LatLng[]) => {
+  const p = ring.map(project);
+  const at = (i: number) => p[(i + p.length) % p.length]!;
+  const f = (n: number) => n.toFixed(1);
+  let d = `M${f(p[0]!.x)} ${f(p[0]!.y)}`;
+  for (let i = 0; i < p.length; i++) {
+    const [a, b, c, e] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    const c1 = { x: b.x + (c.x - a.x) / 6, y: b.y + (c.y - a.y) / 6 };
+    const c2 = { x: c.x - (e.x - b.x) / 6, y: c.y - (e.y - b.y) / 6 };
+    d += `C${f(c1.x)} ${f(c1.y)} ${f(c2.x)} ${f(c2.y)} ${f(c.x)} ${f(c.y)}`;
+  }
+  return d + "Z";
+};
 
 /** SVG paths for the land, in drawing order. `far` land is drawn lighter. */
 export const LAND = [
@@ -94,7 +101,6 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 export const MAP_GEOMETRY: MapGeometry = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
-  squeezeY: SQUEEZE_LINE_Y,
   land: LAND,
   // Placed by hand in map units (checked by map.test.ts: inside the map, clear of every pin,
   // pin label and each other at 390px).
@@ -107,15 +113,18 @@ export const MAP_GEOMETRY: MapGeometry = {
   ],
 };
 
-const PIN_GAP = 22; // pins are 32×20 bubbles: keep centers at least this far apart
+const PIN_GAP = 22;
+/** Distance from a pin's center to its side label: past the 16px half-bubble, or the dot. */
+export const LABEL_GAP = { lit: 19, dot: 8 } as const; // pins are 32×20 bubbles: keep centers at least this far apart
 const LABEL_HEIGHT = 11;
-const CHAR_WIDTH = 4.9; // ~8.5px Figtree semibold
+/** Label widths per character, measured: 8.5px semibold for visited pins, 7.5px for the rest. */
+const CHAR_WIDTH = { lit: 5.5, dot: 4.7 } as const;
 
 /**
  * Lays out pins. Overlapping pins (three buildings share a block at 41st & Broadway) are
- * pushed apart. Labels are placed greedily in `priority` order: right if it fits, else left,
- * else hidden (the name shows on tap). Visited pins are 32×20 bubbles; the rest are small dots,
- * so labels may pass close to a dot but never over a bubble or another label.
+ * pushed apart. Labels are placed greedily in `priority` order, wherever they first fit: right,
+ * left, above, below, then the diagonals. Every pin gets a label; in the rare case none of those is free, the one
+ * overlapping least wins. Visited pins are 32×20 bubbles; the rest are small dots.
  */
 export function layoutPins(
   stations: readonly { id: string; name: string; lat: number; lng: number }[],
@@ -150,32 +159,108 @@ export function layoutPins(
   }
 
   type Box = { x1: number; y1: number; x2: number; y2: number };
-  const taken: Box[] = pts.map((p) => {
-    const [w, h] = lit(p.id) ? [16, 10] : [6, 6];
-    return { x1: p.x - w, y1: p.y - h, x2: p.x + w, y2: p.y + h };
-  });
-  const hits = (b: Box) =>
-    b.x1 < 2 ||
-    b.x2 > MAP_WIDTH - 2 ||
-    taken.some((t) => b.x1 < t.x2 && b.x2 > t.x1 && b.y1 < t.y2 && b.y2 > t.y1);
+  const taken: Box[] = [
+    ...pts.map((p) => {
+      const [w, h] = lit(p.id) ? [16, 10] : [7.5, 7.5];
+      return { x1: p.x - w, y1: p.y - h, x2: p.x + w, y2: p.y + h };
+    }),
+    // Pin names never cover the river and borough names either.
+    ...MAP_GEOMETRY.labels.map(geoLabelBox),
+  ];
+  const area = (a: Box, b: Box) =>
+    Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) *
+    Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
+  const offMap = (b: Box) => b.x1 < 2 || b.x2 > MAP_WIDTH - 2 || b.y1 < 2 || b.y2 > MAP_HEIGHT - 2;
 
-  const labels = new Map<string, Pin["label"]>();
-  const byPriority = [...pts].sort((a, b) => priority(b.id) - priority(a.id) || a.y - b.y);
-  for (const p of byPriority) {
-    const w = p.name.length * CHAR_WIDTH;
-    const y1 = p.y - LABEL_HEIGHT / 2;
-    const gap = lit(p.id) ? 19 : 8;
-    const right = { x1: p.x + gap, y1, x2: p.x + gap + w, y2: y1 + LABEL_HEIGHT };
-    const left = { x1: p.x - gap - w, y1, x2: p.x - gap, y2: y1 + LABEL_HEIGHT };
-    const side = !hits(right) ? "right" : !hits(left) ? "left" : null;
-    if (side) taken.push(side === "right" ? right : left);
-    labels.set(p.id, side);
+  // Every side's box for every pin, and how much each overlaps the fixed things (pins other
+  // than its own, river and borough names, the map's edge).
+  const options = pts.map((p) => {
+    const boxes = labelBoxes(p, p.name, lit(p.id));
+    const sides = Object.keys(boxes) as LabelSide[];
+    const own = taken[pts.indexOf(p)]!;
+    const fixed = Object.fromEntries(
+      sides.map((s) => [
+        s,
+        (offMap(boxes[s]) ? 1e6 : 0) +
+          taken.reduce((sum, t) => (t === own ? sum : sum + area(boxes[s], t)), 0),
+      ]),
+    ) as Record<LabelSide, number>;
+    return { p, boxes, sides, fixed };
+  });
+
+  // Greedy first (priority pins, then top to bottom): the first side clear of everything...
+  const chosen = new Map<string, LabelSide>();
+  const placed = () => options.filter((o) => chosen.has(o.p.id));
+  const cost = (o: (typeof options)[number], side: LabelSide) =>
+    o.fixed[side] +
+    placed().reduce(
+      (sum, other) =>
+        other === o ? sum : sum + area(o.boxes[side], other.boxes[chosen.get(other.p.id)!]),
+      0,
+    );
+  const order = [...options].sort((a, b) => priority(b.p.id) - priority(a.p.id) || a.p.y - b.p.y);
+  for (const o of order) {
+    chosen.set(
+      o.p.id,
+      o.sides.reduce((best, s) => (cost(o, s) < cost(o, best) ? s : best)),
+    );
   }
+  // ...then a few rounds of moving each label to its least-crowded spot, until nothing moves.
+  for (let round = 0; round < 8; round++) {
+    let moved = false;
+    for (const o of order) {
+      const now = chosen.get(o.p.id)!;
+      const best = o.sides.reduce((b, s) => (cost(o, s) < cost(o, b) - 0.01 ? s : b), now);
+      if (best !== now) {
+        chosen.set(o.p.id, best);
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  const labels = chosen;
 
   return pts.map((p) => ({
     id: p.id,
     x: round1(p.x),
     y: round1(p.y),
-    label: labels.get(p.id) ?? null,
+    label: labels.get(p.id)!,
   }));
+}
+
+/** Where a pin's name would sit on each side (map units). Shared with the drawing code's tests. */
+export function labelBoxes(at: { x: number; y: number }, name: string, lit: boolean) {
+  const w = name.length * (lit ? CHAR_WIDTH.lit : CHAR_WIDTH.dot);
+  const y1 = at.y - LABEL_HEIGHT / 2;
+  const gap = lit ? LABEL_GAP.lit : LABEL_GAP.dot;
+  const vgap = lit ? 12 : 7;
+  return {
+    right: { x1: at.x + gap, y1, x2: at.x + gap + w, y2: y1 + LABEL_HEIGHT },
+    left: { x1: at.x - gap - w, y1, x2: at.x - gap, y2: y1 + LABEL_HEIGHT },
+    above: { x1: at.x - w / 2, y1: at.y - vgap - LABEL_HEIGHT, x2: at.x + w / 2, y2: at.y - vgap },
+    below: { x1: at.x - w / 2, y1: at.y + vgap, x2: at.x + w / 2, y2: at.y + vgap + LABEL_HEIGHT },
+    // Diagonals, for the dense blocks (Midtown, SoHo) where nothing straight-on is free.
+    upRight: { x1: at.x + gap - 3, y1: y1 - LABEL_HEIGHT, x2: at.x + gap - 3 + w, y2: y1 },
+    downRight: {
+      x1: at.x + gap - 3,
+      y1: y1 + LABEL_HEIGHT,
+      x2: at.x + gap - 3 + w,
+      y2: y1 + 2 * LABEL_HEIGHT,
+    },
+    upLeft: { x1: at.x - gap + 3 - w, y1: y1 - LABEL_HEIGHT, x2: at.x - gap + 3, y2: y1 },
+    downLeft: {
+      x1: at.x - gap + 3 - w,
+      y1: y1 + LABEL_HEIGHT,
+      x2: at.x - gap + 3,
+      y2: y1 + 2 * LABEL_HEIGHT,
+    },
+  } satisfies Record<LabelSide, { x1: number; y1: number; x2: number; y2: number }>;
+}
+
+/** The area a water or borough name covers (7.5px uppercase, letter-spaced; rivers run vertical). */
+export function geoLabelBox(l: MapGeometry["labels"][number]) {
+  const long = l.text.length * 6.2;
+  return l.rotate === 0
+    ? { x1: l.x - long / 2, y1: l.y - 5, x2: l.x + long / 2, y2: l.y + 5 }
+    : { x1: l.x - 5, y1: l.y - long / 2, x2: l.x + 5, y2: l.y + long / 2 };
 }

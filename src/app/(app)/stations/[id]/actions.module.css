@@ -63,10 +63,15 @@
 .reviewActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
+  gap: 4px 12px;
   align-items: center;
+  /* The buttons' 6px side padding (for the 44px tap target): line their text up with the review. */
+  margin-inline-start: -6px;
 }
 .textBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: 0;
   padding: 0 6px;

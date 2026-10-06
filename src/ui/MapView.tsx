@@ -1,6 +1,6 @@
 "use client";
 
-import type { MapGeometry, Pin } from "@/domain/map-types";
+import type { LabelSide, MapGeometry, Pin } from "@/domain/map-types";
 import { formatScore, tierOf } from "@/domain/scoring";
 import styles from "./MapView.module.css";
 
@@ -10,6 +10,30 @@ export interface MapStation {
   short: string;
   overall: number | null;
   visited: boolean;
+}
+
+/** Text position for a label on each side of a pin (matches labelBoxes in domain/map). */
+function labelPlacement(side: LabelSide, lit: boolean) {
+  const gap = lit ? 19 : 8;
+  const vgap = lit ? 12 : 7;
+  switch (side) {
+    case "right":
+      return { x: gap, y: 3, textAnchor: "start" as const };
+    case "left":
+      return { x: -gap, y: 3, textAnchor: "end" as const };
+    case "above":
+      return { x: 0, y: -vgap - 2.5, textAnchor: "middle" as const };
+    case "below":
+      return { x: 0, y: vgap + 8, textAnchor: "middle" as const };
+    case "upRight":
+      return { x: gap - 3, y: 3 - 11, textAnchor: "start" as const };
+    case "downRight":
+      return { x: gap - 3, y: 3 + 11, textAnchor: "start" as const };
+    case "upLeft":
+      return { x: -gap + 3, y: 3 - 11, textAnchor: "end" as const };
+    case "downLeft":
+      return { x: -gap + 3, y: 3 + 11, textAnchor: "end" as const };
+  }
 }
 
 const TIER_FILL = {
@@ -39,7 +63,7 @@ export function MapView({
   dimmed: Set<string>;
   onSelect: (id: string | null) => void;
 }) {
-  const { width, height, squeezeY, land } = geometry;
+  const { width, height, land } = geometry;
   // Draw unvisited first and the selected pin last, so they stack sensibly.
   const order = [...pins].sort(
     (a, b) =>
@@ -60,10 +84,11 @@ export function MapView({
         {land.map((l) => (
           <path key={l.name} d={l.d} className={l.far ? styles.landFar : styles.land} />
         ))}
-        <line x1="0" x2={width} y1={squeezeY} y2={squeezeY} className={styles.squeeze} />
-        <text x={width - 8} y={squeezeY - 5} textAnchor="end" className={styles.geo}>
-          Uptown, not to scale ↑
-        </text>
+        <defs>
+          <filter id="pin-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodOpacity="0.25" />
+          </filter>
+        </defs>
         {geometry.labels.map((l) => (
           <text
             key={l.text}
@@ -80,7 +105,7 @@ export function MapView({
           const s = stations.get(pin.id);
           if (!s) return null;
           const isSelected = pin.id === selected;
-          const side = pin.label ?? (isSelected ? "right" : null);
+          const side = pin.label;
           const tier = tierOf(s.overall);
           const label = `${s.name}, ${
             s.overall !== null
@@ -119,24 +144,21 @@ export function MapView({
                     rx="10"
                     className={styles.bubble}
                     fill={tier ? TIER_FILL[tier] : "var(--brand)"}
+                    filter="url(#pin-shadow)"
                   />
                   <text y="3.6" textAnchor="middle" className={styles.value}>
                     {tier ? formatScore(s.overall) : "✓"}
                   </text>
                 </>
               ) : (
-                <circle r="4.5" className={styles.dot} />
+                <circle r="5" className={styles.dot} filter="url(#pin-shadow)" />
               )}
-              {side && (
-                <text
-                  x={side === "right" ? (s.visited ? 19 : 8) : s.visited ? -19 : -8}
-                  y="3"
-                  textAnchor={side === "right" ? "start" : "end"}
-                  className={`${styles.name} ${s.visited ? "" : styles.nameDim}`}
-                >
-                  {s.short}
-                </text>
-              )}
+              <text
+                {...labelPlacement(side, s.visited)}
+                className={`${styles.name} ${s.visited ? "" : styles.nameDim}`}
+              >
+                {s.short}
+              </text>
             </g>
           );
         })}

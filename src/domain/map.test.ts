@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
-import { layoutPins, MAP_GEOMETRY, MAP_HEIGHT, MAP_WIDTH, project, SQUEEZE_LINE_Y } from "./map";
+import {
+  geoLabelBox,
+  labelBoxes,
+  layoutPins,
+  MAP_GEOMETRY,
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  project,
+} from "./map";
 import { STATIONS } from "./stations";
 
 /** Ray-casting point-in-polygon, in projected map units. */
@@ -29,7 +37,6 @@ describe("project", () => {
     expect(MAP_WIDTH).toBe(360);
     expect(MAP_HEIGHT).toBeGreaterThan(MAP_WIDTH * 1.5);
     expect(MAP_HEIGHT).toBeLessThan(MAP_WIDTH * 3);
-    expect(SQUEEZE_LINE_Y).toBeGreaterThan(0);
   });
 
   it("puts every station on the map, on the right island", () => {
@@ -64,10 +71,27 @@ describe("layoutPins", () => {
     }
   });
 
-  it("labels most pins, and gives the top-priority pin a label", () => {
-    expect(pins.filter((p) => p.label).length).toBeGreaterThanOrEqual(STATIONS.length / 2);
-    const top = layoutPins(STATIONS, { priority: (id) => (id === "135-w-41st-st" ? 1 : 0) });
-    expect(top.find((p) => p.id === "135-w-41st-st")!.label).not.toBeNull();
+  it("labels every pin with its short name, with no two labels overlapping", () => {
+    for (const lit of [() => false, () => true, (id: string) => id === "33-irving-pl"]) {
+      const laid = layoutPins(
+        STATIONS.map((s) => ({ ...s, name: s.short })),
+        { lit },
+      );
+      const boxes = laid.map((p) => {
+        const name = STATIONS.find((s) => s.id === p.id)!.short;
+        return labelBoxes(p, name, lit(p.id))[p.label];
+      });
+      boxes.forEach((a, i) =>
+        boxes.slice(i + 1).forEach((b) => {
+          const overlaps = a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+          expect(overlaps, `${laid[i]!.id} label`).toBe(false);
+        }),
+      );
+      for (const b of boxes) {
+        expect(b.x1).toBeGreaterThanOrEqual(2);
+        expect(b.x2).toBeLessThanOrEqual(MAP_WIDTH - 2);
+      }
+    }
   });
 
   it("labels every visited pin when only a few are visited (grey dots leave room)", () => {
@@ -94,26 +118,18 @@ describe("layoutPins", () => {
 describe("map labels", () => {
   type Box = { x1: number; y1: number; x2: number; y2: number };
   const hit = (a: Box, b: Box) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
-  // 8px uppercase with letter-spacing: ~6.2 units per character; rotated labels run vertically.
-  const labelBox = (l: (typeof MAP_GEOMETRY.labels)[number]): Box => {
-    const long = l.text.length * 6.2;
-    return l.rotate === 0
-      ? { x1: l.x - long / 2, y1: l.y - 5, x2: l.x + long / 2, y2: l.y + 5 }
-      : { x1: l.x - 5, y1: l.y - long / 2, x2: l.x + 5, y2: l.y + long / 2 };
-  };
+  const labelBox = geoLabelBox;
   // Worst case: every station visited, so every pin is a bubble with a label.
   const pins = layoutPins(
     STATIONS.map((s) => ({ ...s, name: s.short })),
     { priority: () => 1, lit: () => true },
   );
   const taken: Box[] = pins.flatMap((p) => {
-    const w = STATIONS.find((s) => s.id === p.id)!.short.length * 4.9;
-    const boxes = [{ x1: p.x - 16, y1: p.y - 10, x2: p.x + 16, y2: p.y + 10 }];
-    if (p.label === "right")
-      boxes.push({ x1: p.x + 19, y1: p.y - 6, x2: p.x + 19 + w, y2: p.y + 6 });
-    if (p.label === "left")
-      boxes.push({ x1: p.x - 19 - w, y1: p.y - 6, x2: p.x - 19, y2: p.y + 6 });
-    return boxes;
+    const name = STATIONS.find((s) => s.id === p.id)!.short;
+    return [
+      { x1: p.x - 16, y1: p.y - 10, x2: p.x + 16, y2: p.y + 10 },
+      labelBoxes(p, name, true)[p.label],
+    ];
   });
 
   it.each(MAP_GEOMETRY.labels.map((l) => [l.text, l] as const))(
@@ -125,10 +141,6 @@ describe("map labels", () => {
       expect(b.y1).toBeGreaterThanOrEqual(2);
       expect(b.y2).toBeLessThanOrEqual(MAP_GEOMETRY.height - 2);
       for (const t of taken) expect(hit(b, t)).toBe(false);
-      // Not on the "Uptown, not to scale" marker (right-aligned, just above the squeeze line).
-      expect(
-        hit(b, { x1: 230, y1: MAP_GEOMETRY.squeezeY - 14, x2: 360, y2: MAP_GEOMETRY.squeezeY + 2 }),
-      ).toBe(false);
       for (const other of MAP_GEOMETRY.labels)
         if (other !== l) expect(hit(b, labelBox(other))).toBe(false);
     },

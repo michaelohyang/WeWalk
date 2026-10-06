@@ -1,13 +1,10 @@
+/* Chips wrap onto more lines instead of scrolling sideways: every option stays visible and
+   reachable with a mouse, a keyboard or a thumb (a hidden horizontal scroller isn't, on a laptop). */
 .row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin-inline: -16px;
-  padding: 10px 16px 4px;
-}
-.row::-webkit-scrollbar {
-  display: none;
+  padding-top: 10px;
 }
 .chip {
   flex: none;

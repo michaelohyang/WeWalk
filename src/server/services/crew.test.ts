@@ -34,7 +34,7 @@ describe("loadCrew", () => {
       checkinInputSchema.parse({ stationId: "250-broadway", visitedOn: "2026-10-02" }),
       NOW,
     );
-    await db.update(stations).set({ hidden: true }).where(eq(stations.id, "250-broadway"));
+    await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
 
     const crew = await loadCrew(db);
     expect(crew.stations).toHaveLength(28);

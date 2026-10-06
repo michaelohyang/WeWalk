@@ -4,6 +4,7 @@ import type { Db } from "./client";
 import { checkins, members, reviews, stations } from "./schema";
 import { STATIONS } from "@/domain/stations";
 import { createTestDb, resetTestDb } from "./testing";
+import { stationKey } from "../repos/stations";
 
 let db: Db;
 beforeAll(async () => {
@@ -36,10 +37,16 @@ describe("migrations + seed", () => {
     expect(rows).toHaveLength(29);
   });
 
-  it("seeding again is a no-op upsert", async () => {
+  it("seeding again is a no-op upsert: same rows, same integer ids", async () => {
+    const before = await db.select({ id: stations.id, slug: stations.slug }).from(stations);
     const { seedStations } = await import("./seed/seed");
     await seedStations(db);
-    expect(await db.$count(stations)).toBe(29);
+    const after = await db.select({ id: stations.id, slug: stations.slug }).from(stations);
+    expect(after).toHaveLength(29);
+    expect(new Map(after.map((r) => [r.slug, r.id]))).toEqual(
+      new Map(before.map((r) => [r.slug, r.id])),
+    );
+    expect(after.every((r) => Number.isInteger(r.id))).toBe(true);
   });
 
   it("has row-level security on every table", async () => {
@@ -70,14 +77,19 @@ describe("constraints", () => {
 
   it("allows one review per member per station", async () => {
     const m = await member();
-    const row = { stationId: "250-broadway", memberId: m.id, visitedOn: "2026-10-01", vibe: 4 };
+    const row = {
+      stationId: stationKey("250-broadway"),
+      memberId: m.id,
+      visitedOn: "2026-10-01",
+      vibe: 4,
+    };
     await db.insert(reviews).values({ id: uuid(1), ...row });
     expect(await pgCode(db.insert(reviews).values({ id: uuid(2), ...row }))).toBe("23505");
   });
 
   it("requires at least one score, each 1–5", async () => {
     const m = await member();
-    const row = { stationId: "250-broadway", memberId: m.id, visitedOn: "2026-10-01" };
+    const row = { stationId: stationKey("250-broadway"), memberId: m.id, visitedOn: "2026-10-01" };
     expect(await pgCode(db.insert(reviews).values({ id: uuid(1), ...row }))).toBe("23514");
     expect(await pgCode(db.insert(reviews).values({ id: uuid(2), ...row, coffee: 6 }))).toBe(
       "23514",
@@ -93,7 +105,7 @@ describe("constraints", () => {
       await pgCode(
         db.insert(reviews).values({
           id: uuid(1),
-          stationId: "nope",
+          stationId: 99_999,
           memberId: m.id,
           visitedOn: "2026-10-01",
           vibe: 3,
@@ -104,7 +116,7 @@ describe("constraints", () => {
 
   it("allows one check-in per member per station per day", async () => {
     const m = await member();
-    const row = { stationId: "250-broadway", memberId: m.id, visitedOn: "2026-10-01" };
+    const row = { stationId: stationKey("250-broadway"), memberId: m.id, visitedOn: "2026-10-01" };
     await db.insert(checkins).values({ id: uuid(1), ...row });
     expect(await pgCode(db.insert(checkins).values({ id: uuid(2), ...row }))).toBe("23505");
     await db.insert(checkins).values({ id: uuid(3), ...row, visitedOn: "2026-10-02" });
@@ -114,14 +126,17 @@ describe("constraints", () => {
     const m = await member();
     await db.insert(reviews).values({
       id: uuid(1),
-      stationId: "250-broadway",
+      stationId: stationKey("250-broadway"),
       memberId: m.id,
       visitedOn: "2026-10-01",
       vibe: 4,
     });
-    await db
-      .insert(checkins)
-      .values({ id: uuid(2), stationId: "250-broadway", memberId: m.id, visitedOn: "2026-10-01" });
+    await db.insert(checkins).values({
+      id: uuid(2),
+      stationId: stationKey("250-broadway"),
+      memberId: m.id,
+      visitedOn: "2026-10-01",
+    });
     await db.delete(members);
     expect(await db.$count(reviews)).toBe(0);
     expect(await db.$count(checkins)).toBe(0);
