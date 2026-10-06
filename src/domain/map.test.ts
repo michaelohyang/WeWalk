@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
+import { BROOKLYN, MANHATTAN, STREET_GRIDS, type LatLng } from "./geo";
 import {
   geoLabelBox,
   geoLabelPoints,
+  insideSpans,
   isOnLand,
   labelBoxes,
   layoutPins,
@@ -156,4 +157,44 @@ describe("map labels", () => {
         if (other !== l) expect(hit(b, labelBox(other))).toBe(false);
     },
   );
+});
+
+describe("street grids", () => {
+  it("cuts a line to the stretches inside an outline", () => {
+    const square = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 4 },
+      { x: 0, y: 4 },
+    ];
+    expect(insideSpans({ x: -4, y: 2 }, { x: 12, y: 2 }, square)).toEqual([[0.25, 0.5]]);
+    const u = [
+      { x: 0, y: 0 },
+      { x: 6, y: 0 },
+      { x: 6, y: 6 },
+      { x: 4, y: 6 },
+      { x: 4, y: 2 },
+      { x: 2, y: 2 },
+      { x: 2, y: 6 },
+      { x: 0, y: 6 },
+    ];
+    expect(insideSpans({ x: -1, y: 4 }, { x: 7, y: 4 }, u)).toEqual([
+      [1 / 8, 3 / 8],
+      [5 / 8, 7 / 8],
+    ]);
+    expect(insideSpans({ x: -1, y: 9 }, { x: 7, y: 9 }, u)).toEqual([]);
+  });
+
+  // Downtown and Brooklyn had no streets once; every building should sit in a grid.
+  it.each(STATIONS.map((s) => [s.short, s] as const))("%s has streets around it", (_, s) => {
+    const at: LatLng = [s.lat, s.lng];
+    const borough = inside(at, BROOKLYN) ? "brooklyn" : "manhattan";
+    const patches = STREET_GRIDS.filter((g) => g.borough === borough && inside(at, g.area));
+    expect(patches.length).toBe(1);
+  });
+
+  it("draws streets in both boroughs", () => {
+    expect(MAP_GEOMETRY.streets.manhattan.grid.length).toBeGreaterThan(1000);
+    expect(MAP_GEOMETRY.streets.brooklyn.grid.length).toBeGreaterThan(1000);
+  });
 });

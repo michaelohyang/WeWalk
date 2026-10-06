@@ -3,12 +3,13 @@ import {
   BROOKLYN,
   COMPRESS_NORTH_OF,
   GOVERNORS_ISLAND,
-  GRID_ANCHOR,
-  GRID_SOUTH,
+  GRID_TILT_DEG,
   MANHATTAN,
   NEW_JERSEY,
   QUEENS,
   ROOSEVELT_ISLAND,
+  STREET_GRIDS,
+  type GridPatch,
   type LatLng,
 } from "./geo";
 import type { LabelSide, MapGeometry, Pin } from "./map-types";
@@ -27,21 +28,27 @@ export type { MapGeometry, Pin } from "./map-types";
 
 export const MAP_WIDTH = 360;
 const ORIGIN: LatLng = [40.75, -73.99];
-const GRID_TILT = (30 * Math.PI) / 180;
+const GRID_TILT = (GRID_TILT_DEG * Math.PI) / 180;
 const NORTH_SQUEEZE = 0.3;
 const M_PER_DEG_LAT = 110_574;
 const M_PER_DEG_LNG = 111_320 * Math.cos((ORIGIN[0] * Math.PI) / 180);
 
 type Pt = { x: number; y: number };
 
-/** Steps 1–2: meters, east = +x, "uptown" = +y. */
-function rotated([lat, lng]: LatLng): Pt {
-  const x = (lng - ORIGIN[1]) * M_PER_DEG_LNG;
-  const y = (lat - ORIGIN[0]) * M_PER_DEG_LAT;
-  const c = Math.cos(GRID_TILT);
-  const s = Math.sin(GRID_TILT);
+/** Step 1: meters, east = +x, north = +y. */
+function meters([lat, lng]: LatLng): Pt {
+  return { x: (lng - ORIGIN[1]) * M_PER_DEG_LNG, y: (lat - ORIGIN[0]) * M_PER_DEG_LAT };
+}
+
+/** Turn a point in meters by `angle` radians, clockwise: what was `angle` east of north is up. */
+function turn({ x, y }: Pt, angle: number): Pt {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
   return { x: x * c - y * s, y: x * s + y * c };
 }
+
+/** Steps 1–2: meters, east = +x, "uptown" = +y. */
+const rotated = (at: LatLng): Pt => turn(meters(at), GRID_TILT);
 
 const SQUEEZE_FROM = rotated(COMPRESS_NORTH_OF).y;
 
@@ -101,40 +108,95 @@ export const LAND = [
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/** Map meters (after step 2) to SVG units. */
+const toSvg = (p: Pt) => {
+  const q = squeezed(p);
+  return `${((q.x - BOX.minX) * SCALE).toFixed(1)} ${((BOX.maxY - q.y) * SCALE).toFixed(1)}`;
+};
+
+/** A straight segment (map frame) as SVG, bent where it crosses into the squeezed north. */
+function segment(a: Pt, b: Pt): string {
+  const crosses = (a.y - SQUEEZE_FROM) * (b.y - SQUEEZE_FROM) < 0;
+  if (!crosses) return `M${toSvg(a)}L${toSvg(b)}`;
+  const t = (SQUEEZE_FROM - a.y) / (b.y - a.y);
+  return `M${toSvg(a)}L${toSvg({ x: a.x + (b.x - a.x) * t, y: SQUEEZE_FROM })}L${toSvg(b)}`;
+}
+
+/** The stretches of the line a→b inside `ring` (even-odd), as [from, to] fractions of it. */
+export function insideSpans(a: Pt, b: Pt, ring: readonly Pt[]): [number, number][] {
+  const hits: number[] = [];
+  const d = { x: b.x - a.x, y: b.y - a.y };
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i]!;
+    const q = ring[(i + 1) % ring.length]!;
+    const e = { x: q.x - p.x, y: q.y - p.y };
+    const den = d.x * e.y - d.y * e.x;
+    if (den === 0) continue;
+    const t = ((p.x - a.x) * e.y - (p.y - a.y) * e.x) / den;
+    const u = ((p.x - a.x) * d.y - (p.y - a.y) * d.x) / den;
+    if (t >= 0 && t <= 1 && u >= 0 && u < 1) hits.push(t);
+  }
+  hits.sort((m, n) => m - n);
+  const spans: [number, number][] = [];
+  for (let i = 0; i + 1 < hits.length; i += 2) spans.push([hits[i]!, hits[i + 1]!]);
+  return spans;
+}
+
 /**
- * Manhattan's street grid, north of 14th St: avenues run straight up the map (the map is already
- * turned to the grid), streets across it. Drawn every few blocks so it reads as texture, not
- * navigation; north of the squeeze the streets bunch up, which also shows the scale change.
- * Clipped to Manhattan by the drawing code.
+ * One neighborhood's grid: avenues along its tilt, streets across them, cut to its outline.
+ * Clipped to the shore by the drawing code.
  */
-function streetGrid(): string {
-  const AVENUE_M = 270; // about one avenue block
-  const STREET_M = 400; // about every fifth street
-  const anchor = rotated(GRID_ANCHOR);
-  const south = rotated(GRID_SOUTH).y;
-  const island = MANHATTAN.map(rotated);
-  const [minX, maxX] = [Math.min(...island.map((p) => p.x)), Math.max(...island.map((p) => p.x))];
-  const maxY = Math.max(...island.map((p) => p.y));
-  const at = (x: number, y: number) => {
-    const q = squeezed({ x, y });
-    return `${((q.x - BOX.minX) * SCALE).toFixed(1)} ${((BOX.maxY - q.y) * SCALE).toFixed(1)}`;
-  };
-  const d: string[] = [];
+function gridPatch(patch: GridPatch): string {
+  const tilt = (patch.tilt * Math.PI) / 180;
+  // Work in the patch's own frame, where its avenues run up.
+  const ring = patch.area.map((at) => turn(meters(at), tilt));
+  const origin = ring[0]!;
+  const [minX, maxX] = [Math.min(...ring.map((p) => p.x)), Math.max(...ring.map((p) => p.x))];
+  const [minY, maxY] = [Math.min(...ring.map((p) => p.y)), Math.max(...ring.map((p) => p.y))];
+  const back = (p: Pt) => turn(turn(p, -tilt), GRID_TILT);
+  const lines: [Pt, Pt][] = [];
   for (
-    let x = anchor.x - Math.ceil((anchor.x - minX) / AVENUE_M) * AVENUE_M;
+    let x = origin.x - Math.ceil((origin.x - minX) / patch.avenue) * patch.avenue;
     x <= maxX;
-    x += AVENUE_M
+    x += patch.avenue
   ) {
-    d.push(`M${at(x, south)}L${at(x, maxY)}`);
+    lines.push([
+      { x, y: minY },
+      { x, y: maxY },
+    ]);
   }
   for (
-    let y = anchor.y - Math.floor((anchor.y - south) / STREET_M) * STREET_M;
+    let y = origin.y - Math.ceil((origin.y - minY) / patch.street) * patch.street;
     y <= maxY;
-    y += STREET_M
+    y += patch.street
   ) {
-    d.push(`M${at(minX, y)}L${at(maxX, y)}`);
+    lines.push([
+      { x: minX, y },
+      { x: maxX, y },
+    ]);
   }
-  return d.join("");
+  const lerp = (a: Pt, b: Pt, t: number) => ({
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  });
+  return lines
+    .flatMap(([a, b]) =>
+      insideSpans(a, b, ring).map(([t0, t1]) =>
+        segment(back(lerp(a, b, t0)), back(lerp(a, b, t1))),
+      ),
+    )
+    .join("");
+}
+
+/**
+ * Street texture: each neighborhood's grid at its own angle, every block or few, so it reads as
+ * city, not navigation. North of the squeeze the streets bunch up, which also shows the scale
+ * change.
+ */
+function streetGrid(borough: GridPatch["borough"]): string {
+  return STREET_GRIDS.filter((p) => p.borough === borough)
+    .map(gridPatch)
+    .join("");
 }
 
 /** Broadway, as a smooth open line. */
@@ -147,7 +209,11 @@ export const MAP_GEOMETRY: MapGeometry = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
   land: LAND,
-  streets: { grid: streetGrid(), broadway: broadway(), clip: toPath(MANHATTAN) },
+  streets: {
+    manhattan: { grid: streetGrid("manhattan"), clip: toPath(MANHATTAN) },
+    brooklyn: { grid: streetGrid("brooklyn"), clip: toPath(BROOKLYN) },
+    broadway: broadway(),
+  },
   // Placed by hand in map units (checked by map.test.ts: inside the map, clear of every pin,
   // pin label and each other at 390px).
   labels: [

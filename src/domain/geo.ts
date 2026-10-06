@@ -129,6 +129,112 @@ export const BROADWAY: readonly LatLng[] = [
   [40.8148, -73.959],
 ];
 
-/** Where the street grid is anchored: Fifth Avenue at 42nd St, and its southern edge (14th St). */
-export const GRID_ANCHOR: LatLng = [40.7536, -73.9832];
-export const GRID_SOUTH: LatLng = [40.7359, -73.9937];
+/**
+ * Street-grid patches: each neighborhood's grid runs at its own angle, so lines meet at slight
+ * kinks along Houston St, Chambers St and the Brooklyn neighborhoods, the way the real city does.
+ * `tilt` is the avenues' bearing in degrees east of north; `avenue` and `street` are the line
+ * spacings in meters (about every block across, every few blocks along). Each `area` is a rough
+ * outline that may run into the water: the map clips the lines to the shore.
+ */
+export interface GridPatch {
+  name: string;
+  borough: "manhattan" | "brooklyn";
+  tilt: number;
+  avenue: number;
+  street: number;
+  area: readonly LatLng[];
+}
+
+/** The Commissioners' grid's bearing. The map is turned by this much, so its avenues run upright. */
+export const GRID_TILT_DEG = 30;
+
+export const STREET_GRIDS: readonly GridPatch[] = [
+  {
+    name: "Midtown and up, plus the East Village",
+    borough: "manhattan",
+    tilt: GRID_TILT_DEG,
+    avenue: 270,
+    street: 400,
+    area: [
+      [40.7425, -74.03], // 14th St at the Hudson
+      [40.7375, -73.9965], // 14th St & 6th Ave
+      [40.7287, -74.0025], // Houston & 6th Ave
+      [40.7243, -73.9925], // Houston & Bowery
+      [40.716, -73.965], // Houston at the East River
+      [40.86, -73.9],
+      [40.86, -74.0],
+    ],
+  },
+  {
+    name: "West Village",
+    borough: "manhattan",
+    tilt: 8,
+    avenue: 200,
+    street: 260,
+    area: [
+      [40.7425, -74.03],
+      [40.7375, -73.9965],
+      [40.7287, -74.0025],
+      [40.7265, -74.03],
+    ],
+  },
+  {
+    name: "SoHo, Tribeca and the Lower East Side",
+    borough: "manhattan",
+    tilt: 25,
+    avenue: 180,
+    street: 230,
+    area: [
+      [40.7265, -74.03],
+      [40.7287, -74.0025],
+      [40.7243, -73.9925],
+      [40.716, -73.965],
+      [40.709, -73.965],
+      [40.711, -73.995], // Chinatown, under the bridges
+      [40.7172, -74.03], // Chambers St at the Hudson
+    ],
+  },
+  {
+    name: "Financial District",
+    borough: "manhattan",
+    tilt: 52,
+    avenue: 150,
+    street: 190,
+    area: [
+      [40.7172, -74.03],
+      [40.711, -73.995],
+      [40.709, -73.965],
+      [40.69, -73.965],
+      [40.69, -74.03],
+    ],
+  },
+  {
+    name: "Williamsburg and Greenpoint",
+    borough: "brooklyn",
+    tilt: 32,
+    avenue: 240,
+    street: 300,
+    area: [
+      [40.706, -73.99],
+      [40.75, -73.97],
+      [40.75, -73.84],
+      [40.69, -73.84],
+      [40.698, -73.96],
+    ],
+  },
+  {
+    name: "DUMBO, Brooklyn Heights and Downtown Brooklyn",
+    borough: "brooklyn",
+    tilt: 18,
+    avenue: 220,
+    street: 280,
+    area: [
+      [40.706, -73.99],
+      [40.698, -73.96],
+      [40.69, -73.84],
+      [40.62, -73.84],
+      [40.62, -74.04],
+      [40.706, -74.04],
+    ],
+  },
+];
