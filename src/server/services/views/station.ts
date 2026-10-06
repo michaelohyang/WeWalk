@@ -20,6 +20,7 @@ export interface ReviewView {
   hotTake: string;
   body: string;
   tags: Tag[];
+  photoUrl: string | null;
   mine: boolean;
   /** Every kind, in display order, so the buttons render even at zero. */
   reactions: {
@@ -78,6 +79,7 @@ export async function stationView(
         hotTake: r.hotTake,
         body: r.body,
         tags: r.tags,
+        photoUrl: r.photoUrl,
         mine: r.memberId === session.member.id,
         reactions: REACTIONS.map((kind) => {
           const these = crew.reactions.filter((x) => x.reviewId === r.id && x.kind === kind.key);

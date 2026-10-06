@@ -20,6 +20,7 @@ export interface RateView {
     hotTake: string;
     body: string;
     tags: Tag[];
+    photoUrl: string | null;
   } | null;
   /** Stations you've been to (for the "first visit: new stamp" moment). */
   visitedSlugs: string[];
@@ -52,6 +53,7 @@ export async function rateView(
           hotTake: mine.hotTake,
           body: mine.body,
           tags: mine.tags,
+          photoUrl: mine.photoUrl,
         }
       : null,
     visitedSlugs: [...new Set(visits.map((v) => v.stationSlug))],

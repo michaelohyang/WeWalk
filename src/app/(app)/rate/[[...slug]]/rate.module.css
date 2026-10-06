@@ -212,3 +212,45 @@ textarea.input {
   font-size: 16px;
   margin-bottom: 4px;
 }
+
+/* Photo: preview, then pick/remove. The file input is hidden; its label is the button. */
+.photo {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 14px;
+  background: var(--surface);
+}
+.photoActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.photoPick {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+.photoPick[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: default;
+}
+.photoPick:focus-within {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}

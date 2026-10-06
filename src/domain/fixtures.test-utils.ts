@@ -14,6 +14,7 @@ export function review(
     hotTake: "",
     body: "",
     tags: [],
+    photoUrl: null,
     updatedAt: "2026-10-01T12:00:00.000Z",
     ...overrides,
   };

@@ -5,6 +5,8 @@ import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
 import { GET as me, PATCH as renameMe } from "@/app/api/me/route";
+import { GET as getPhoto } from "@/app/api/photos/[id]/route";
+import { POST as uploadPhoto } from "@/app/api/photos/route";
 import { POST as recover } from "@/app/api/recover/route";
 import { DELETE as unreact, PUT as react } from "@/app/api/reviews/[id]/reactions/[kind]/route";
 import { DELETE as deleteReview, PUT as putReview } from "@/app/api/reviews/[id]/route";
@@ -490,5 +492,70 @@ describe("here today", () => {
         ["Dana", "dock-72", true],
       ]),
     );
+  });
+});
+
+describe("photos", () => {
+  /** A tiny but real-looking JPEG: the FF D8 FF signature, then filler. */
+  const jpeg = (size = 2048) => {
+    const b = new Uint8Array(size);
+    b.set([0xff, 0xd8, 0xff, 0xe0]);
+    return b;
+  };
+  const upload = (phone: Phone, bytes: Uint8Array<ArrayBuffer>, type = "image/jpeg") =>
+    phone.call(uploadPhoto, "POST", "/api/photos", {
+      raw: bytes,
+      headers: { "content-type": type },
+    });
+  const photoId = (url: string) => url.split("/").pop()!;
+  const fetchPhoto = (phone: Phone, url: string) =>
+    phone.call(getPhoto, "GET", url, { params: { id: photoId(url) } });
+
+  it("uploads a JPEG and serves it back", async () => {
+    const dana = await joined("Dana");
+    const res = await upload(dana, jpeg());
+    expect(res.status).toBe(201);
+    expect(res.body.url).toMatch(/^\/api\/photos\/[0-9a-f-]{36}$/);
+    const got = await fetchPhoto(dana, res.body.url);
+    expect(got.status).toBe(200);
+    expect(got.body).toEqual(jpeg());
+  });
+
+  it("refuses what isn't a JPEG, what's too big, and strangers", async () => {
+    const dana = await joined("Dana");
+    expect((await upload(dana, jpeg(), "image/png")).status).toBe(400);
+    expect((await upload(dana, new TextEncoder().encode("not an image"))).status).toBe(400);
+    expect((await upload(dana, jpeg(2 * 1024 * 1024 + 1))).status).toBe(413);
+    expect((await upload(new Phone(), jpeg())).status).toBe(401);
+  });
+
+  it("goes on a review, and only if it was uploaded here", async () => {
+    const dana = await joined("Dana");
+    const { url } = (await upload(dana, jpeg())).body;
+    const id = newId();
+    const put = (photoUrl: string | null) =>
+      dana.call(putReview, "PUT", "/api/reviews/x", {
+        params: { id },
+        body: review({ photoUrl }),
+      });
+    expect((await put("https://example.com/cat.jpg")).status).toBe(400);
+    const res = await put(url);
+    expect(res.status).toBe(201);
+    expect(res.body.review.photoUrl).toBe(url);
+  });
+
+  it("is deleted when it's replaced, and when its review is", async () => {
+    const dana = await joined("Dana");
+    const first = (await upload(dana, jpeg())).body.url;
+    const second = (await upload(dana, jpeg())).body.url;
+    const id = newId();
+    const put = (photoUrl: string | null) =>
+      dana.call(putReview, "PUT", "/api/reviews/x", { params: { id }, body: review({ photoUrl }) });
+    await put(first);
+    await put(second);
+    expect((await fetchPhoto(dana, first)).status).toBe(404);
+    expect((await fetchPhoto(dana, second)).status).toBe(200);
+    await dana.call(deleteReview, "DELETE", "/api/reviews/x", { params: { id } });
+    expect((await fetchPhoto(dana, second)).status).toBe(404);
   });
 });

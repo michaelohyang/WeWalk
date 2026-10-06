@@ -71,10 +71,11 @@ Open <http://localhost:3000/signup> and create an account. The first account bec
 
 ## Configuration
 
-| Variable       | Used by                | Value                                                                                      |
-| -------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
-| `DATABASE_URL` | The app at runtime     | Postgres connection string (Supabase transaction pooler, port 6543), or `pglite:…` locally |
-| `DIRECT_URL`   | Migrations and seeding | Postgres connection string (Supabase session pooler, port 5432)                            |
+| Variable                | Used by                | Value                                                                                      |
+| ----------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`          | The app at runtime     | Postgres connection string (Supabase transaction pooler, port 6543), or `pglite:…` locally |
+| `DIRECT_URL`            | Migrations and seeding | Postgres connection string (Supabase session pooler, port 5432)                            |
+| `BLOB_READ_WRITE_TOKEN` | Review photos          | Added by Vercel when a Blob store is connected. Locally, photos are kept in memory instead |
 
 Never commit real connection strings. `.env.local` is ignored by git.
 
