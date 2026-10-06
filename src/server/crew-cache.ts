@@ -12,9 +12,20 @@ import { loadCrew } from "./services/crew";
 
 const CREW_TAG = "crew";
 
-export const crewData = unstable_cache(async () => loadCrew(await getDb()), ["crew-data-v1"], {
-  tags: [CREW_TAG],
-});
+/*
+ * Vercel keeps the data cache across deploys, so a deploy that changes CrewData's shape would
+ * read the previous deploy's copy (a renamed field comes back undefined). Keying the cache by
+ * deployment gives each deploy its own copy: one fresh load after a deploy, then cached again.
+ * Bump SHAPE too when changing CrewData, for anywhere VERCEL_DEPLOYMENT_ID isn't set.
+ */
+const SHAPE = "v2";
+const DEPLOYMENT = process.env.VERCEL_DEPLOYMENT_ID ?? "local";
+
+export const crewData = unstable_cache(
+  async () => loadCrew(await getDb()),
+  ["crew-data", SHAPE, DEPLOYMENT],
+  { tags: [CREW_TAG] },
+);
 
 /** Call after any write that changes what pages show. */
 export function crewChanged(): void {
