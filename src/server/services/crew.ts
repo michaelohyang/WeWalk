@@ -28,11 +28,11 @@ export async function loadCrew(db: Db): Promise<CrewData> {
     listReviews(db),
     listCheckins(db),
   ]);
-  const onMap = new Set(stationRows.map((s) => s.id));
+  const onMap = new Set(stationRows.map((s) => s.slug));
   return {
     stations: stationRows.map(({ createdAt, ...s }) => (void createdAt, s)),
     members,
-    reviews: reviews.filter((r) => onMap.has(r.stationId)),
-    checkins: checkins.filter((c) => onMap.has(c.stationId)),
+    reviews: reviews.filter((r) => onMap.has(r.stationSlug)),
+    checkins: checkins.filter((c) => onMap.has(c.stationSlug)),
   };
 }

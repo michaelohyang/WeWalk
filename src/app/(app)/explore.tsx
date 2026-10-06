@@ -70,10 +70,10 @@ const matcher = (f: { q: string; area: AreaKey | null; tag: Tag | null }) => (s:
 export function Explore({ view }: { view: ExploreView }) {
   const [filters, setFilters] = useFilters(view.tags);
   const [selected, setSelected] = useState<string | null>(null);
-  const byId = useMemo(() => new Map(view.stations.map((s) => [s.id, s])), [view.stations]);
+  const bySlug = useMemo(() => new Map(view.stations.map((s) => [s.slug, s])), [view.stations]);
   const matches = matcher(filters);
   const shown = view.stations.filter(matches);
-  const dimmed = new Set(view.stations.filter((s) => !matches(s)).map((s) => s.id));
+  const dimmed = new Set(view.stations.filter((s) => !matches(s)).map((s) => s.slug));
   // Searching or filtering on the map: list what matches under it, not the usual favorites.
   const filtering = !!(filters.q || filters.area || filters.tag);
   const results = shown.length ? (
@@ -81,7 +81,7 @@ export function Explore({ view }: { view: ExploreView }) {
       {[...shown]
         .sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name))
         .map((s) => (
-          <StationRow key={s.id} station={s} />
+          <StationRow key={s.slug} station={s} />
         ))}
     </div>
   ) : (
@@ -89,7 +89,7 @@ export function Explore({ view }: { view: ExploreView }) {
       <Empty title="No matches.">Nothing fits those filters. Loosen up a little.</Empty>
     </div>
   );
-  const picked = selected ? byId.get(selected) : undefined;
+  const picked = selected ? bySlug.get(selected) : undefined;
   const href = (next: Partial<Filters>) => {
     const q = toQuery({ ...filters, ...next });
     return q ? `/?${q}` : "/";
@@ -211,7 +211,7 @@ export function Explore({ view }: { view: ExploreView }) {
           <MapView
             geometry={view.map}
             pins={view.pins}
-            stations={byId}
+            stations={bySlug}
             selected={selected}
             dimmed={dimmed}
             area={filters.area}
@@ -236,7 +236,7 @@ export function Explore({ view }: { view: ExploreView }) {
               {view.favorites.length ? (
                 <div>
                   {view.favorites.map((id) => (
-                    <StationRow key={id} station={byId.get(id)!} />
+                    <StationRow key={id} station={bySlug.get(id)!} />
                   ))}
                 </div>
               ) : (
@@ -283,10 +283,10 @@ function Preview({ station, onClose }: { station: StationCard; onClose: () => vo
       </div>
       <p className={styles.verdict}>{verdict}</p>
       <div className={styles.sheetActions}>
-        <ButtonLink href={`/stations/${station.id}`} variant="dark">
+        <ButtonLink href={`/stations/${station.slug}`} variant="dark">
           View station
         </ButtonLink>
-        <ButtonLink href={`/rate/${station.id}`} variant="primary">
+        <ButtonLink href={`/rate/${station.slug}`} variant="primary">
           Rate
         </ButtonLink>
       </div>

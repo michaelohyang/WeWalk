@@ -4,7 +4,7 @@ import { roundScore, type StationScore } from "./scoring";
 export type RankKey = "overall" | CategoryKey;
 
 export interface RankedStation {
-  stationId: string;
+  stationSlug: string;
   rank: number;
   value: number;
   reviewCount: number;
@@ -16,12 +16,12 @@ export interface RankedStation {
  * category otherwise), then name A–Z. Stations without a score for `key` are left out.
  */
 export function rankStations(
-  stations: readonly { id: string; name: string }[],
+  stations: readonly { slug: string; name: string }[],
   scores: ReadonlyMap<string, StationScore>,
   key: RankKey,
 ): RankedStation[] {
   const rows = stations.flatMap((s) => {
-    const score = scores.get(s.id);
+    const score = scores.get(s.slug);
     const value = key === "overall" ? score?.overall : score?.categories[key];
     if (value == null) return [];
     const reviewCount = key === "overall" ? score!.reviewCount : score!.categoryCounts[key];
@@ -36,7 +36,7 @@ export function rankStations(
   );
 
   return rows.map((r, i) => ({
-    stationId: r.station.id,
+    stationSlug: r.station.slug,
     rank: i + 1,
     value: r.value,
     reviewCount: r.reviewCount,

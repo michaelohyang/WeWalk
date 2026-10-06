@@ -8,7 +8,7 @@ import type { AreaKey } from "./areas";
  * lat/lng are approximate building positions, used to place pins on the schematic map.
  */
 export interface StationSeed {
-  id: string;
+  slug: string;
   name: string;
   /** How New Yorkers say it ("450 Lex"): used on the map and stamps. */
   short: string;
@@ -22,7 +22,7 @@ export interface StationSeed {
 
 export const STATIONS: readonly StationSeed[] = [
   {
-    id: "250-broadway",
+    slug: "250-broadway",
     name: "250 Broadway",
     short: "250 Bway",
     address: "250 Broadway, New York, NY 10007",
@@ -32,7 +32,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.0079,
   },
   {
-    id: "199-water-st",
+    slug: "199-water-st",
     name: "199 Water St",
     short: "199 Water",
     address: "199 Water St, New York, NY 10038",
@@ -42,7 +42,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.0034,
   },
   {
-    id: "450-lexington-ave",
+    slug: "450-lexington-ave",
     name: "450 Lexington Ave",
     short: "450 Lex",
     address: "450 Lexington Ave, New York, NY 10017",
@@ -52,7 +52,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9752,
   },
   {
-    id: "368-9th-ave",
+    slug: "368-9th-ave",
     name: "368 9th Ave",
     short: "368 9th",
     address: "368 9th Ave, New York, NY 10001",
@@ -62,7 +62,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.997,
   },
   {
-    id: "8-w-126th-st",
+    slug: "8-w-126th-st",
     name: "8 W 126th St",
     short: "8 W 126th",
     address: "8 W 126th St, New York, NY 10027",
@@ -72,7 +72,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9447,
   },
   {
-    id: "430-park-ave",
+    slug: "430-park-ave",
     name: "430 Park Ave",
     short: "430 Park",
     address: "430 Park Ave, New York, NY 10022",
@@ -82,7 +82,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9715,
   },
   {
-    id: "18-w-18th-st",
+    slug: "18-w-18th-st",
     name: "18 W 18th St",
     short: "18 W 18th",
     address: "18 W 18th St, New York, NY 10011",
@@ -92,7 +92,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9925,
   },
   {
-    id: "135-madison-ave",
+    slug: "135-madison-ave",
     name: "135 Madison Ave",
     short: "135 Madison",
     address: "135 Madison Ave, New York, NY 10016",
@@ -102,7 +102,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9846,
   },
   {
-    id: "500-7th-ave",
+    slug: "500-7th-ave",
     name: "500 7th Ave",
     short: "500 7th",
     address: "500 7th Ave, New York, NY 10018",
@@ -112,7 +112,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9888,
   },
   {
-    id: "85-broad-st",
+    slug: "85-broad-st",
     name: "85 Broad St",
     short: "85 Broad",
     address: "85 Broad St, New York, NY 10004",
@@ -122,7 +122,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.011,
   },
   {
-    id: "575-lexington-ave",
+    slug: "575-lexington-ave",
     name: "575 Lexington Ave",
     short: "575 Lex",
     address: "575 Lexington Ave, New York, NY 10022",
@@ -132,7 +132,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9716,
   },
   {
-    id: "148-lafayette-st",
+    slug: "148-lafayette-st",
     name: "148 Lafayette St",
     short: "148 Lafayette",
     address: "148 Lafayette St, New York, NY 10013",
@@ -142,7 +142,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9998,
   },
   {
-    id: "160-varick-st",
+    slug: "160-varick-st",
     name: "160 Varick St",
     short: "160 Varick",
     address: "160 Varick St, New York, NY 10013",
@@ -152,7 +152,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.0058,
   },
   {
-    id: "1450-broadway",
+    slug: "1450-broadway",
     name: "1450 Broadway",
     short: "1450 Bway",
     address: "1450 Broadway, New York, NY 10018",
@@ -162,7 +162,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9868,
   },
   {
-    id: "dock-72",
+    slug: "dock-72",
     name: "Dock 72",
     short: "Dock 72",
     address: "Dock 72 Way, Brooklyn, NY 11205",
@@ -172,7 +172,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9715,
   },
   {
-    id: "450-park-ave-s",
+    slug: "450-park-ave-s",
     name: "450 Park Ave S",
     short: "450 Park S",
     address: "450 Park Ave S, New York, NY 10016",
@@ -182,7 +182,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9837,
   },
   {
-    id: "408-broadway",
+    slug: "408-broadway",
     name: "408 Broadway",
     short: "408 Bway",
     address: "408 Broadway, New York, NY 10013",
@@ -192,7 +192,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.0023,
   },
   {
-    id: "154-w-14th-st",
+    slug: "154-w-14th-st",
     name: "154 W 14th St",
     short: "154 W 14th",
     address: "154 W 14th St, New York, NY 10011",
@@ -202,7 +202,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.999,
   },
   {
-    id: "750-lexington-ave",
+    slug: "750-lexington-ave",
     name: "750 Lexington Ave",
     short: "750 Lex",
     address: "750 Lexington Ave, New York, NY 10022",
@@ -212,7 +212,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9681,
   },
   {
-    id: "115-broadway",
+    slug: "115-broadway",
     name: "115 Broadway",
     short: "115 Bway",
     address: "115 Broadway, New York, NY 10006",
@@ -222,7 +222,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.011,
   },
   {
-    id: "134-n-4th-st",
+    slug: "134-n-4th-st",
     name: "134 N 4th St",
     short: "134 N 4th",
     address: "134 N 4th St, Brooklyn, NY 11249",
@@ -232,7 +232,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.96,
   },
   {
-    id: "575-fifth-ave",
+    slug: "575-fifth-ave",
     name: "575 Fifth",
     short: "575 Fifth",
     address: "575 5th Ave, New York, NY 10017",
@@ -242,7 +242,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9785,
   },
   {
-    id: "33-irving-pl",
+    slug: "33-irving-pl",
     name: "33 Irving Pl",
     short: "33 Irving",
     address: "33 Irving Pl, New York, NY 10003",
@@ -252,7 +252,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9883,
   },
   {
-    id: "379-w-broadway",
+    slug: "379-w-broadway",
     name: "379 W Broadway",
     short: "379 W Bway",
     address: "379 W Broadway, New York, NY 10012",
@@ -262,7 +262,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -74.0021,
   },
   {
-    id: "195-montague-st",
+    slug: "195-montague-st",
     name: "195 Montague St",
     short: "195 Montague",
     address: "195 Montague St, 14th Fl, Brooklyn, NY 11201",
@@ -272,7 +272,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9917,
   },
   {
-    id: "1460-broadway",
+    slug: "1460-broadway",
     name: "1460 Broadway",
     short: "1460 Bway",
     address: "1460 Broadway, New York, NY 10036",
@@ -282,7 +282,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9865,
   },
   {
-    id: "dumbo-heights",
+    slug: "dumbo-heights",
     name: "Dumbo Heights",
     short: "Dumbo Heights",
     address: "77 Sands St, Brooklyn, NY 11201",
@@ -292,7 +292,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.9867,
   },
   {
-    id: "524-broadway",
+    slug: "524-broadway",
     name: "524 Broadway",
     short: "524 Bway",
     address: "524 Broadway, New York, NY 10012",
@@ -302,7 +302,7 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -73.999,
   },
   {
-    id: "135-w-41st-st",
+    slug: "135-w-41st-st",
     name: "135 W 41st St",
     short: "135 W 41st",
     address: "135 W 41st St, New York, NY 10036",
@@ -313,7 +313,7 @@ export const STATIONS: readonly StationSeed[] = [
   },
 ];
 
-const SHORT = new Map(STATIONS.map((s) => [s.id, s.short]));
+const SHORT = new Map(STATIONS.map((s) => [s.slug, s.short]));
 
-/** The short name for a station id, falling back to its full name. */
-export const shortName = (id: string, name: string) => SHORT.get(id) ?? name;
+/** The short name for a station slug, falling back to its full name. */
+export const shortName = (slug: string, name: string) => SHORT.get(slug) ?? name;

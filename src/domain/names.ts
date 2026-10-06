@@ -1,4 +1,4 @@
-export const NAME_MAX_LENGTH = 30;
+const NAME_MAX_LENGTH = 30;
 
 /** Trims, collapses inner whitespace and normalizes Unicode so "Dana " and "Dana" are one name. */
 export function normalizeDisplayName(raw: string): string {

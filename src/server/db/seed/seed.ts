@@ -10,8 +10,8 @@ import { STATIONS } from "@/domain/stations";
  * up an id for every row it merely updates).
  */
 export async function seedStations(db: Db): Promise<number> {
-  // The seed file's `id` is the station's slug; the integer key is assigned by the database.
-  const rows = STATIONS.map(({ id, ...s }) => ({ ...s, slug: id, hidden: s.hidden ?? false }));
+  // The integer key is assigned by the database.
+  const rows = STATIONS.map((s) => ({ ...s, hidden: s.hidden ?? false }));
   const existing = new Set(
     (await db.select({ slug: stations.slug }).from(stations)).map((r) => r.slug),
   );

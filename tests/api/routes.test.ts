@@ -5,7 +5,7 @@ import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
 import { GET as me, PATCH as renameMe } from "@/app/api/me/route";
-import { POST as pair } from "@/app/api/pair/route";
+import { POST as recover } from "@/app/api/recover/route";
 import { DELETE as deleteReview, PUT as putReview } from "@/app/api/reviews/[id]/route";
 import { POST as signup } from "@/app/api/signup/route";
 import { setDb, type Db } from "@/server/db/client";
@@ -18,7 +18,7 @@ let n = 0;
 const newId = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
 const today = () => new Date().toISOString().slice(0, 10);
 const review = (over: Record<string, unknown> = {}) => ({
-  stationId: "18-w-18th-st",
+  stationSlug: "18-w-18th-st",
   visitedOn: today(),
   scores: { coffee: 4, wifi: 5 },
   ...over,
@@ -127,7 +127,7 @@ describe("every member route needs a session", () => {
       () =>
         new Phone().call(putCheckin, "PUT", "/api/checkins/x", {
           params: { id: newId() },
-          body: { stationId: "dock-72", visitedOn: today() },
+          body: { stationSlug: "dock-72", visitedOn: today() },
         }),
     ],
     [
@@ -182,7 +182,7 @@ describe("request hygiene", () => {
     const params = { id: newId() };
     const form = await phone.call(putReview, "PUT", "/api/reviews/x", {
       params,
-      raw: "stationId=x",
+      raw: "stationSlug=x",
       headers: { "content-type": "application/x-www-form-urlencoded" },
     });
     expect(form.status).toBe(400);
@@ -301,7 +301,7 @@ describe("reviews", () => {
     expect(bad.status).toBe(400);
     const nowhere = await phone.call(putReview, "PUT", "/api/reviews/x", {
       params: { id: newId() },
-      body: review({ stationId: "nowhere" }),
+      body: review({ stationSlug: "nowhere" }),
     });
     expect(nowhere.status).toBe(404);
   });
@@ -310,7 +310,7 @@ describe("reviews", () => {
 describe("check-ins", () => {
   it("201 first, 200 on retry with the same id, 409 on a second id the same day", async () => {
     const phone = await joined("Dana");
-    const body = { stationId: "dock-72", visitedOn: today() };
+    const body = { stationSlug: "dock-72", visitedOn: today() };
     const id = newId();
     expect(
       (await phone.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body })).status,
@@ -379,14 +379,14 @@ describe("devices and accounts", () => {
       body: { memberId: danaId },
     });
     expect(link.status).toBe(201);
-    expect(link.body.url).toMatch(/^http:\/\/wewalk\.test\/pair\/[\w-]{43}$/);
+    expect(link.body.url).toMatch(/^http:\/\/wewalk\.test\/recover\/[\w-]{43}$/);
     const token = link.body.url.split("/").pop();
     const fresh = new Phone();
-    const res = await fresh.call(pair, "POST", "/api/pair", { body: { token } });
+    const res = await fresh.call(recover, "POST", "/api/recover", { body: { token } });
     expect(res.body.member).toMatchObject({ name: "Dana", hasPassword: false });
-    expect((await new Phone().call(pair, "POST", "/api/pair", { body: { token } })).status).toBe(
-      410,
-    );
+    expect(
+      (await new Phone().call(recover, "POST", "/api/recover", { body: { token } })).status,
+    ).toBe(410);
   });
 });
 

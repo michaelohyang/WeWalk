@@ -13,15 +13,15 @@ import { ScoreCircle } from "@/ui/ScoreCircle";
 import { PostedToast, ReviewActions, StationActions } from "./station-actions";
 import styles from "./station.module.css";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const view = await loadStation((await params).id);
+  const view = await loadStation((await params).slug);
   return { title: view?.station.name ?? "Station" };
 }
 
 export default async function StationPage({ params }: Props) {
-  const view = await loadStation((await params).id);
+  const view = await loadStation((await params).slug);
   if (view === undefined) return null; // signed out: the layout explains
   if (view === null) notFound();
   const { station, categories, reviews, log } = view;
@@ -59,7 +59,7 @@ export default async function StationPage({ params }: Props) {
       </div>
 
       <StationActions
-        stationId={station.id}
+        stationSlug={station.slug}
         name={station.short}
         reviewed={!!mine}
         myCheckins={view.myCheckins}
@@ -146,7 +146,7 @@ export default async function StationPage({ params }: Props) {
                 </div>
                 {r.hotTake && <p className={styles.postHot}>“{r.hotTake}”</p>}
                 {r.body && <p className={styles.body}>{r.body}</p>}
-                {r.mine && <ReviewActions reviewId={r.id} stationId={station.id} />}
+                {r.mine && <ReviewActions reviewId={r.id} stationSlug={station.slug} />}
                 {r.tags.length > 0 && (
                   <ul className={styles.tags}>
                     {r.tags.map((t) => (

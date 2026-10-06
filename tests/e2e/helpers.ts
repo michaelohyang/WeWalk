@@ -27,7 +27,7 @@ export async function joinAs(page: Page, name = uniqueName("Tester")) {
 
 export async function review(
   request: APIRequestContext,
-  stationId: string,
+  stationSlug: string,
   body: {
     scores: Record<string, number>;
     hotTake?: string;
@@ -37,15 +37,15 @@ export async function review(
   },
 ) {
   const res = await request.put(`/api/reviews/${crypto.randomUUID()}`, {
-    data: { stationId, visitedOn: today(), ...body },
+    data: { stationSlug, visitedOn: today(), ...body },
     headers,
   });
   expect(res.status(), await res.text()).toBe(201);
 }
 
-export async function checkIn(request: APIRequestContext, stationId: string, note = "") {
+export async function checkIn(request: APIRequestContext, stationSlug: string, note = "") {
   const res = await request.put(`/api/checkins/${crypto.randomUUID()}`, {
-    data: { stationId, visitedOn: today(), note },
+    data: { stationSlug, visitedOn: today(), note },
     headers,
   });
   expect(res.status(), await res.text()).toBe(201);

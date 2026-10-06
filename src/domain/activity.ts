@@ -4,7 +4,7 @@ import type { CheckinRecord, ReviewRecord, Visit } from "./records";
 import { scoreStation, type StationScore } from "./scoring";
 import type { Tag } from "./tags";
 
-type StationRef = { id: string; name: string };
+type StationRef = { slug: string; name: string };
 
 export interface StationSummary {
   score: StationScore;
@@ -17,12 +17,12 @@ export interface StationSummary {
 }
 
 export function summarizeStation(
-  stationId: string,
+  stationSlug: string,
   reviews: readonly ReviewRecord[],
   checkins: readonly CheckinRecord[],
 ): StationSummary {
-  const rs = reviews.filter((r) => r.stationId === stationId);
-  const visits: Visit[] = [...rs, ...checkins.filter((c) => c.stationId === stationId)];
+  const rs = reviews.filter((r) => r.stationSlug === stationSlug);
+  const visits: Visit[] = [...rs, ...checkins.filter((c) => c.stationSlug === stationSlug)];
   const lastVisit = visits.reduce<IsoDate | null>(
     (max, v) => (max === null || v.visitedOn > max ? v.visitedOn : max),
     null,
@@ -58,28 +58,30 @@ export function stationOfMonth(
   reviews: readonly ReviewRecord[],
   checkins: readonly CheckinRecord[],
   month: string,
-): { stationId: string; fresh: boolean } | null {
+): { stationSlug: string; fresh: boolean } | null {
   const scores = new Map(
-    stations.map((s) => [s.id, scoreStation(reviews.filter((r) => r.stationId === s.id))]),
+    stations.map((s) => [s.slug, scoreStation(reviews.filter((r) => r.stationSlug === s.slug))]),
   );
   const activeIds = new Set(
-    [...reviews, ...checkins].filter((v) => monthOf(v.visitedOn) === month).map((v) => v.stationId),
+    [...reviews, ...checkins]
+      .filter((v) => monthOf(v.visitedOn) === month)
+      .map((v) => v.stationSlug),
   );
 
   const fresh = rankStations(
-    stations.filter((s) => activeIds.has(s.id)),
+    stations.filter((s) => activeIds.has(s.slug)),
     scores,
     "overall",
   )[0];
-  if (fresh) return { stationId: fresh.stationId, fresh: true };
+  if (fresh) return { stationSlug: fresh.stationSlug, fresh: true };
 
   const allTime = rankStations(stations, scores, "overall")[0];
-  return allTime ? { stationId: allTime.stationId, fresh: false } : null;
+  return allTime ? { stationSlug: allTime.stationSlug, fresh: false } : null;
 }
 
 export interface Passport {
   /** One stamp per station this member has visited, earliest first. */
-  stamps: { stationId: string; firstVisit: IsoDate }[];
+  stamps: { stationSlug: string; firstVisit: IsoDate }[];
   /** Stations anyone in the crew has visited. */
   crewVisited: number;
   total: number;
@@ -88,25 +90,26 @@ export interface Passport {
 /** A member's personal passport, over the stations currently on the map. */
 export function passportFor(
   memberId: string,
-  stations: readonly { id: string }[],
+  stations: readonly { slug: string }[],
   visits: readonly Visit[],
 ): Passport {
-  const onMap = new Set(stations.map((s) => s.id));
+  const onMap = new Set(stations.map((s) => s.slug));
   const first = new Map<string, IsoDate>();
   const crew = new Set<string>();
 
   for (const v of visits) {
-    if (!onMap.has(v.stationId)) continue;
-    crew.add(v.stationId);
+    if (!onMap.has(v.stationSlug)) continue;
+    crew.add(v.stationSlug);
     if (v.memberId !== memberId) continue;
-    const seen = first.get(v.stationId);
-    if (seen === undefined || v.visitedOn < seen) first.set(v.stationId, v.visitedOn);
+    const seen = first.get(v.stationSlug);
+    if (seen === undefined || v.visitedOn < seen) first.set(v.stationSlug, v.visitedOn);
   }
 
   const stamps = [...first]
-    .map(([stationId, firstVisit]) => ({ stationId, firstVisit }))
+    .map(([stationSlug, firstVisit]) => ({ stationSlug, firstVisit }))
     .sort(
-      (a, b) => a.firstVisit.localeCompare(b.firstVisit) || a.stationId.localeCompare(b.stationId),
+      (a, b) =>
+        a.firstVisit.localeCompare(b.firstVisit) || a.stationSlug.localeCompare(b.stationSlug),
     );
 
   return { stamps, crewVisited: crew.size, total: onMap.size };

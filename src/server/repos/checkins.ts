@@ -8,7 +8,7 @@ import { stationKey } from "./stations";
 
 type CheckinRow = typeof checkins.$inferSelect & { stationSlug: string };
 
-/** Check-ins with their station's slug, which is what the rest of the app calls a station id. */
+/** Check-ins with their station's slug: the rest of the app names stations by slug. */
 const select = (db: Db) =>
   db
     .select({ ...getTableColumns(checkins), stationSlug: stations.slug })
@@ -17,7 +17,7 @@ const select = (db: Db) =>
 
 const toRecord = (r: CheckinRow): CheckinRecord => ({
   id: r.id,
-  stationId: r.stationSlug,
+  stationSlug: r.stationSlug,
   memberId: r.memberId,
   visitedOn: r.visitedOn,
   note: r.note,
@@ -30,9 +30,10 @@ export async function findCheckin(db: Db, id: string): Promise<CheckinRecord | u
 
 /** Inserts unless the id already exists. Returns undefined if it did. */
 export async function insertCheckin(db: Db, id: string, memberId: string, input: CheckinInput) {
+  const { stationSlug, ...fields } = input;
   const [row] = await db
     .insert(checkins)
-    .values({ id, memberId, ...input, stationId: stationKey(input.stationId) })
+    .values({ id, memberId, ...fields, stationId: stationKey(stationSlug) })
     .onConflictDoNothing({ target: checkins.id })
     .returning({ id: checkins.id });
   return row && findCheckin(db, row.id);
@@ -55,13 +56,13 @@ export async function updateCheckinNote(db: Db, id: string, note: string) {
 export async function findCheckinOn(
   db: Db,
   memberId: string,
-  stationId: string,
+  stationSlug: string,
   visitedOn: string,
 ) {
   const [row] = await select(db).where(
     and(
       eq(checkins.memberId, memberId),
-      eq(stations.slug, stationId),
+      eq(stations.slug, stationSlug),
       eq(checkins.visitedOn, visitedOn),
     ),
   );

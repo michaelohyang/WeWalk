@@ -292,7 +292,7 @@ test.describe("checking in", () => {
 });
 
 test.describe("accessibility of the write screens", () => {
-  test("axe (WCAG 2.1 A/AA): signup, login, pair, rate, crew", async ({ page }) => {
+  test("axe (WCAG 2.1 A/AA): signup, login, recover, rate, crew", async ({ page }) => {
     const check = async (label: string) => {
       // Next streams the <title>; mid-refresh it can be briefly missing. And a toast fading in
       // has partial contrast. Scan a settled page.
@@ -318,8 +318,8 @@ test.describe("accessibility of the write screens", () => {
     await check("signup");
     await page.goto("/login");
     await check("login");
-    await page.goto("/pair/some-token-that-does-not-matter-here");
-    await check("pair");
+    await page.goto("/recover/some-token-that-does-not-matter-here");
+    await check("recover");
     await joinAs(page);
     await review(page.request, "33-irving-pl", { scores: { coffee: 4 } });
     await page.goto("/rate/33-irving-pl");

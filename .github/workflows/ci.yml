@@ -33,6 +33,8 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      # Unused files, dependencies and exports.
+      - run: pnpm knip
       - run: pnpm test
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium

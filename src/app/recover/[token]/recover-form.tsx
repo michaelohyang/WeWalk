@@ -5,22 +5,22 @@ import { useState } from "react";
 import { request } from "@/client/api";
 import styles from "@/ui/forms.module.css";
 
-export function PairForm({
+export function RecoverForm({
   token,
   link,
   signedInAs,
 }: {
   token: string;
-  link: { name: string; purpose: "pair" | "recover" } | null;
+  link: { name: string } | null;
   signedInAs: string | null;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function pair() {
+  async function recover() {
     setBusy(true);
-    const res = await request<{ member: { name: string } }>("POST", "/api/pair", { token });
+    const res = await request<{ member: { name: string } }>("POST", "/api/recover", { token });
     setBusy(false);
     if (res.ok) {
       // A recovery link clears the old password: go straight to setting a new one.
@@ -56,7 +56,7 @@ export function PairForm({
           {error}
         </p>
       )}
-      <button type="button" className={styles.primary} onClick={pair} disabled={busy}>
+      <button type="button" className={styles.primary} onClick={recover} disabled={busy}>
         {busy ? "Signing in…" : `Sign in as ${link.name}`}
       </button>
     </div>

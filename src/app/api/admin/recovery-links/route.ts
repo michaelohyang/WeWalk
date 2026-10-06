@@ -6,5 +6,5 @@ import { createRecoveryLink } from "@/server/services/auth";
 export const POST = authedRoute(async ({ req, db, now, session }) => {
   const { memberId } = await readJson(req, recoveryInputSchema);
   const token = await createRecoveryLink(db, session, memberId, now);
-  return json({ url: `${req.nextUrl.origin}/pair/${token}` }, 201);
+  return json({ url: `${req.nextUrl.origin}/recover/${token}` }, 201);
 });

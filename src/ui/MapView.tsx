@@ -7,7 +7,7 @@ import { areaColor } from "./format";
 import styles from "./MapView.module.css";
 
 export interface MapStation {
-  id: string;
+  slug: string;
   name: string;
   short: string;
   overall: number | null;
@@ -66,7 +66,7 @@ export function MapView({
   dimmed: Set<string>;
   /** The area filter, if any: its zone is tinted more strongly. */
   area?: AreaKey | null;
-  onSelect: (id: string | null) => void;
+  onSelect: (slug: string | null) => void;
 }) {
   const { width, height, land, zones } = geometry;
   // With an area picked, its zone stands out and the rest fade back.
@@ -75,8 +75,8 @@ export function MapView({
   // Draw unvisited first and the selected pin last, so they stack sensibly.
   const order = [...pins].sort(
     (a, b) =>
-      Number(stations.get(a.id)?.visited) - Number(stations.get(b.id)?.visited) ||
-      Number(a.id === selected) - Number(b.id === selected),
+      Number(stations.get(a.slug)?.visited) - Number(stations.get(b.slug)?.visited) ||
+      Number(a.slug === selected) - Number(b.slug === selected),
   );
   return (
     <div className={styles.card}>
@@ -137,9 +137,9 @@ export function MapView({
           </text>
         ))}
         {order.map((pin) => {
-          const s = stations.get(pin.id);
+          const s = stations.get(pin.slug);
           if (!s) return null;
-          const isSelected = pin.id === selected;
+          const isSelected = pin.slug === selected;
           const side = pin.label;
           const tier = tierOf(s.overall);
           const label = `${s.name}, ${
@@ -151,19 +151,19 @@ export function MapView({
           }`;
           return (
             <g
-              key={pin.id}
+              key={pin.slug}
               transform={`translate(${pin.x} ${pin.y})`}
-              data-pin={pin.id}
-              className={`${styles.pin} ${dimmed.has(pin.id) ? styles.dim : ""} ${isSelected ? styles.selected : ""}`}
+              data-pin={pin.slug}
+              className={`${styles.pin} ${dimmed.has(pin.slug) ? styles.dim : ""} ${isSelected ? styles.selected : ""}`}
               role="button"
               tabIndex={0}
               aria-label={label}
               aria-pressed={isSelected}
-              onClick={() => onSelect(isSelected ? null : pin.id)}
+              onClick={() => onSelect(isSelected ? null : pin.slug)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  onSelect(isSelected ? null : pin.id);
+                  onSelect(isSelected ? null : pin.slug);
                 }
               }}
             >

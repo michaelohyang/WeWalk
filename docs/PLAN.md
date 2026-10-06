@@ -41,7 +41,7 @@ Prototype problems the rebuild has to fix, most important first:
 | **MUST** | M1 Shared backend behind a crew invite code. Stations seeded on the server |
 | | M2 Identity: join from an invite link, pick a display name once (unique ignoring case), add another phone with a one-time pairing link, sign out a lost phone |
 | | M3 Lobby-proof rate flow: one review per person per station (posting again edits it), scores first with text folded under "Add more", draft autosave, offline outbox |
-| | M4 Real URLs: `/`, `/stations/[id]`, `/rate/[id]`, `/ranks`, `/passport`, `/crew` |
+| | M4 Real URLs: `/`, `/stations/[slug]`, `/rate/[slug]`, `/ranks`, `/passport`, `/crew` |
 | | M5 One-tap check-in with an optional note |
 | | M6 Port Explore (list and map), Station, Ranks, Passport and Crew as designed |
 | **SHOULD (v1.1)** | Photos on object storage (with delete). A dot for activity since your last visit. Bigger map tap targets |
@@ -99,11 +99,11 @@ tests, no Docker), Playwright (end-to-end tests at 390px), and GitHub Actions fo
 src/
   app/                      # routes only: thin, no business logic
     (app)/page.tsx          # Explore
-    (app)/stations/[id]/page.tsx  # Station
+    (app)/stations/[slug]/page.tsx  # Station
     (app)/rate/[id]/page.tsx
     (app)/ranks|passport|crew/page.tsx
     login/ signup/             # username + password
-    pair/[token]/page.tsx   # one-time link page; its button POSTs /api/pair (Phase 3)
+    recover/[token]/page.tsx  # one-time recovery link page; its button POSTs /api/recover
     api/…/route.ts          # JSON endpoints (writes)
   domain/                   # pure TS, no I/O: categories, scoring, ranking, stationOfMonth, passport,
                             # the station list, map projection
@@ -155,7 +155,7 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
   keep drafts and the offline outbox per member. Queued writes carry their author in an
   `x-wewalk-member` header; the server answers 401 if it isn't the signed-in member, and the
   outbox holds the write (it never posts under someone else's name, and never drops it).
-- **Forgot password:** the owner creates a one-time recovery link (`/pair/<token>`, 24 hours,
+- **Forgot password:** the owner creates a one-time recovery link (`/recover/<token>`, 24 hours,
   redeemed by POST so link previews can't use it up). It logs that person in once and clears
   their password, and they set a new one in Crew. People who joined before passwords existed
   also set theirs in Crew.
@@ -211,7 +211,7 @@ plain SQL and the database rejects bad values.
 | POST | `/api/signup` | `{name, password}` → sets cookie. 409 if the name is taken |
 | POST | `/api/login` | `{name, password}` → sets cookie. 401 for a wrong name or password alike |
 | PUT | `/api/me/password` | `{current?, password}`: set your first password, or change it with the current one |
-| POST | `/api/pair` | `{token}` → uses a one-time recovery link, sets cookie. 410 if expired or used |
+| POST | `/api/recover` | `{token}` → uses a one-time recovery link, sets cookie. 410 if expired or used |
 | GET | `/api/me` | you, plus the phones you're signed in on |
 | PUT | `/api/reviews/:id` | create or update your review. 409 if you already reviewed this station under a different id (the client then switches to edit) |
 | DELETE | `/api/reviews/:id` | only your own |

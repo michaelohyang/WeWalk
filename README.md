@@ -1,84 +1,145 @@
 # WeWalk
 
-NYC WeWorks, rated by people who care too much. A small web app for a crew of friends to rate
-the WeWork buildings they work from: coffee, Wi-Fi, phone booths and six other things that matter.
+**NYC WeWorks, rated by people who care too much.**
 
-- **Plan and decisions:** [`docs/PLAN.md`](docs/PLAN.md)
-- **Design reference:** [`prototype/app.html`](prototype/app.html), the single-file prototype the app is
-  ported from. Open it in a browser; it saves to `localStorage`.
+WeWalk is a small, private web app for a group of friends to rate and track the WeWork
+buildings they work from in New York City. Check in when you arrive, score the coffee, Wi-Fi,
+phone booths and the rest, and see which building the crew actually likes.
 
-Unofficial. Not affiliated with WeWork.
+> WeWalk is an independent personal project. It is not affiliated with, endorsed by or
+> sponsored by WeWork.
 
-## Stack
+## Features
 
-Next.js (App Router) · TypeScript · Postgres on Supabase (server-side only) · Drizzle ORM · Zod ·
-CSS Modules + design tokens · Vitest · Playwright · Vercel.
+- **Map:** a schematic map of Manhattan and Brooklyn with a pin for each of the 29 buildings,
+  tinted by area. Rated buildings show their score, and buildings you've visited show a check.
+- **Search and filters:** find a building by name or neighborhood, filter by area (Uptown,
+  Midtown, Flatiron, Downtown, Brooklyn) or by "Best for" tags, or switch to a list.
+- **Ratings:** score a building on up to nine categories, add a hot take, a full review and
+  tags. Edit or delete your review at any time.
+- **Check-ins:** record a visit in one tap, with an optional note.
+- **Ranks:** buildings ranked overall or by any category, with a Station of the Month.
+- **Passport:** a stamp for every building you've been to.
+- **Works offline:** ratings and check-ins made without signal are queued on the device and sent
+  automatically when you're back online. Unfinished reviews are saved as drafts.
+- **Accounts:** username and password sign-in. Passwords are stored only as salted scrypt
+  hashes, accounts lock briefly after repeated failed logins, and the owner can issue a one-time
+  recovery link for a forgotten password.
+- **Light and dark mode**, designed for phones and usable on any screen size.
+
+## Tech stack
+
+| Area      | Choice                                                                                       |
+| --------- | -------------------------------------------------------------------------------------------- |
+| Framework | [Next.js](https://nextjs.org) 16 (App Router), React 19                                      |
+| Language  | TypeScript (strict)                                                                          |
+| Database  | PostgreSQL ([Supabase](https://supabase.com)), server-side only                              |
+| Data      | [Drizzle ORM](https://orm.drizzle.team), [Zod](https://zod.dev)                              |
+| Styling   | CSS Modules with design tokens                                                               |
+| Testing   | [Vitest](https://vitest.dev), [Playwright](https://playwright.dev), axe accessibility checks |
+| Hosting   | [Vercel](https://vercel.com)                                                                 |
 
 ## Getting started
 
-Requires Node 22.12+ and pnpm 10 (`corepack enable`).
+### Prerequisites
+
+- Node.js 22.12 or later
+- pnpm 10 (run `corepack enable` to use the version pinned in `package.json`)
+
+### Run it locally
 
 ```sh
 pnpm install
-cp .env.example .env.local   # then fill in the values (see below)
-pnpm dev                     # http://localhost:3000
+cp .env.example .env.local
 ```
 
-You don't need Supabase to work locally. Set `DATABASE_URL=pglite:.data/dev` (a local embedded
-Postgres, migrated and seeded on first use) or `pglite:memory` (wiped on restart), then open
-`/signup`. Unit tests and e2e use [PGlite](https://pglite.dev) in memory too.
+Set `DATABASE_URL` in `.env.local` to a local database. No Supabase account is needed:
 
-### Database (Supabase)
+```sh
+DATABASE_URL=pglite:.data/dev   # embedded Postgres, kept between restarts
+# or
+DATABASE_URL=pglite:memory      # embedded Postgres, wiped on restart
+```
 
-1. Create a Supabase project. Under **Connect**, copy the **transaction pooler** URL (port 6543)
-   into `DATABASE_URL` and the **direct** URL (port 5432) into `DIRECT_URL`.
-2. `pnpm db:migrate` creates the tables (with row-level security on).
-3. `pnpm db:seed` loads the stations from `src/domain/stations.ts`. Re-run it after
-   editing that file. It upserts, and never deletes.
-4. Open `/signup` and create your account. The first person to sign up becomes the owner.
+The local database is created, migrated and seeded on first use. Then start the app:
+
+```sh
+pnpm dev
+```
+
+Open <http://localhost:3000/signup> and create an account. The first account becomes the owner.
+
+## Configuration
+
+| Variable       | Used by                | Value                                                                                      |
+| -------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `DATABASE_URL` | The app at runtime     | Postgres connection string (Supabase transaction pooler, port 6543), or `pglite:…` locally |
+| `DIRECT_URL`   | Migrations and seeding | Postgres connection string (Supabase session pooler, port 5432)                            |
+
+Never commit real connection strings. `.env.local` is ignored by git.
 
 ## Scripts
 
-| Command            | What it does                                                         |
-| ------------------ | -------------------------------------------------------------------- |
-| `pnpm dev`         | Dev server                                                           |
-| `pnpm build`       | Production build                                                     |
-| `pnpm start`       | Serve the production build                                           |
-| `pnpm check`       | Format check, lint, typecheck and unit tests. Run before pushing     |
-| `pnpm lint`        | ESLint, including the layer rules                                    |
-| `pnpm typecheck`   | TypeScript, no emit                                                  |
-| `pnpm test`        | Unit tests (Vitest): `src/**/*.test.{ts,tsx}`, next to the code      |
-| `pnpm test:watch`  | Unit tests in watch mode                                             |
-| `pnpm e2e`         | Browser tests (Playwright) at 390×844, light and dark, on `pnpm dev` |
-| `pnpm format`      | Format everything with Prettier                                      |
-| `pnpm db:generate` | Write a new SQL migration after changing `src/server/db/schema.ts`   |
-| `pnpm db:migrate`  | Apply migrations to `DIRECT_URL`                                     |
-| `pnpm db:seed`     | Upsert the station list into `DIRECT_URL`                            |
-| `pnpm db:deploy`   | Migrate, seed and check RLS on `DIRECT_URL` (runs on prod deploys)   |
-| `pnpm smoke <url>` | Read-only checks against a deployed app                              |
+| Command            | Description                                                              |
+| ------------------ | ------------------------------------------------------------------------ |
+| `pnpm dev`         | Start the development server                                             |
+| `pnpm build`       | Create a production build                                                |
+| `pnpm start`       | Serve the production build                                               |
+| `pnpm check`       | Format check, lint, typecheck, unused-code check and unit tests          |
+| `pnpm test`        | Unit tests (Vitest)                                                      |
+| `pnpm e2e`         | Browser tests (Playwright), in light and dark mode at phone size         |
+| `pnpm lint`        | ESLint, including the architecture layer rules                           |
+| `pnpm typecheck`   | TypeScript type check                                                    |
+| `pnpm knip`        | Find unused files, dependencies and exports                              |
+| `pnpm format`      | Format all files with Prettier                                           |
+| `pnpm db:generate` | Generate a SQL migration after changing `src/server/db/schema.ts`        |
+| `pnpm db:migrate`  | Apply migrations to `DIRECT_URL`                                         |
+| `pnpm db:seed`     | Add new buildings and update existing ones from `src/domain/stations.ts` |
+| `pnpm db:deploy`   | Migrate, seed and verify row-level security (runs on production deploys) |
+| `pnpm smoke <url>` | Read-only health checks against a deployed site                          |
 
-`CI=1 pnpm e2e` tests the production build instead, so run `pnpm build` first.
-CI (`.github/workflows/ci.yml`) runs format, lint, typecheck, unit tests, build and e2e on every
-push.
-
-`vite` is a direct dev dependency only because Vitest requires it as a peer.
-
-## Deploying
-
-See [`docs/DEPLOY.md`](docs/DEPLOY.md): Supabase for the database, Vercel for the app.
-
-## Code layout
+## Project structure
 
 ```
 src/
-  app/      routes only (thin)
-  domain/   pure TypeScript business rules: no I/O, no framework imports
-  server/   database, auth, repos, services (server-only)
-  ui/       components and design tokens (tokens.css)
-  client/   browser-only helpers (draft autosave, offline outbox)
-tests/e2e/  Playwright tests
+  app/       Routes and pages (kept thin)
+  domain/    Business rules in plain TypeScript: scoring, ranking, the map, validation
+  server/    Database, authentication, repositories and services (server-only)
+  client/    Browser-only code: the offline outbox and draft autosave
+  ui/        Shared React components and design tokens
+tests/
+  api/       API route tests
+  e2e/       Playwright browser tests
+docs/        Product plan and deployment guide
 ```
 
-Layer rules are enforced by ESLint (`eslint.config.mjs`): `domain` imports nothing from other
-layers or frameworks, `ui` and `client` never import `server`, `server` never imports UI or
-routes, and routes never touch repos or the database directly.
+The layers are enforced by ESLint (`eslint.config.mjs`): `domain` has no I/O or framework
+imports, `ui` and `client` never import `server`, and routes reach the database only through
+services.
+
+## Testing
+
+- **Unit and API tests** run against an in-memory [PGlite](https://pglite.dev) database:
+  `pnpm test`.
+- **Browser tests** cover the main flows, offline behavior and WCAG 2.1 A/AA accessibility
+  checks: `pnpm e2e`. With `CI=1` they run against the production build, so run `pnpm build`
+  first.
+
+GitHub Actions runs formatting, linting, type checking, the unused-code check, unit tests, a
+production build and the browser tests on every push.
+
+## Deployment
+
+WeWalk runs on Vercel with a Supabase Postgres database. Each production deploy applies
+database migrations, seeds the building list and verifies row-level security before building
+the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the full guide.
+
+## Documentation
+
+- [`docs/PLAN.md`](docs/PLAN.md): product plan, data model, API and design decisions
+- [`docs/DEPLOY.md`](docs/DEPLOY.md): deployment and operations
+- [`prototype/app.html`](prototype/app.html): the original single-file design prototype
+
+## License
+
+This repository does not include a license yet, so all rights are reserved by the author.

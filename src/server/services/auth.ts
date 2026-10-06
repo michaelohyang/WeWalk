@@ -12,7 +12,7 @@ export interface Session {
   deviceId: string;
 }
 
-const LINK_TTL_MS = { pair: 15 * 60 * 1000, recover: 24 * 60 * 60 * 1000 } as const;
+const LINK_TTL_MS = 24 * 60 * 60 * 1000;
 const TOUCH_EVERY_MS = 60 * 60 * 1000;
 /** Wrong passwords in a row before the account locks, and for how long. */
 export const MAX_FAILED_LOGINS = 5;
@@ -129,17 +129,16 @@ export async function createRecoveryLink(
 ): Promise<string> {
   if (!session.member.isOwner) throw new AppError("forbidden", "Only the crew owner can do that.");
   if (!(await repo.findMember(db, memberId))) throw new AppError("not_found", "No such member.");
-  return issueLink(db, memberId, "recover", now);
+  return issueRecoveryLink(db, memberId, now);
 }
 
-async function issueLink(db: Db, memberId: string, purpose: repo.LinkPurpose, now: Date) {
+async function issueRecoveryLink(db: Db, memberId: string, now: Date) {
   await repo.deleteDeadLinks(db, now);
   const token = newToken();
   await repo.insertLink(db, {
     memberId,
     tokenHash: hashToken(token),
-    purpose,
-    expiresAt: new Date(now.getTime() + LINK_TTL_MS[purpose]),
+    expiresAt: new Date(now.getTime() + LINK_TTL_MS),
   });
   return token;
 }
@@ -156,9 +155,9 @@ export async function redeemLink(
     throw new AppError("gone", "That link expired or was already used. Ask for a new one.");
   }
   // A recovery link is for a forgotten password: clear it, so the person picks a new one.
-  if (link.purpose === "recover") await repo.clearPassword(db, member.id);
+  await repo.clearPassword(db, member.id);
   return {
-    member: { ...member, hasPassword: link.purpose === "recover" ? false : member.hasPassword },
+    member: { ...member, hasPassword: false },
     token: await startDevice(db, member.id),
   };
 }
@@ -167,14 +166,10 @@ export async function redeemLink(
  * Who a one-time link signs in as, without using it up (so the page can say "Sign in as Dana").
  * Anyone holding a live link could redeem it anyway, so this reveals nothing new.
  */
-export async function peekLink(
-  db: Db,
-  token: string,
-  now: Date,
-): Promise<{ name: string; purpose: repo.LinkPurpose } | null> {
+export async function peekLink(db: Db, token: string, now: Date): Promise<{ name: string } | null> {
   const link = await repo.findLiveLink(db, hashToken(token), now);
   const member = link && (await repo.findMember(db, link.memberId));
-  return member && link ? { name: member.name, purpose: link.purpose as repo.LinkPurpose } : null;
+  return member && link ? { name: member.name } : null;
 }
 
 export async function listDevices(db: Db, session: Session) {

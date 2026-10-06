@@ -62,9 +62,9 @@ export default async function PassportPage() {
         {mine ? (
           <ul className={styles.stamps}>
             {view.stamps.map(({ station, firstVisit }) => (
-              <li key={station.id}>
+              <li key={station.slug}>
                 <Link
-                  href={`/stations/${station.id}`}
+                  href={`/stations/${station.slug}`}
                   prefetch={false}
                   className={styles.stamp}
                   style={{ "--c": areaColor(station.area) } as React.CSSProperties}
@@ -88,9 +88,9 @@ export default async function PassportPage() {
         <Section title="Still out there" note={`${view.notYet.length} to go`}>
           <ul className={styles.stamps}>
             {view.notYet.map((station) => (
-              <li key={station.id}>
+              <li key={station.slug}>
                 <Link
-                  href={`/stations/${station.id}`}
+                  href={`/stations/${station.slug}`}
                   prefetch={false}
                   className={`${styles.stamp} ${styles.slot}`}
                   aria-label={`${station.name}, not visited${station.visited ? ", the crew has been" : ""}`}

@@ -27,7 +27,7 @@ export type LabelSide =
 
 /** Placed pins for the screen: positions nudged apart, labels placed where they fit. */
 export interface Pin {
-  id: string;
+  slug: string;
   x: number;
   y: number;
   /** Where the name goes: beside, above or below the pin, wherever it fits. */

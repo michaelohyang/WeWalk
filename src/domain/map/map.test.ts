@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
+import { BROOKLYN, MANHATTAN, type LatLng } from "../geo";
 import {
   geoLabelBox,
   geoLabelPoints,
@@ -10,22 +10,12 @@ import {
   MAP_HEIGHT,
   MAP_WIDTH,
   project,
-} from "./map";
-import { STATIONS } from "./stations";
+} from ".";
+import { STATIONS } from "../stations";
+import { insideRing } from "./projection";
 
-/** Ray-casting point-in-polygon, in projected map units. */
-function inside(at: LatLng, ring: readonly LatLng[]): boolean {
-  const p = project(at);
-  const poly = ring.map(project);
-  let hit = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i]!;
-    const b = poly[j]!;
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x)
-      hit = !hit;
-  }
-  return hit;
-}
+/** Whether a place is inside a shoreline, in projected map units. */
+const inside = (at: LatLng, ring: readonly LatLng[]) => insideRing(project(at), ring.map(project));
 
 describe("project", () => {
   it("stands Manhattan upright: two points on Fifth Ave share an x", () => {
@@ -44,12 +34,12 @@ describe("project", () => {
   it("puts every station on the map, on the right island", () => {
     for (const s of STATIONS) {
       const p = project([s.lat, s.lng]);
-      expect(p.x, s.id).toBeGreaterThan(10);
-      expect(p.x, s.id).toBeLessThan(MAP_WIDTH - 10);
-      expect(p.y, s.id).toBeGreaterThan(10);
-      expect(p.y, s.id).toBeLessThan(MAP_HEIGHT - 10);
+      expect(p.x, s.slug).toBeGreaterThan(10);
+      expect(p.x, s.slug).toBeLessThan(MAP_WIDTH - 10);
+      expect(p.y, s.slug).toBeGreaterThan(10);
+      expect(p.y, s.slug).toBeLessThan(MAP_HEIGHT - 10);
       const island = s.area === "brooklyn" ? BROOKLYN : MANHATTAN;
-      expect(inside([s.lat, s.lng], island), s.id).toBe(true);
+      expect(inside([s.lat, s.lng], island), s.slug).toBe(true);
     }
   });
 });
@@ -61,15 +51,15 @@ describe("layoutPins", () => {
     for (let i = 0; i < pins.length; i++)
       for (let j = i + 1; j < pins.length; j++) {
         const d = Math.hypot(pins[i]!.x - pins[j]!.x, pins[i]!.y - pins[j]!.y);
-        expect(d, `${pins[i]!.id} ↔ ${pins[j]!.id}`).toBeGreaterThanOrEqual(21.9);
+        expect(d, `${pins[i]!.slug} ↔ ${pins[j]!.slug}`).toBeGreaterThanOrEqual(21.9);
       }
   });
 
   it("nudges pins only a little", () => {
     for (const s of STATIONS) {
-      const pin = pins.find((p) => p.id === s.id)!;
+      const pin = pins.find((p) => p.slug === s.slug)!;
       const at = project([s.lat, s.lng]);
-      expect(Math.hypot(pin.x - at.x, pin.y - at.y), s.id).toBeLessThan(25);
+      expect(Math.hypot(pin.x - at.x, pin.y - at.y), s.slug).toBeLessThan(25);
     }
   });
 
@@ -80,13 +70,13 @@ describe("layoutPins", () => {
         { lit },
       );
       const boxes = laid.map((p) => {
-        const name = STATIONS.find((s) => s.id === p.id)!.short;
-        return labelBoxes(p, name, lit(p.id))[p.label];
+        const name = STATIONS.find((s) => s.slug === p.slug)!.short;
+        return labelBoxes(p, name, lit(p.slug))[p.label];
       });
       boxes.forEach((a, i) =>
         boxes.slice(i + 1).forEach((b) => {
           const overlaps = a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
-          expect(overlaps, `${laid[i]!.id} label`).toBe(false);
+          expect(overlaps, `${laid[i]!.slug} label`).toBe(false);
         }),
       );
       for (const b of boxes) {
@@ -109,11 +99,11 @@ describe("layoutPins", () => {
       STATIONS.map((s) => ({ ...s, name: s.short })),
       { priority: (id) => (visited.has(id) ? 1 : 0), lit: (id) => visited.has(id) },
     );
-    for (const id of visited) expect(laid.find((p) => p.id === id)!.label, id).not.toBeNull();
+    for (const id of visited) expect(laid.find((p) => p.slug === id)!.label, id).not.toBeNull();
   });
 
   it("knows land from water (every station is on land)", () => {
-    for (const s of STATIONS) expect(isOnLand(project([s.lat, s.lng])), s.id).toBe(true);
+    for (const s of STATIONS) expect(isOnLand(project([s.lat, s.lng])), s.slug).toBe(true);
   });
 
   it("is deterministic", () => {
@@ -131,7 +121,7 @@ describe("map labels", () => {
     { priority: () => 1, lit: () => true },
   );
   const taken: Box[] = pins.flatMap((p) => {
-    const name = STATIONS.find((s) => s.id === p.id)!.short;
+    const name = STATIONS.find((s) => s.slug === p.slug)!.short;
     return [
       { x1: p.x - 16, y1: p.y - 10, x2: p.x + 16, y2: p.y + 10 },
       labelBoxes(p, name, true)[p.label],
@@ -160,20 +150,18 @@ describe("map labels", () => {
 
 describe("area zones", () => {
   const zones = MAP_GEOMETRY.zones.manhattan.areas;
-  /** Ray-casting point-in-polygon on a zone's path ("Mx yLx y…Z"). */
-  const inZone = (d: string, p: { x: number; y: number }) => {
-    const ring = d
-      .slice(1, -1)
-      .split("L")
-      .map((xy) => xy.split(" ").map(Number) as [number, number]);
-    let hit = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [ax, ay] = ring[i]!;
-      const [bx, by] = ring[j]!;
-      if (ay > p.y !== by > p.y && p.x < ((bx - ax) * (p.y - ay)) / (by - ay) + ax) hit = !hit;
-    }
-    return hit;
-  };
+  /** Whether a point is inside a zone's path ("Mx yLx y…Z"). */
+  const inZone = (d: string, p: { x: number; y: number }) =>
+    insideRing(
+      p,
+      d
+        .slice(1, -1)
+        .split("L")
+        .map((xy) => {
+          const [x, y] = xy.split(" ").map(Number);
+          return { x: x!, y: y! };
+        }),
+    );
 
   it("has one zone per Manhattan area, north first", () => {
     expect(zones.map((z) => z.area)).toEqual(["uptown", "midtown", "flatiron", "downtown"]);

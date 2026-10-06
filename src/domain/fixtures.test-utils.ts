@@ -4,7 +4,7 @@ let n = 0;
 const nextId = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
 
 export function review(
-  overrides: Partial<ReviewRecord> & Pick<ReviewRecord, "stationId">,
+  overrides: Partial<ReviewRecord> & Pick<ReviewRecord, "stationSlug">,
 ): ReviewRecord {
   return {
     id: nextId(),
@@ -20,7 +20,7 @@ export function review(
 }
 
 export function checkin(
-  overrides: Partial<CheckinRecord> & Pick<CheckinRecord, "stationId">,
+  overrides: Partial<CheckinRecord> & Pick<CheckinRecord, "stationSlug">,
 ): CheckinRecord {
   return { id: nextId(), memberId: "m1", visitedOn: "2026-10-01", note: "", ...overrides };
 }

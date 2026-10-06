@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
       // Invite links from before accounts had passwords: send people to sign up.
       { source: "/j/:code", destination: "/signup", permanent: false },
       { source: "/s/:id", destination: "/stations/:id", permanent: true },
+      // Recovery links sent before /pair was renamed (they last 24 hours).
+      { source: "/pair/:token", destination: "/recover/:token", permanent: true },
     ];
   },
   async headers() {
@@ -20,7 +22,7 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          // Invite codes and pairing tokens live in URLs: never send them to other sites.
+          // Recovery tokens live in URLs: never send them to other sites.
           { key: "Referrer-Policy", value: "no-referrer" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
