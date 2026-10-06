@@ -1,22 +1,30 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, getTableColumns } from "drizzle-orm";
 import type { CheckinInput } from "@/domain/schemas";
 import type { CheckinRecord } from "@/domain/records";
 import type { Db } from "../db/client";
-import { checkins } from "../db/schema";
+import { checkins, stations } from "../db/schema";
+import { stationKey } from "./stations";
 
-type CheckinRow = typeof checkins.$inferSelect;
+type CheckinRow = typeof checkins.$inferSelect & { stationSlug: string };
+
+/** Check-ins with their station's slug, which is what the rest of the app calls a station id. */
+const select = (db: Db) =>
+  db
+    .select({ ...getTableColumns(checkins), stationSlug: stations.slug })
+    .from(checkins)
+    .innerJoin(stations, eq(checkins.stationId, stations.id));
 
 const toRecord = (r: CheckinRow): CheckinRecord => ({
   id: r.id,
-  stationId: r.stationId,
+  stationId: r.stationSlug,
   memberId: r.memberId,
   visitedOn: r.visitedOn,
   note: r.note,
 });
 
 export async function findCheckin(db: Db, id: string): Promise<CheckinRecord | undefined> {
-  const [row] = await db.select().from(checkins).where(eq(checkins.id, id));
+  const [row] = await select(db).where(eq(checkins.id, id));
   return row && toRecord(row);
 }
 
@@ -24,20 +32,24 @@ export async function findCheckin(db: Db, id: string): Promise<CheckinRecord | u
 export async function insertCheckin(db: Db, id: string, memberId: string, input: CheckinInput) {
   const [row] = await db
     .insert(checkins)
-    .values({ id, memberId, ...input })
+    .values({ id, memberId, ...input, stationId: stationKey(input.stationId) })
     .onConflictDoNothing({ target: checkins.id })
-    .returning();
-  return row && toRecord(row);
+    .returning({ id: checkins.id });
+  return row && findCheckin(db, row.id);
 }
 
 export async function listCheckins(db: Db): Promise<CheckinRecord[]> {
-  return (await db.select().from(checkins)).map(toRecord);
+  return (await select(db)).map(toRecord);
 }
 
 /** Returns undefined if the check-in no longer exists. */
 export async function updateCheckinNote(db: Db, id: string, note: string) {
-  const [row] = await db.update(checkins).set({ note }).where(eq(checkins.id, id)).returning();
-  return row && toRecord(row);
+  const [row] = await db
+    .update(checkins)
+    .set({ note })
+    .where(eq(checkins.id, id))
+    .returning({ id: checkins.id });
+  return row && findCheckin(db, row.id);
 }
 
 export async function findCheckinOn(
@@ -46,15 +58,12 @@ export async function findCheckinOn(
   stationId: string,
   visitedOn: string,
 ) {
-  const [row] = await db
-    .select()
-    .from(checkins)
-    .where(
-      and(
-        eq(checkins.memberId, memberId),
-        eq(checkins.stationId, stationId),
-        eq(checkins.visitedOn, visitedOn),
-      ),
-    );
+  const [row] = await select(db).where(
+    and(
+      eq(checkins.memberId, memberId),
+      eq(stations.slug, stationId),
+      eq(checkins.visitedOn, visitedOn),
+    ),
+  );
   return row && toRecord(row);
 }

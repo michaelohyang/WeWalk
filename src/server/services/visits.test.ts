@@ -97,12 +97,12 @@ describe("putReview", () => {
     expect(
       (await failure(putReview(db, dana, newId(), reviewOf({ stationId: "nope" }), NOW)))?.code,
     ).toBe("not_found");
-    await db.update(stations).set({ hidden: true }).where(eq(stations.id, "250-broadway"));
+    await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
     expect(
       (await failure(putReview(db, dana, newId(), reviewOf({ stationId: "250-broadway" }), NOW)))
         ?.code,
     ).toBe("not_found");
-    await db.update(stations).set({ hidden: false }).where(eq(stations.id, "250-broadway"));
+    await db.update(stations).set({ hidden: false }).where(eq(stations.slug, "250-broadway"));
     expect(
       (await failure(putReview(db, dana, newId(), reviewOf({ visitedOn: "2026-10-09" }), NOW)))
         ?.code,
@@ -112,11 +112,11 @@ describe("putReview", () => {
   it("freezes reviews of a removed (hidden) station", async () => {
     const id = newId();
     await putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW);
-    await db.update(stations).set({ hidden: true }).where(eq(stations.id, "250-broadway"));
+    await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
     const edit = await failure(
       putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW),
     );
-    await db.update(stations).set({ hidden: false }).where(eq(stations.id, "250-broadway"));
+    await db.update(stations).set({ hidden: false }).where(eq(stations.slug, "250-broadway"));
     expect(edit?.code).toBe("not_found");
   });
 

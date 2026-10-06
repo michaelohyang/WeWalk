@@ -186,7 +186,7 @@ crew-wide: a building shows as visited if anyone in the crew has been.
 ### Data model
 
 ```
-stations  id (slug PK) · name · address · neighborhood · area · lat · lng
+stations  id integer PK (identity) · slug UNIQUE (dock-72: URLs, API, seed) · name · address · neighborhood · area · lat · lng
           · hidden bool · created_at          -- hidden keeps reviews and stamps
                                               -- the map projects lat/lng (Phase 2)
 members   id uuid PK · name · name_key (lower/trimmed, UNIQUE) · is_owner · created_at

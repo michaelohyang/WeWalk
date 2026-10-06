@@ -15,6 +15,13 @@
       "when": 1791242921002,
       "tag": "0001_passwords",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791245657777,
+      "tag": "0002_station_ids",
+      "breakpoints": true
     }
   ]
 }
