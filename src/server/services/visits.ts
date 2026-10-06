@@ -14,8 +14,8 @@ import type { Session } from "./auth";
  * safely: the same id always lands on the same row.
  */
 
-async function assertVisitable(db: Db, stationId: string, visitedOn: string, now: Date) {
-  const station = await findStation(db, stationId);
+async function assertVisitable(db: Db, stationSlug: string, visitedOn: string, now: Date) {
+  const station = await findStation(db, stationSlug);
   if (!station || station.hidden)
     throw new AppError("not_found", "That building isn't on the map.");
   if (!isPlausibleVisitDate(visitedOn, now)) {
@@ -42,14 +42,14 @@ export async function putReview(
   const existing = await reviewRepo.findReview(db, id);
 
   if (!existing) {
-    await assertVisitable(db, input.stationId, input.visitedOn, now);
+    await assertVisitable(db, input.stationSlug, input.visitedOn, now);
     try {
       const created = await reviewRepo.insertReview(db, id, me, input);
       if (created) return { review: created, created: true };
       // Lost a race with a retry of this same request; fall through to update it.
     } catch (e) {
       if (!isUniqueViolation(e, "reviews_one_per_member_station")) throw e;
-      const mine = await reviewRepo.findReviewByMemberStation(db, me, input.stationId);
+      const mine = await reviewRepo.findReviewByMemberStation(db, me, input.stationSlug);
       throw new AppError("conflict", "You already reviewed this building. Edit that one instead.", {
         existingId: mine?.id,
       });
@@ -59,12 +59,12 @@ export async function putReview(
   const current = existing ?? (await reviewRepo.findReview(db, id));
   if (!current) throw new AppError("not_found", GONE);
   if (current.memberId !== me) throw new AppError("forbidden", "That's someone else's review.");
-  if (current.stationId !== input.stationId) {
+  if (current.stationSlug !== input.stationSlug) {
     const message = "A review can't move to another building.";
-    throw new AppError("invalid", message, { fields: { stationId: [message] } });
+    throw new AppError("invalid", message, { fields: { stationSlug: [message] } });
   }
   // A hidden (removed) station keeps its reviews, but they're frozen.
-  await assertVisitable(db, input.stationId, input.visitedOn, now);
+  await assertVisitable(db, input.stationSlug, input.visitedOn, now);
   const updated = await reviewRepo.updateReview(db, id, input, now);
   if (!updated) throw new AppError("not_found", GONE);
   return { review: updated, created: false };
@@ -98,7 +98,7 @@ export async function putCheckin(
     if (existing.memberId !== session.member.id) {
       throw new AppError("forbidden", "That's someone else's check-in.");
     }
-    if (existing.stationId !== input.stationId || existing.visitedOn !== input.visitedOn) {
+    if (existing.stationSlug !== input.stationSlug || existing.visitedOn !== input.visitedOn) {
       const message = "A check-in can't move to another building or day.";
       throw new AppError("invalid", message, { fields: { visitedOn: [message] } });
     }
@@ -108,7 +108,7 @@ export async function putCheckin(
     return { checkin: updated, created: false };
   }
 
-  await assertVisitable(db, input.stationId, input.visitedOn, now);
+  await assertVisitable(db, input.stationSlug, input.visitedOn, now);
   try {
     const created = await checkinRepo.insertCheckin(db, id, session.member.id, input);
     if (created) return { checkin: created, created: true };
@@ -118,7 +118,7 @@ export async function putCheckin(
     const today = await checkinRepo.findCheckinOn(
       db,
       session.member.id,
-      input.stationId,
+      input.stationSlug,
       input.visitedOn,
     );
     throw new AppError("conflict", "You already checked in here today.", { existingId: today?.id });

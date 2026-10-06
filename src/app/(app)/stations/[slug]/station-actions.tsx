@@ -10,13 +10,13 @@ import styles from "./actions.module.css";
 
 /** Rate / Check in buttons. Check-in is one tap; a note can be added after. */
 export function StationActions({
-  stationId,
+  stationSlug,
   name,
   reviewed,
   myCheckins,
   firstVisit,
 }: {
-  stationId: string;
+  stationSlug: string;
   name: string;
   reviewed: boolean;
   myCheckins: { id: string; visitedOn: string; note: string }[];
@@ -36,10 +36,16 @@ export function StationActions({
   useEffect(() => {
     if (checkin) return;
     for (const job of waiting()) {
-      const body = job.body as { stationId?: string; visitedOn?: string; note?: string };
+      // Jobs queued before the rename name the station `stationId`.
+      const body = job.body as {
+        stationSlug?: string;
+        stationId?: string;
+        visitedOn?: string;
+        note?: string;
+      };
       if (
         job.key.startsWith("checkin:") &&
-        body.stationId === stationId &&
+        (body.stationSlug ?? body.stationId) === stationSlug &&
         body.visitedOn === today
       ) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- read storage once on mount
@@ -52,7 +58,7 @@ export function StationActions({
         return;
       }
     }
-  }, [checkin, stationId, today]);
+  }, [checkin, stationSlug, today]);
 
   async function put(id: string, body: { note: string }, label: string) {
     setBusy(true);
@@ -60,7 +66,7 @@ export function StationActions({
       key: `checkin:${id}`,
       method: "PUT",
       url: `/api/checkins/${id}`,
-      body: { stationId, visitedOn: today, ...body },
+      body: { stationSlug, visitedOn: today, ...body },
       label,
     });
     setBusy(false);
@@ -107,7 +113,7 @@ export function StationActions({
   return (
     <div className={styles.wrap}>
       <div className={styles.actions}>
-        <Link href={`/rate/${stationId}`} className={`${styles.btn} ${styles.primary}`}>
+        <Link href={`/rate/${stationSlug}`} className={`${styles.btn} ${styles.primary}`}>
           {reviewed ? "Edit your rating" : "Rate it"}
         </Link>
         {checkin ? (
@@ -146,7 +152,13 @@ export function StationActions({
 }
 
 /** Edit / Delete on your own review. Delete asks first. */
-export function ReviewActions({ reviewId, stationId }: { reviewId: string; stationId: string }) {
+export function ReviewActions({
+  reviewId,
+  stationSlug,
+}: {
+  reviewId: string;
+  stationSlug: string;
+}) {
   const router = useRouter();
   const toast = useToast();
   const [confirming, setConfirming] = useState(false);
@@ -188,7 +200,7 @@ export function ReviewActions({ reviewId, stationId }: { reviewId: string; stati
 
   return (
     <div className={styles.reviewActions}>
-      <Link href={`/rate/${stationId}`} className={styles.textBtn}>
+      <Link href={`/rate/${stationSlug}`} className={styles.textBtn}>
         Edit
       </Link>
       {confirming ? (

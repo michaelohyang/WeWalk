@@ -24,7 +24,7 @@ import type { CrewData, Station } from "./crew";
  */
 
 export interface StationCard {
-  id: string;
+  slug: string;
   name: string;
   /** "450 Lex": for the map and stamps. */
   short: string;
@@ -48,24 +48,24 @@ function cards(
 ): { cards: StationCard[]; summaries: Map<string, StationSummary> } {
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
   const mine = new Set(
-    [...crew.reviews, ...crew.checkins].filter((v) => v.memberId === me).map((v) => v.stationId),
+    [...crew.reviews, ...crew.checkins].filter((v) => v.memberId === me).map((v) => v.stationSlug),
   );
   const summaries = new Map(
-    crew.stations.map((s) => [s.id, summarizeStation(s.id, crew.reviews, crew.checkins)]),
+    crew.stations.map((s) => [s.slug, summarizeStation(s.slug, crew.reviews, crew.checkins)]),
   );
   const toCard = (s: Station): StationCard => {
-    const x = summaries.get(s.id)!;
+    const x = summaries.get(s.slug)!;
     return {
-      id: s.id,
+      slug: s.slug,
       name: s.name,
-      short: shortName(s.id, s.name),
+      short: shortName(s.slug, s.name),
       address: s.address,
       neighborhood: s.neighborhood,
       area: s.area as AreaKey,
       overall: x.score.overall,
       reviewCount: x.score.reviewCount,
       visited: x.visited,
-      mine: mine.has(s.id),
+      mine: mine.has(s.slug),
       lastVisit: x.lastVisit,
       hotTake: x.hotTake && {
         text: x.hotTake.text,
@@ -90,16 +90,16 @@ export interface ExploreView {
 
 export async function exploreView(crew: CrewData, session: Session): Promise<ExploreView> {
   const { cards: stations, summaries } = cards(crew, session.member.id);
-  const scores = new Map([...summaries].map(([id, s]) => [id, s.score]));
+  const scores = new Map([...summaries].map(([slug, s]) => [slug, s.score]));
   const ranked = rankStations(crew.stations, scores, "overall");
-  const rankOf = new Map(ranked.map((r) => [r.stationId, r.rank]));
+  const rankOf = new Map(ranked.map((r) => [r.stationSlug, r.rank]));
   // Label priority: rated stations first (best first), then visited, then the rest.
   const pins = layoutPins(
-    crew.stations.map((s) => ({ ...s, name: shortName(s.id, s.name) })),
+    crew.stations.map((s) => ({ ...s, name: shortName(s.slug, s.name) })),
     {
-      priority: (id) =>
-        rankOf.has(id) ? 1000 - rankOf.get(id)! : summaries.get(id)!.visited ? 1 : 0,
-      lit: (id) => summaries.get(id)!.visited,
+      priority: (slug) =>
+        rankOf.has(slug) ? 1000 - rankOf.get(slug)! : summaries.get(slug)!.visited ? 1 : 0,
+      lit: (slug) => summaries.get(slug)!.visited,
     },
   );
   const tagCounts = new Map<Tag, number>();
@@ -111,7 +111,7 @@ export async function exploreView(crew: CrewData, session: Session): Promise<Exp
     pins,
     tags: [...tagCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t),
     visited: stations.filter((s) => s.visited).length,
-    favorites: ranked.slice(0, 3).map((r) => r.stationId),
+    favorites: ranked.slice(0, 3).map((r) => r.stationSlug),
   };
 }
 
@@ -140,14 +140,14 @@ export interface StationView {
 export async function stationView(
   crew: CrewData,
   session: Session,
-  id: string,
+  slug: string,
 ): Promise<StationView | null> {
-  const station = cards(crew, session.member.id).cards.find((c) => c.id === id);
+  const station = cards(crew, session.member.id).cards.find((c) => c.slug === slug);
   if (!station) return null;
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
   const by = (memberId: string) => names.get(memberId) ?? "someone";
   const me = session.member.id;
-  const reviews = crew.reviews.filter((r) => r.stationId === id);
+  const reviews = crew.reviews.filter((r) => r.stationSlug === slug);
   const score = scoreStation(reviews);
   const latestFirst = (a: ReviewRecord, b: ReviewRecord) =>
     b.visitedOn.localeCompare(a.visitedOn) || b.updatedAt.localeCompare(a.updatedAt);
@@ -155,7 +155,7 @@ export async function stationView(
   return {
     station,
     myCheckins: crew.checkins
-      .filter((c) => c.stationId === id && c.memberId === session.member.id)
+      .filter((c) => c.stationSlug === slug && c.memberId === session.member.id)
       .sort((a, b) => b.visitedOn.localeCompare(a.visitedOn))
       .map(({ id, visitedOn, note }) => ({ id, visitedOn, note })),
     categories: CATEGORY_KEYS.map((key) => ({ key, value: score.categories[key] })),
@@ -175,7 +175,7 @@ export async function stationView(
       })),
     log: [
       ...crew.checkins
-        .filter((c) => c.stationId === id)
+        .filter((c) => c.stationSlug === slug)
         .map((c) => ({
           date: c.visitedOn,
           by: by(c.memberId),
@@ -213,19 +213,19 @@ export async function ranksView(
 ): Promise<RanksView> {
   const { cards: all, summaries } = cards(crew, session.member.id);
   const inArea = crew.stations.filter((s) => !area || s.area === area);
-  const byId = new Map(all.map((c) => [c.id, c]));
-  const scores = new Map([...summaries].map(([id, s]) => [id, s.score]));
+  const bySlug = new Map(all.map((c) => [c.slug, c]));
+  const scores = new Map([...summaries].map(([slug, s]) => [slug, s.score]));
   const month = monthOf(utcDate(now));
   const som = stationOfMonth(crew.stations, crew.reviews, crew.checkins, month);
   return {
     key,
     area,
     month,
-    stationOfMonth: som && { station: byId.get(som.stationId)!, fresh: som.fresh },
+    stationOfMonth: som && { station: bySlug.get(som.stationSlug)!, fresh: som.fresh },
     rows: rankStations(inArea, scores, key).map((r) => ({
       rank: r.rank,
       value: r.value,
-      station: byId.get(r.stationId)!,
+      station: bySlug.get(r.stationSlug)!,
     })),
     unrated: all.filter((c) => c.overall === null && (!area || c.area === area)).length,
   };
@@ -240,14 +240,17 @@ export interface PassportView {
 
 export async function passportView(crew: CrewData, session: Session): Promise<PassportView> {
   const { cards: all } = cards(crew, session.member.id);
-  const byId = new Map(all.map((c) => [c.id, c]));
+  const bySlug = new Map(all.map((c) => [c.slug, c]));
   const p = passportFor(session.member.id, crew.stations, [...crew.reviews, ...crew.checkins]);
-  const stamped = new Set(p.stamps.map((s) => s.stationId));
+  const stamped = new Set(p.stamps.map((s) => s.stationSlug));
   return {
-    stamps: p.stamps.map((s) => ({ station: byId.get(s.stationId)!, firstVisit: s.firstVisit })),
+    stamps: p.stamps.map((s) => ({
+      station: bySlug.get(s.stationSlug)!,
+      firstVisit: s.firstVisit,
+    })),
     // Places the crew has been come first: they're the easy next stamps.
     notYet: all
-      .filter((c) => !stamped.has(c.id))
+      .filter((c) => !stamped.has(c.slug))
       .sort((a, b) => Number(b.visited) - Number(a.visited) || a.name.localeCompare(b.name)),
     crewVisited: p.crewVisited,
     total: p.total,
@@ -280,7 +283,7 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
     return {
       memberId: m.id,
       name: m.name,
-      stations: new Set([...rs, ...cs].map((v) => v.stationId)).size,
+      stations: new Set([...rs, ...cs].map((v) => v.stationSlug)).size,
       reviews: rs.length,
       checkins: cs.length,
       hotTake: hot?.hotTake ?? null,
@@ -310,9 +313,9 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
 
 export interface RateView {
   /** Everything you can rate, A–Z. */
-  stations: { id: string; name: string; neighborhood: string }[];
+  stations: { slug: string; name: string; neighborhood: string }[];
   /** The station being rated, if the URL named a real one. */
-  stationId: string | null;
+  stationSlug: string | null;
   /** Your existing review of it: the form opens in edit mode. */
   existing: {
     id: string;
@@ -323,28 +326,28 @@ export interface RateView {
     tags: Tag[];
   } | null;
   /** Stations you've been to (for the "first visit: new stamp" moment). */
-  visitedIds: string[];
+  visitedSlugs: string[];
   /** Your latest check-ins at buildings you haven't reviewed, newest first: likely next to rate. */
-  toReview: { stationId: string; visitedOn: IsoDate }[];
+  toReview: { stationSlug: string; visitedOn: IsoDate }[];
 }
 
 export async function rateView(
   crew: CrewData,
   session: Session,
-  stationId: string | undefined,
+  stationSlug: string | undefined,
 ): Promise<RateView> {
-  const station = crew.stations.find((s) => s.id === stationId);
+  const station = crew.stations.find((s) => s.slug === stationSlug);
   const mine =
     station &&
-    crew.reviews.find((r) => r.stationId === station.id && r.memberId === session.member.id);
+    crew.reviews.find((r) => r.stationSlug === station.slug && r.memberId === session.member.id);
   const visits = [...crew.reviews, ...crew.checkins].filter(
     (v) => v.memberId === session.member.id,
   );
   return {
     stations: [...crew.stations]
       .sort((a, b) => a.name.localeCompare(b.name, "en-US", { numeric: true }))
-      .map((s) => ({ id: s.id, name: s.name, neighborhood: s.neighborhood })),
-    stationId: station?.id ?? null,
+      .map((s) => ({ slug: s.slug, name: s.name, neighborhood: s.neighborhood })),
+    stationSlug: station?.slug ?? null,
     existing: mine
       ? {
           id: mine.id,
@@ -355,18 +358,18 @@ export async function rateView(
           tags: mine.tags,
         }
       : null,
-    visitedIds: [...new Set(visits.map((v) => v.stationId))],
+    visitedSlugs: [...new Set(visits.map((v) => v.stationSlug))],
     toReview: toReview(crew, session.member.id),
   };
 }
 
 function toReview(crew: CrewData, me: string): RateView["toReview"] {
-  const reviewed = new Set(crew.reviews.filter((r) => r.memberId === me).map((r) => r.stationId));
+  const reviewed = new Set(crew.reviews.filter((r) => r.memberId === me).map((r) => r.stationSlug));
   const seen = new Set<string>();
   return crew.checkins
-    .filter((c) => c.memberId === me && !reviewed.has(c.stationId))
+    .filter((c) => c.memberId === me && !reviewed.has(c.stationSlug))
     .sort((a, b) => b.visitedOn.localeCompare(a.visitedOn))
-    .filter((c) => !seen.has(c.stationId) && !!seen.add(c.stationId))
+    .filter((c) => !seen.has(c.stationSlug) && !!seen.add(c.stationSlug))
     .slice(0, 3)
-    .map((c) => ({ stationId: c.stationId, visitedOn: c.visitedOn }));
+    .map((c) => ({ stationSlug: c.stationSlug, visitedOn: c.visitedOn }));
 }

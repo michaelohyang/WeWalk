@@ -3,10 +3,10 @@ import { rankStations } from "./ranking";
 import { scoreStation } from "./scoring";
 
 const stations = [
-  { id: "a", name: "Alpha" },
-  { id: "b", name: "Bravo" },
-  { id: "c", name: "Charlie" },
-  { id: "d", name: "Delta" },
+  { slug: "a", name: "Alpha" },
+  { slug: "b", name: "Bravo" },
+  { slug: "c", name: "Charlie" },
+  { slug: "d", name: "Delta" },
 ];
 
 describe("rankStations", () => {
@@ -17,7 +17,7 @@ describe("rankStations", () => {
       ["c", scoreStation([{ scores: { vibe: 5 } }])],
       ["d", scoreStation([])],
     ]);
-    expect(rankStations(stations, scores, "overall").map((r) => [r.stationId, r.rank])).toEqual([
+    expect(rankStations(stations, scores, "overall").map((r) => [r.stationSlug, r.rank])).toEqual([
       ["c", 1],
       ["b", 2],
       ["a", 3],
@@ -30,7 +30,7 @@ describe("rankStations", () => {
       ["b", scoreStation([{ scores: { coffee: 5 } }])],
       ["c", scoreStation([{ scores: { vibe: 5 } }])],
     ]);
-    expect(rankStations(stations, scores, "coffee").map((r) => r.stationId)).toEqual(["b", "a"]);
+    expect(rankStations(stations, scores, "coffee").map((r) => r.stationSlug)).toEqual(["b", "a"]);
   });
 
   it("breaks a full tie alphabetically", () => {
@@ -39,7 +39,7 @@ describe("rankStations", () => {
       ["d", one],
       ["a", one],
     ]);
-    expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["a", "d"]);
+    expect(rankStations(stations, scores, "overall").map((r) => r.stationSlug)).toEqual(["a", "d"]);
   });
 });
 
@@ -60,7 +60,7 @@ describe("ties use the displayed score, not float noise", () => {
       ["b", b],
       ["a", a],
     ]);
-    expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["a", "b"]);
+    expect(rankStations(stations, scores, "overall").map((r) => r.stationSlug)).toEqual(["a", "b"]);
   });
 
   it("puts more reviews first among equal displayed scores, even if the hidden digits differ", () => {
@@ -70,7 +70,7 @@ describe("ties use the displayed score, not float noise", () => {
       // (4 + 4.5) / 2 = 4.25 also shows as 4.3, two reviews
       ["b", scoreStation([{ scores: { vibe: 4 } }, { scores: { coffee: 4, wifi: 5 } }])],
     ]);
-    expect(rankStations(stations, scores, "overall").map((r) => r.stationId)).toEqual(["b", "a"]);
+    expect(rankStations(stations, scores, "overall").map((r) => r.stationSlug)).toEqual(["b", "a"]);
   });
 });
 
@@ -86,7 +86,7 @@ describe("category ties", () => {
       ["b", scoreStation([{ scores: { coffee: 4 } }, { scores: { coffee: 4 } }])],
     ]);
     const ranked = rankStations(stations, scores, "coffee");
-    expect(ranked.map((r) => r.stationId)).toEqual(["b", "a"]);
+    expect(ranked.map((r) => r.stationSlug)).toEqual(["b", "a"]);
     expect(ranked.map((r) => r.reviewCount)).toEqual([2, 1]);
   });
 });

@@ -89,7 +89,7 @@ export const devices = pgTable(
   (t) => [index("devices_member_idx").on(t.memberId)],
 ).enableRLS();
 
-/** One-time links: pairing a new phone (15 min) or owner-issued recovery (24 h). */
+/** One-time links: owner-issued recovery for a forgotten password (24 h). "pair" links are no longer made. */
 export const links = pgTable(
   "links",
   {

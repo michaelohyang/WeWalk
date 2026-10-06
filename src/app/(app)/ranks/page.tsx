@@ -67,7 +67,7 @@ export default async function RanksPage({
               ? `“${som.station.hotTake.text}”`
               : "No hot take yet. Strong, silent type."}
           </p>
-          <ButtonLink href={`/stations/${som.station.id}`} variant="light" size="sm">
+          <ButtonLink href={`/stations/${som.station.slug}`} variant="light" size="sm">
             View station
           </ButtonLink>
         </article>
@@ -104,7 +104,7 @@ export default async function RanksPage({
         {view.rows.length ? (
           <ol className={styles.rows}>
             {view.rows.map((r) => (
-              <li key={r.station.id}>
+              <li key={r.station.slug}>
                 <StationRow
                   station={r.station}
                   value={r.value}

@@ -21,7 +21,7 @@ describe("loadCrew", () => {
       dana,
       newId(),
       reviewInputSchema.parse({
-        stationId: "dock-72",
+        stationSlug: "dock-72",
         visitedOn: "2026-10-01",
         scores: { vibe: 5 },
       }),
@@ -31,17 +31,17 @@ describe("loadCrew", () => {
       db,
       dana,
       newId(),
-      checkinInputSchema.parse({ stationId: "250-broadway", visitedOn: "2026-10-02" }),
+      checkinInputSchema.parse({ stationSlug: "250-broadway", visitedOn: "2026-10-02" }),
       NOW,
     );
     await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
 
     const crew = await loadCrew(db);
     expect(crew.stations).toHaveLength(28);
-    expect(crew.stations.map((s) => s.id)).not.toContain("250-broadway");
+    expect(crew.stations.map((s) => s.slug)).not.toContain("250-broadway");
     expect(crew.members).toEqual([{ id: dana.member.id, name: "Dana" }]);
     expect(crew.reviews).toHaveLength(1);
-    expect(crew.reviews[0]).toMatchObject({ stationId: "dock-72", scores: { vibe: 5 } });
+    expect(crew.reviews[0]).toMatchObject({ stationSlug: "dock-72", scores: { vibe: 5 } });
     expect(crew.checkins).toHaveLength(0); // its station is hidden
   });
 });

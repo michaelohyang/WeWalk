@@ -29,13 +29,13 @@ const failure = (p: Promise<unknown>) =>
   );
 const reviewOf = (over: Record<string, unknown> = {}) =>
   reviewInputSchema.parse({
-    stationId: "18-w-18th-st",
+    stationSlug: "18-w-18th-st",
     visitedOn: "2026-10-05",
     scores: { coffee: 4 },
     ...over,
   });
 const checkinOf = (over: Record<string, unknown> = {}) =>
-  checkinInputSchema.parse({ stationId: "18-w-18th-st", visitedOn: "2026-10-05", ...over });
+  checkinInputSchema.parse({ stationSlug: "18-w-18th-st", visitedOn: "2026-10-05", ...over });
 
 describe("putReview", () => {
   it("creates, then updates in place when the same id is sent again", async () => {
@@ -89,17 +89,18 @@ describe("putReview", () => {
     const id = newId();
     await putReview(db, dana, id, reviewOf(), NOW);
     expect(
-      (await failure(putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW)))?.code,
+      (await failure(putReview(db, dana, id, reviewOf({ stationSlug: "250-broadway" }), NOW)))
+        ?.code,
     ).toBe("invalid");
   });
 
   it("rejects unknown and hidden stations, and implausible dates", async () => {
     expect(
-      (await failure(putReview(db, dana, newId(), reviewOf({ stationId: "nope" }), NOW)))?.code,
+      (await failure(putReview(db, dana, newId(), reviewOf({ stationSlug: "nope" }), NOW)))?.code,
     ).toBe("not_found");
     await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
     expect(
-      (await failure(putReview(db, dana, newId(), reviewOf({ stationId: "250-broadway" }), NOW)))
+      (await failure(putReview(db, dana, newId(), reviewOf({ stationSlug: "250-broadway" }), NOW)))
         ?.code,
     ).toBe("not_found");
     await db.update(stations).set({ hidden: false }).where(eq(stations.slug, "250-broadway"));
@@ -111,10 +112,10 @@ describe("putReview", () => {
 
   it("freezes reviews of a removed (hidden) station", async () => {
     const id = newId();
-    await putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW);
+    await putReview(db, dana, id, reviewOf({ stationSlug: "250-broadway" }), NOW);
     await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
     const edit = await failure(
-      putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW),
+      putReview(db, dana, id, reviewOf({ stationSlug: "250-broadway" }), NOW),
     );
     await db.update(stations).set({ hidden: false }).where(eq(stations.slug, "250-broadway"));
     expect(edit?.code).toBe("not_found");
@@ -124,9 +125,9 @@ describe("putReview", () => {
     const id = newId();
     await putReview(db, dana, id, reviewOf(), NOW);
     const moved = await failure(
-      putReview(db, dana, id, reviewOf({ stationId: "250-broadway" }), NOW),
+      putReview(db, dana, id, reviewOf({ stationSlug: "250-broadway" }), NOW),
     );
-    expect(moved?.details).toEqual({ fields: { stationId: [expect.any(String)] } });
+    expect(moved?.details).toEqual({ fields: { stationSlug: [expect.any(String)] } });
   });
 
   it("rejects an implausible date on edit too", async () => {
@@ -206,7 +207,7 @@ describe("putCheckin", () => {
     const id = newId();
     await putCheckin(db, dana, id, checkinOf(), NOW);
     expect(
-      (await failure(putCheckin(db, dana, id, checkinOf({ stationId: "dock-72" }), NOW)))?.code,
+      (await failure(putCheckin(db, dana, id, checkinOf({ stationSlug: "dock-72" }), NOW)))?.code,
     ).toBe("invalid");
     expect(
       (await failure(putCheckin(db, dana, id, checkinOf({ visitedOn: "2026-10-04" }), NOW)))?.code,
@@ -225,7 +226,7 @@ describe("putCheckin", () => {
         ?.code,
     ).toBe("invalid");
     expect(
-      (await failure(putCheckin(db, dana, newId(), checkinOf({ stationId: "nope" }), NOW)))?.code,
+      (await failure(putCheckin(db, dana, newId(), checkinOf({ stationSlug: "nope" }), NOW)))?.code,
     ).toBe("not_found");
   });
 });

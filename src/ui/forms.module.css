@@ -1,4 +1,4 @@
-/* Shared form bits for the join, pairing and crew screens. */
+/* Shared form bits for the login, signup, recovery and crew screens. */
 .card {
   display: grid;
   gap: 14px;

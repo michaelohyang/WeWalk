@@ -44,12 +44,12 @@ describe("project", () => {
   it("puts every station on the map, on the right island", () => {
     for (const s of STATIONS) {
       const p = project([s.lat, s.lng]);
-      expect(p.x, s.id).toBeGreaterThan(10);
-      expect(p.x, s.id).toBeLessThan(MAP_WIDTH - 10);
-      expect(p.y, s.id).toBeGreaterThan(10);
-      expect(p.y, s.id).toBeLessThan(MAP_HEIGHT - 10);
+      expect(p.x, s.slug).toBeGreaterThan(10);
+      expect(p.x, s.slug).toBeLessThan(MAP_WIDTH - 10);
+      expect(p.y, s.slug).toBeGreaterThan(10);
+      expect(p.y, s.slug).toBeLessThan(MAP_HEIGHT - 10);
       const island = s.area === "brooklyn" ? BROOKLYN : MANHATTAN;
-      expect(inside([s.lat, s.lng], island), s.id).toBe(true);
+      expect(inside([s.lat, s.lng], island), s.slug).toBe(true);
     }
   });
 });
@@ -61,15 +61,15 @@ describe("layoutPins", () => {
     for (let i = 0; i < pins.length; i++)
       for (let j = i + 1; j < pins.length; j++) {
         const d = Math.hypot(pins[i]!.x - pins[j]!.x, pins[i]!.y - pins[j]!.y);
-        expect(d, `${pins[i]!.id} ↔ ${pins[j]!.id}`).toBeGreaterThanOrEqual(21.9);
+        expect(d, `${pins[i]!.slug} ↔ ${pins[j]!.slug}`).toBeGreaterThanOrEqual(21.9);
       }
   });
 
   it("nudges pins only a little", () => {
     for (const s of STATIONS) {
-      const pin = pins.find((p) => p.id === s.id)!;
+      const pin = pins.find((p) => p.slug === s.slug)!;
       const at = project([s.lat, s.lng]);
-      expect(Math.hypot(pin.x - at.x, pin.y - at.y), s.id).toBeLessThan(25);
+      expect(Math.hypot(pin.x - at.x, pin.y - at.y), s.slug).toBeLessThan(25);
     }
   });
 
@@ -80,13 +80,13 @@ describe("layoutPins", () => {
         { lit },
       );
       const boxes = laid.map((p) => {
-        const name = STATIONS.find((s) => s.id === p.id)!.short;
-        return labelBoxes(p, name, lit(p.id))[p.label];
+        const name = STATIONS.find((s) => s.slug === p.slug)!.short;
+        return labelBoxes(p, name, lit(p.slug))[p.label];
       });
       boxes.forEach((a, i) =>
         boxes.slice(i + 1).forEach((b) => {
           const overlaps = a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
-          expect(overlaps, `${laid[i]!.id} label`).toBe(false);
+          expect(overlaps, `${laid[i]!.slug} label`).toBe(false);
         }),
       );
       for (const b of boxes) {
@@ -109,11 +109,11 @@ describe("layoutPins", () => {
       STATIONS.map((s) => ({ ...s, name: s.short })),
       { priority: (id) => (visited.has(id) ? 1 : 0), lit: (id) => visited.has(id) },
     );
-    for (const id of visited) expect(laid.find((p) => p.id === id)!.label, id).not.toBeNull();
+    for (const id of visited) expect(laid.find((p) => p.slug === id)!.label, id).not.toBeNull();
   });
 
   it("knows land from water (every station is on land)", () => {
-    for (const s of STATIONS) expect(isOnLand(project([s.lat, s.lng])), s.id).toBe(true);
+    for (const s of STATIONS) expect(isOnLand(project([s.lat, s.lng])), s.slug).toBe(true);
   });
 
   it("is deterministic", () => {
@@ -131,7 +131,7 @@ describe("map labels", () => {
     { priority: () => 1, lit: () => true },
   );
   const taken: Box[] = pins.flatMap((p) => {
-    const name = STATIONS.find((s) => s.id === p.id)!.short;
+    const name = STATIONS.find((s) => s.slug === p.slug)!.short;
     return [
       { x1: p.x - 16, y1: p.y - 10, x2: p.x + 16, y2: p.y + 10 },
       labelBoxes(p, name, true)[p.label],

@@ -13,13 +13,13 @@ import { roundScore, scoreStation, type Scores } from "./scoring";
  */
 
 // ---- prototype logic, ported verbatim (app.html: stats() l.425, stationOfMonth() l.443, ranks l.693)
-type ProtoReview = { stationId: string; scores: Scores; visitedOn: string };
+type ProtoReview = { stationSlug: string; scores: Scores; visitedOn: string };
 function protoStats(
   id: string,
   reviews: ProtoReview[],
-  visits: { stationId: string; date: string }[],
+  visits: { stationSlug: string; date: string }[],
 ) {
-  const rs = reviews.filter((r) => r.stationId === id);
+  const rs = reviews.filter((r) => r.stationSlug === id);
   const cat: Record<string, number | null> = {};
   for (const k of CATEGORY_KEYS) {
     const xs = rs.map((r) => r.scores[k]).filter((n): n is Score => typeof n === "number");
@@ -29,7 +29,7 @@ function protoStats(
   const overall = have.length ? have.reduce((a, b) => a + b, 0) / have.length : null;
   const dates = [
     ...rs.map((r) => r.visitedOn),
-    ...visits.filter((v) => v.stationId === id).map((v) => v.date),
+    ...visits.filter((v) => v.stationSlug === id).map((v) => v.date),
   ];
   return { reviews: rs, cat, overall, dates };
 }
@@ -46,7 +46,7 @@ function protoRanks(ids: string[], reviews: ProtoReview[], key: string) {
 function protoStationOfMonth(
   ids: string[],
   reviews: ProtoReview[],
-  visits: { stationId: string; date: string }[],
+  visits: { stationSlug: string; date: string }[],
   ym: string,
 ) {
   const scored = ids
@@ -56,7 +56,7 @@ function protoStationOfMonth(
   const thisMonth = scored.filter((x) => x.st.dates.some((d) => d.startsWith(ym)));
   const pool = thisMonth.length ? thisMonth : scored;
   pool.sort((a, b) => b.st.overall! - a.st.overall! || b.st.reviews.length - a.st.reviews.length);
-  return { stationId: pool[0]!.id, fresh: thisMonth.length > 0 };
+  return { stationSlug: pool[0]!.id, fresh: thisMonth.length > 0 };
 }
 // ---- end prototype logic
 
@@ -67,7 +67,7 @@ function rng(seed: number) {
 
 function world(seed: number) {
   const rand = rng(seed);
-  const stations = Array.from({ length: 8 }, (_, i) => ({ id: `s${i}`, name: `Station ${i}` }));
+  const stations = Array.from({ length: 8 }, (_, i) => ({ slug: `s${i}`, name: `Station ${i}` }));
   const reviews: ReviewRecord[] = [];
   const checkins: CheckinRecord[] = [];
   for (const s of stations) {
@@ -78,8 +78,8 @@ function world(seed: number) {
       );
       const month = rand() < 0.3 ? "2026-10" : "2026-09";
       reviews.push({
-        id: `${s.id}-${m}`,
-        stationId: s.id,
+        id: `${s.slug}-${m}`,
+        stationSlug: s.slug,
         memberId: `m${m}`,
         visitedOn: `${month}-0${1 + m}`,
         scores,
@@ -91,8 +91,8 @@ function world(seed: number) {
     }
     if (rand() < 0.2)
       checkins.push({
-        id: `c-${s.id}`,
-        stationId: s.id,
+        id: `c-${s.slug}`,
+        stationSlug: s.slug,
         memberId: "m9",
         visitedOn: "2026-10-02",
         note: "",
@@ -117,14 +117,14 @@ describe("parity with the prototype (every reviewer rates every category)", () =
     let compared = 0;
     for (const seed of seeds) {
       const { stations, reviews } = world(seed);
-      const ids = stations.map((s) => s.id);
+      const ids = stations.map((s) => s.slug);
       const scores = new Map(
-        ids.map((id) => [id, scoreStation(reviews.filter((r) => r.stationId === id))]),
+        ids.map((id) => [id, scoreStation(reviews.filter((r) => r.stationSlug === id))]),
       );
       const value = (id: string) =>
         key === "overall" ? scores.get(id)!.overall : scores.get(id)!.categories[key];
       if (hasDisplayedTies(ids, value)) continue;
-      const ours = rankStations(stations, scores, key).map((r) => r.stationId);
+      const ours = rankStations(stations, scores, key).map((r) => r.stationSlug);
       expect(ours, `seed ${seed}`).toEqual(protoRanks(ids, reviews, key));
       compared++;
     }
@@ -135,12 +135,12 @@ describe("parity with the prototype (every reviewer rates every category)", () =
     let n = 0;
     for (const seed of seeds) {
       const { stations, reviews, checkins } = world(seed);
-      const ids = stations.map((s) => s.id);
+      const ids = stations.map((s) => s.slug);
       const scores = new Map(
-        ids.map((id) => [id, scoreStation(reviews.filter((r) => r.stationId === id))]),
+        ids.map((id) => [id, scoreStation(reviews.filter((r) => r.stationSlug === id))]),
       );
       if (hasDisplayedTies(ids, (id) => scores.get(id)!.overall)) continue;
-      const visits = checkins.map((c) => ({ stationId: c.stationId, date: c.visitedOn }));
+      const visits = checkins.map((c) => ({ stationSlug: c.stationSlug, date: c.visitedOn }));
       expect(stationOfMonth(stations, reviews, checkins, "2026-10"), `seed ${seed}`).toEqual(
         protoStationOfMonth(ids, reviews, visits, "2026-10"),
       );

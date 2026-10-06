@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkinInputSchema, reviewInputSchema, signupInputSchema } from "./schemas";
 
-const base = { stationId: "18-w-18th-st", visitedOn: "2026-10-01", scores: { coffee: 4 } };
+const base = { stationSlug: "18-w-18th-st", visitedOn: "2026-10-01", scores: { coffee: 4 } };
 
 describe("reviewInputSchema", () => {
   it("fills defaults and de-duplicates tags", () => {
@@ -16,7 +16,7 @@ describe("reviewInputSchema", () => {
     ["unknown category", { ...base, scores: { beer: 5 } }],
     ["unknown tag", { ...base, tags: ["free beer"] }],
     ["bad date", { ...base, visitedOn: "2026-02-30" }],
-    ["bad station id", { ...base, stationId: "../etc" }],
+    ["bad station slug", { ...base, stationSlug: "../etc" }],
     ["hot take too long", { ...base, hotTake: "x".repeat(121) }],
     ["unknown field", { ...base, memberId: "someone-else" }],
   ])("rejects %s", (_, input) => expect(reviewInputSchema.safeParse(input).success).toBe(false));
@@ -28,7 +28,33 @@ describe("reviewInputSchema", () => {
 
 describe("checkinInputSchema", () => {
   it("defaults the note", () => {
-    expect(checkinInputSchema.parse({ stationId: "a", visitedOn: "2026-10-01" }).note).toBe("");
+    expect(checkinInputSchema.parse({ stationSlug: "a", visitedOn: "2026-10-01" }).note).toBe("");
+  });
+});
+
+// Writes queued offline before `stationId` was renamed must still go through after a deploy.
+describe("legacy stationId", () => {
+  it("is read as stationSlug", () => {
+    const { stationSlug, ...rest } = base;
+    expect(reviewInputSchema.parse({ ...rest, stationId: stationSlug }).stationSlug).toBe(
+      stationSlug,
+    );
+    expect(
+      checkinInputSchema.parse({ stationId: "dock-72", visitedOn: "2026-10-01" }).stationSlug,
+    ).toBe("dock-72");
+  });
+
+  it("still rejects unknown fields and a bad slug", () => {
+    expect(
+      checkinInputSchema.safeParse({ stationId: "Dock 72", visitedOn: "2026-10-01" }).success,
+    ).toBe(false);
+    expect(
+      checkinInputSchema.safeParse({
+        stationSlug: "dock-72",
+        stationId: "dock-72",
+        visitedOn: "2026-10-01",
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -50,7 +76,8 @@ describe("free text", () => {
     expect(r.hotTake).toBe("abc");
     expect(r.body).toBe("xy");
     expect(
-      checkinInputSchema.parse({ stationId: "a", visitedOn: "2026-10-01", note: "\u0000ok" }).note,
+      checkinInputSchema.parse({ stationSlug: "a", visitedOn: "2026-10-01", note: "\u0000ok" })
+        .note,
     ).toBe("ok");
   });
 

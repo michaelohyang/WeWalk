@@ -4,7 +4,7 @@ import styles from "./kit.module.css";
 import { ScoreCircle } from "./ScoreCircle";
 
 export interface StationRowData {
-  id: string;
+  slug: string;
   name: string;
   neighborhood: string;
   area: Parameters<typeof areaColor>[0];
@@ -30,7 +30,7 @@ export function StationRow({
 }) {
   const color = { "--c": areaColor(station.area) } as React.CSSProperties;
   return (
-    <Link href={`/stations/${station.id}`} className={styles.row} prefetch={false}>
+    <Link href={`/stations/${station.slug}`} className={styles.row} prefetch={false}>
       {lead ?? (
         <span className={styles.tile} style={color} aria-hidden="true">
           {tileText(station.name)}

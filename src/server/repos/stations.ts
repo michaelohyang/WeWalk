@@ -4,11 +4,11 @@ import type { Db } from "../db/client";
 import { stations } from "../db/schema";
 
 /**
- * A station as the app sees it. `id` is the slug (dock-72): what URLs, API payloads and the seed
- * file use. The database's integer key stays inside the repos (see `stationKey`).
+ * A station as the app sees it, named by its slug (dock-72): what URLs, API payloads and the
+ * seed file use. The database's integer key stays inside the repos (see `stationKey`).
  */
 export interface StationRow {
-  id: string;
+  slug: string;
   name: string;
   address: string;
   neighborhood: string;
@@ -20,7 +20,7 @@ export interface StationRow {
 }
 
 const columns = {
-  id: stations.slug,
+  slug: stations.slug,
   name: stations.name,
   address: stations.address,
   neighborhood: stations.neighborhood,

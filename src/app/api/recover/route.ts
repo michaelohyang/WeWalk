@@ -3,8 +3,8 @@ import { json, memberJson, readJson, route, setSessionCookie } from "@/server/ht
 import { redeemLink } from "@/server/services/auth";
 
 /**
- * Use a one-time pairing or recovery link: `{ token }` → session cookie. A POST, not a GET, so
- * chat apps that fetch link previews can't use up the link.
+ * Use a one-time recovery link: `{ token }` → session cookie, password cleared so the person
+ * picks a new one. A POST, not a GET, so chat apps that fetch link previews can't use it up.
  */
 export const POST = route(async ({ req, db, now }) => {
   const { token } = await readJson(req, redeemLinkSchema);

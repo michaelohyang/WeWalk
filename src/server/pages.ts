@@ -27,10 +27,10 @@ export async function loadExplore() {
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */
-export async function loadStation(id: string) {
+export async function loadStation(slug: string) {
   const session = await getSession();
   if (!session) return undefined;
-  return stationView(await crewData(), session, id);
+  return stationView(await crewData(), session, slug);
 }
 
 export async function loadRanks(key: RankKey, area: AreaKey | null) {
@@ -51,14 +51,14 @@ export async function loadCrew() {
   return crewView(await crewData(), await getDb(), session);
 }
 
-export async function loadRate(stationId: string | undefined) {
+export async function loadRate(stationSlug: string | undefined) {
   const session = await getSession();
   if (!session) return null;
-  return rateView(await crewData(), session, stationId);
+  return rateView(await crewData(), session, stationSlug);
 }
 
-/** The pairing page: who the link signs in as (null if it's dead), and who's signed in now. */
-export async function loadPair(token: string) {
+/** The recovery page: who the link signs in as (null if it's dead), and who's signed in now. */
+export async function loadRecoveryLink(token: string) {
   const [session, link] = await Promise.all([
     getSession(),
     peekLink(await getDb(), token, new Date()),

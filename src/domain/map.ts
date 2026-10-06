@@ -196,11 +196,11 @@ const CHAR_WIDTH = { lit: 5.5, dot: 4.7 } as const;
  * overlapping least wins. Visited pins are 32×20 bubbles; the rest are small dots.
  */
 export function layoutPins(
-  stations: readonly { id: string; name: string; lat: number; lng: number }[],
+  stations: readonly { slug: string; name: string; lat: number; lng: number }[],
   {
     priority = () => 0,
     lit = () => true,
-  }: { priority?: (id: string) => number; lit?: (id: string) => boolean } = {},
+  }: { priority?: (slug: string) => number; lit?: (slug: string) => boolean } = {},
 ): Pin[] {
   const pts = stations.map((s) => ({ ...s, ...project([s.lat, s.lng]) }));
 
@@ -230,7 +230,7 @@ export function layoutPins(
   type Box = { x1: number; y1: number; x2: number; y2: number };
   const taken: Box[] = [
     ...pts.map((p) => {
-      const [w, h] = lit(p.id) ? [16, 10] : [7.5, 7.5];
+      const [w, h] = lit(p.slug) ? [16, 10] : [7.5, 7.5];
       return { x1: p.x - w, y1: p.y - h, x2: p.x + w, y2: p.y + h };
     }),
     // Pin names never cover the river and borough names either.
@@ -244,7 +244,7 @@ export function layoutPins(
   // Every side's box for every pin, and how much each overlaps the fixed things (pins other
   // than its own, river and borough names, the map's edge).
   const options = pts.map((p) => {
-    const boxes = labelBoxes(p, p.name, lit(p.id));
+    const boxes = labelBoxes(p, p.name, lit(p.slug));
     const sides = Object.keys(boxes) as LabelSide[];
     const own = taken[pts.indexOf(p)]!;
     const fixed = Object.fromEntries(
@@ -259,18 +259,20 @@ export function layoutPins(
 
   // Greedy first (priority pins, then top to bottom): the first side clear of everything...
   const chosen = new Map<string, LabelSide>();
-  const placed = () => options.filter((o) => chosen.has(o.p.id));
+  const placed = () => options.filter((o) => chosen.has(o.p.slug));
   const cost = (o: (typeof options)[number], side: LabelSide) =>
     o.fixed[side] +
     placed().reduce(
       (sum, other) =>
-        other === o ? sum : sum + area(o.boxes[side], other.boxes[chosen.get(other.p.id)!]),
+        other === o ? sum : sum + area(o.boxes[side], other.boxes[chosen.get(other.p.slug)!]),
       0,
     );
-  const order = [...options].sort((a, b) => priority(b.p.id) - priority(a.p.id) || a.p.y - b.p.y);
+  const order = [...options].sort(
+    (a, b) => priority(b.p.slug) - priority(a.p.slug) || a.p.y - b.p.y,
+  );
   for (const o of order) {
     chosen.set(
-      o.p.id,
+      o.p.slug,
       o.sides.reduce((best, s) => (cost(o, s) < cost(o, best) ? s : best)),
     );
   }
@@ -278,10 +280,10 @@ export function layoutPins(
   for (let round = 0; round < 8; round++) {
     let moved = false;
     for (const o of order) {
-      const now = chosen.get(o.p.id)!;
+      const now = chosen.get(o.p.slug)!;
       const best = o.sides.reduce((b, s) => (cost(o, s) < cost(o, b) - 0.01 ? s : b), now);
       if (best !== now) {
-        chosen.set(o.p.id, best);
+        chosen.set(o.p.slug, best);
         moved = true;
       }
     }
@@ -290,10 +292,10 @@ export function layoutPins(
   const labels = chosen;
 
   return pts.map((p) => ({
-    id: p.id,
+    slug: p.slug,
     x: round1(p.x),
     y: round1(p.y),
-    label: labels.get(p.id)!,
+    label: labels.get(p.slug)!,
   }));
 }
 

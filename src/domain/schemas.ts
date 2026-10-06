@@ -10,7 +10,7 @@ import { TAGS } from "./tags";
  * name already taken) live in the services.
  */
 
-export const stationIdSchema = z
+export const stationSlugSchema = z
   .string("Pick a building.")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "That building isn't on the map.");
 export const idSchema = z.uuid("That id isn't valid.");
@@ -55,29 +55,45 @@ const text = (max: number, { multiline = false } = {}) =>
     .pipe(z.string().max(max, `Keep it under ${max} characters.`))
     .default("");
 
-export const reviewInputSchema = z
-  .object({
-    stationId: stationIdSchema,
-    visitedOn: isoDateSchema,
-    scores: scoresSchema,
-    hotTake: text(120),
-    body: text(1200, { multiline: true }),
-    tags: z
-      .array(z.enum(TAGS, "That tag isn't on the list."))
-      .max(TAGS.length)
-      .default([])
-      .transform((ts) => [...new Set(ts)]),
-  })
-  .strict();
+/**
+ * Writes queued offline before the rename to `stationSlug` still carry `stationId`; accept it,
+ * so a phone that was offline over a deploy doesn't lose them.
+ */
+const legacyStationField = (v: unknown) => {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return v;
+  const { stationId, ...rest } = v as Record<string, unknown>;
+  return stationId === undefined || "stationSlug" in rest ? v : { ...rest, stationSlug: stationId };
+};
+
+export const reviewInputSchema = z.preprocess(
+  legacyStationField,
+  z
+    .object({
+      stationSlug: stationSlugSchema,
+      visitedOn: isoDateSchema,
+      scores: scoresSchema,
+      hotTake: text(120),
+      body: text(1200, { multiline: true }),
+      tags: z
+        .array(z.enum(TAGS, "That tag isn't on the list."))
+        .max(TAGS.length)
+        .default([])
+        .transform((ts) => [...new Set(ts)]),
+    })
+    .strict(),
+);
 export type ReviewInput = z.infer<typeof reviewInputSchema>;
 
-export const checkinInputSchema = z
-  .object({
-    stationId: stationIdSchema,
-    visitedOn: isoDateSchema,
-    note: text(400, { multiline: true }),
-  })
-  .strict();
+export const checkinInputSchema = z.preprocess(
+  legacyStationField,
+  z
+    .object({
+      stationSlug: stationSlugSchema,
+      visitedOn: isoDateSchema,
+      note: text(400, { multiline: true }),
+    })
+    .strict(),
+);
 export type CheckinInput = z.infer<typeof checkinInputSchema>;
 
 /** A new password: long enough to be worth hashing, short enough not to be a DoS vector. */

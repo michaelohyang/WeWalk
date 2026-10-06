@@ -20,7 +20,6 @@ export type MemberRow = {
   hasPassword: boolean;
   createdAt: Date;
 };
-export type LinkPurpose = "pair" | "recover";
 
 export async function countMembers(db: Db): Promise<number> {
   const [row] = await db.select({ n: count() }).from(members);
@@ -154,11 +153,23 @@ export async function deleteDevice(db: Db, memberId: string, deviceId: string): 
   return rows.length > 0;
 }
 
+/**
+ * One-time links are all recovery links now. (The table also allows "pair", from when a phone
+ * could be added with a link; those expired within 15 minutes and are no longer made or accepted.)
+ */
+const live = (tokenHash: string, now: Date) =>
+  and(
+    eq(links.tokenHash, tokenHash),
+    eq(links.purpose, "recover"),
+    isNull(links.usedAt),
+    gt(links.expiresAt, now),
+  );
+
 export async function insertLink(
   db: Db,
-  values: { memberId: string; tokenHash: string; purpose: LinkPurpose; expiresAt: Date },
+  values: { memberId: string; tokenHash: string; expiresAt: Date },
 ) {
-  await db.insert(links).values(values);
+  await db.insert(links).values({ ...values, purpose: "recover" });
 }
 
 /** Marks an unused, unexpired link as used, atomically. Returns its member, or undefined. */
@@ -166,17 +177,17 @@ export async function consumeLink(db: Db, tokenHash: string, now: Date) {
   const [row] = await db
     .update(links)
     .set({ usedAt: now })
-    .where(and(eq(links.tokenHash, tokenHash), isNull(links.usedAt), gt(links.expiresAt, now)))
-    .returning({ memberId: links.memberId, purpose: links.purpose });
+    .where(live(tokenHash, now))
+    .returning({ memberId: links.memberId });
   return row;
 }
 
 /** A link that can still be used, without using it. */
 export async function findLiveLink(db: Db, tokenHash: string, now: Date) {
   const [row] = await db
-    .select({ memberId: links.memberId, purpose: links.purpose })
+    .select({ memberId: links.memberId })
     .from(links)
-    .where(and(eq(links.tokenHash, tokenHash), isNull(links.usedAt), gt(links.expiresAt, now)));
+    .where(live(tokenHash, now));
   return row;
 }
 
