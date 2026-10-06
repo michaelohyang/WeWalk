@@ -4,7 +4,7 @@
  */
 export type { StationCard } from "./cards";
 export { crewView, type CrewView } from "./crew";
-export { exploreView, type ExploreView } from "./explore";
+export { exploreView, type AreaTile, type ExploreView, type FeedEntry } from "./explore";
 export { passportView, type PassportView } from "./passport";
 export { ranksView, type RanksView } from "./ranks";
 export { rateView, type RateView } from "./rate";

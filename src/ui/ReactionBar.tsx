@@ -2,12 +2,9 @@
 
 import { useState } from "react";
 import { send } from "@/client/outbox";
-import type { ReactionKey } from "@/domain/reactions";
-import type { ReviewView } from "@/server/services/views";
-import { useToast } from "@/ui/Toast";
-import styles from "./reactions.module.css";
-
-type Reaction = ReviewView["reactions"][number];
+import type { ReactionKey, ReactionSummary as Reaction } from "@/domain/reactions";
+import styles from "./ReactionBar.module.css";
+import { useToast } from "./Toast";
 
 /**
  * 🔥 💯 😂 🙅 under a review. Tapping toggles your reaction right away; the write goes through

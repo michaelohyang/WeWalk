@@ -559,3 +559,55 @@ describe("photos", () => {
     expect((await fetchPhoto(dana, second)).status).toBe(404);
   });
 });
+
+describe("home: areas and the crew feed", () => {
+  it("summarizes each area and lists the latest reviews and check-ins", async () => {
+    const dana = await joined("Dana");
+    const sam = await joined("Sam");
+    const visitedOn = cityDate(new Date());
+    const reviewId = newId();
+    await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: reviewId },
+      body: review({ stationSlug: "dock-72", scores: { coffee: 5, wifi: 4 }, hotTake: "Great" }),
+    });
+    await sam.call(putCheckin, "PUT", "/api/checkins/x", {
+      params: { id: newId() },
+      body: { stationSlug: "195-montague-st", visitedOn },
+    });
+    await sam.call(react, "PUT", "/api/reviews/x/reactions/y", {
+      params: { id: reviewId, kind: "fire" },
+    });
+
+    const crew = await loadCrew(db);
+    const me = crew.members.find((m) => m.name === "Dana")!;
+    const view = await exploreView(
+      crew,
+      { member: me, deviceId: "d" } as unknown as Session,
+      new Date(),
+    );
+
+    const brooklyn = view.areas.find((a) => a.key === "brooklyn")!;
+    expect(brooklyn).toMatchObject({
+      label: "Brooklyn",
+      mine: 1,
+      best: { slug: "dock-72", overall: 4.5 },
+    });
+    expect(view.areas.map((a) => a.key)).toEqual([
+      "uptown",
+      "midtown",
+      "flatiron",
+      "downtown",
+      "brooklyn",
+    ]);
+    expect(view.areas.reduce((n, a) => n + a.total, 0)).toBe(view.stations.length);
+
+    expect(view.feed).toHaveLength(2);
+    const r = view.feed.find((f) => f.kind === "review")!;
+    expect(r).toMatchObject({ by: "Dana", mine: true, overall: 4.5, hotTake: "Great" });
+    expect(r.kind === "review" && r.reactions.find((x) => x.key === "fire")).toMatchObject({
+      count: 1,
+      by: ["Sam"],
+    });
+    expect(view.feed.find((f) => f.kind === "checkin")).toMatchObject({ by: "Sam", mine: false });
+  });
+});

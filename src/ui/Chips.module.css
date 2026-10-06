@@ -52,7 +52,6 @@
   gap: 3px;
   margin-block: 12px 4px;
 }
-.seg a,
 .seg button {
   border: 0;
   background: none;
@@ -67,7 +66,6 @@
   color: var(--fg-2);
   cursor: pointer;
 }
-.seg a[aria-current="true"],
 .seg button[aria-pressed="true"] {
   background: var(--card);
   color: var(--fg);
