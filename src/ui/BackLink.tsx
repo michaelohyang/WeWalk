@@ -13,6 +13,8 @@ import { Icon } from "./Icon";
 
 // The last list screen (Explore, Ranks, Passport, Crew) seen in this tab, with its filters.
 let lastList: string | null = null;
+// The last Explore view (map or list, with its filters), for Home.
+let lastExplore: string | null = null;
 
 function Tracker() {
   const path = usePathname();
@@ -20,6 +22,7 @@ function Tracker() {
   useEffect(() => {
     if (!path.startsWith("/stations/") && !path.startsWith("/rate"))
       lastList = query ? `${path}?${query}` : path;
+    if (path === "/") lastExplore = query ? `/?${query}` : "/";
   }, [path, query]);
   return null;
 }
@@ -65,6 +68,21 @@ export function BackLink({ fallback, className }: { fallback: string; className?
       }}
     >
       <Icon name="back" size={20} />
+    </Link>
+  );
+}
+
+/**
+ * Home: back to Explore as you left it (filters and all). Used where Back would be odd, like a
+ * station page you reached by posting a review (Back would reopen the form you just sent).
+ */
+export function HomeLink({ className }: { className?: string }) {
+  const [href, setHref] = useState("/");
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- see BackLink
+  useEffect(() => setHref(lastExplore ?? "/"), []);
+  return (
+    <Link href={href} className={className} aria-label="Home">
+      <Icon name="home" size={20} />
     </Link>
   );
 }
