@@ -21,7 +21,9 @@ async function noHorizontalScroll(page: Page) {
   expect(scrollWidth, page.url()).toBeLessThanOrEqual(clientWidth);
 }
 
-const listRows = (page: Page, name: RegExp) => page.getByRole("main").getByRole("link", { name });
+// The result list only: other links (Here today, favorites) can name the same buildings.
+const listRows = (page: Page, name: RegExp) =>
+  page.getByRole("group", { name: "Matching stations" }).getByRole("link", { name });
 const chip = (page: Page, name: string) => page.getByRole("link", { name, exact: true });
 
 test.describe("signed out", () => {
@@ -151,14 +153,17 @@ test.describe("signed in", () => {
     await page.getByLabel("Rank by").selectOption("coffee");
     await expect(page).toHaveURL(/by=coffee/);
     await expect(page.getByRole("heading", { name: "Best coffee" })).toBeVisible();
-    await expect(listRows(page, /524 Broadway/)).toBeVisible();
+    // The ranked list's own section (the page has other sections that can name buildings).
+    const ranked = page.getByRole("region", { name: /^Best coffee/ });
+    await expect(ranked.getByRole("link", { name: /524 Broadway/ })).toBeVisible();
 
     await chip(page, "Downtown").click();
     await expect(page).toHaveURL(/by=coffee/);
     await expect(page).toHaveURL(/area=downtown/);
     await expect(page.getByRole("heading", { name: "Best coffee · Downtown" })).toBeVisible();
     await chip(page, "Brooklyn").click();
-    await expect(listRows(page, /524 Broadway/)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Best coffee · Brooklyn" })).toBeVisible();
+    await expect(ranked.getByRole("link", { name: /524 Broadway/ })).toHaveCount(0);
   });
 
   test("the passport is personal", async ({ page, browser }, info) => {

@@ -83,7 +83,7 @@ export function Explore({ view }: { view: ExploreView }) {
   // Searching or filtering on the map: list what matches under it, not the usual favorites.
   const filtering = !!(filters.q || filters.area || filters.tag);
   const results = shown.length ? (
-    <div className={styles.list}>
+    <div className={styles.list} role="group" aria-label="Matching stations">
       {[...shown]
         .sort((a, b) => (b.overall ?? -1) - (a.overall ?? -1) || a.name.localeCompare(b.name))
         .map((s) => (
