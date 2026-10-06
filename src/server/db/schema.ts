@@ -7,6 +7,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -15,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { AREA_KEYS } from "@/domain/areas";
 import { CATEGORY_KEYS } from "@/domain/categories";
+import { REACTION_KEYS } from "@/domain/reactions";
 
 /*
  * Data rules live here as constraints, not in app code (docs/PLAN.md §7).
@@ -163,5 +165,24 @@ export const checkins = pgTable(
     uniqueIndex("checkins_one_per_member_station_day").on(t.stationId, t.memberId, t.visitedOn),
     index("checkins_member_idx").on(t.memberId),
     check("checkins_note_length", sql`char_length(${t.note}) <= 400`),
+  ],
+).enableRLS();
+
+/** One-tap reactions to a review (🔥 💯 😂 🙅). Each person can add each kind once. */
+export const reactions = pgTable(
+  "reactions",
+  {
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.reviewId, t.memberId, t.kind] }),
+    check("reactions_kind_known", inList("kind", REACTION_KEYS)),
   ],
 ).enableRLS();

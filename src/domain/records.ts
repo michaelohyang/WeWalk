@@ -22,6 +22,8 @@ export interface CheckinRecord {
   memberId: string;
   visitedOn: IsoDate;
   note: string;
+  /** When it was made (ISO timestamp): "here since 9:40". */
+  checkedInAt: string;
 }
 
 export type Visit = Pick<ReviewRecord | CheckinRecord, "stationSlug" | "memberId" | "visitedOn">;

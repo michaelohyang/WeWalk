@@ -22,5 +22,13 @@ export function review(
 export function checkin(
   overrides: Partial<CheckinRecord> & Pick<CheckinRecord, "stationSlug">,
 ): CheckinRecord {
-  return { id: nextId(), memberId: "m1", visitedOn: "2026-10-01", note: "", ...overrides };
+  const visitedOn = overrides.visitedOn ?? "2026-10-01";
+  return {
+    id: nextId(),
+    memberId: "m1",
+    visitedOn,
+    note: "",
+    checkedInAt: `${visitedOn}T13:00:00.000Z`,
+    ...overrides,
+  };
 }

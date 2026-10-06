@@ -56,6 +56,7 @@ export function MapView({
   selected,
   dimmed,
   area,
+  here,
   onSelect,
 }: {
   /** Land shapes and size, computed on the server so the projection code never ships. */
@@ -66,6 +67,8 @@ export function MapView({
   dimmed: Set<string>;
   /** The area filter, if any: its zone is tinted more strongly. */
   area?: AreaKey | null;
+  /** How many of the crew checked in at each station today: shown as a badge on the pin. */
+  here?: ReadonlyMap<string, number>;
   onSelect: (slug: string | null) => void;
 }) {
   const { width, height, land, zones } = geometry;
@@ -148,7 +151,7 @@ export function MapView({
               : s.visited
                 ? "visited, not rated"
                 : "not visited yet"
-          }`;
+          }${here?.get(pin.slug) ? `, ${here.get(pin.slug)} from the crew here today` : ""}`;
           return (
             <g
               key={pin.slug}
@@ -187,6 +190,14 @@ export function MapView({
                 </>
               ) : (
                 <circle r="5" className={styles.dot} filter="url(#pin-shadow)" />
+              )}
+              {!!here?.get(pin.slug) && (
+                <g transform="translate(15 -10)" className={styles.here} aria-hidden="true">
+                  <circle r="6.5" />
+                  <text y="2.8" textAnchor="middle">
+                    {here.get(pin.slug)}
+                  </text>
+                </g>
               )}
               <text
                 {...labelPlacement(side, s.visited)}

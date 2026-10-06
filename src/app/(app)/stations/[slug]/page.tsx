@@ -10,6 +10,7 @@ import { areaColor, formatDate, plural, tierWord } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
+import { ReactionBar } from "./reaction-bar";
 import { PostedToast, ReviewActions, StationActions } from "./station-actions";
 import styles from "./station.module.css";
 
@@ -154,6 +155,7 @@ export default async function StationPage({ params }: Props) {
                     ))}
                   </ul>
                 )}
+                <ReactionBar reviewId={r.id} reactions={r.reactions} own={r.mine} />
               </li>
             ))}
           </ul>

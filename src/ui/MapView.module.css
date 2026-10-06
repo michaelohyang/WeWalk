@@ -64,6 +64,16 @@
   pointer-events: none;
 }
 /* Not visited yet: a white pin with a ring, like a map marker. */
+/* "N of the crew are here today": a small live badge on the pin's corner. */
+.here circle {
+  fill: var(--brand);
+  stroke: var(--land);
+  stroke-width: 1.5;
+}
+.here text {
+  font: 800 7.5px var(--font);
+  fill: var(--brand-ink);
+}
 .dot {
   fill: var(--land);
   stroke: var(--muted);

@@ -1,6 +1,7 @@
 import "server-only";
 import { CATEGORY_KEYS, type CategoryKey } from "@/domain/categories";
 import type { IsoDate } from "@/domain/dates";
+import { REACTIONS, type ReactionKey } from "@/domain/reactions";
 import type { ReviewRecord } from "@/domain/records";
 import { personOverall, scoreStation } from "@/domain/scoring";
 import type { Tag } from "@/domain/tags";
@@ -20,6 +21,17 @@ export interface ReviewView {
   body: string;
   tags: Tag[];
   mine: boolean;
+  /** Every kind, in display order, so the buttons render even at zero. */
+  reactions: {
+    key: ReactionKey;
+    emoji: string;
+    label: string;
+    count: number;
+    /** You reacted this way. */
+    mine: boolean;
+    /** Who did, for the tooltip. */
+    by: string[];
+  }[];
 }
 
 export interface StationView {
@@ -67,6 +79,15 @@ export async function stationView(
         body: r.body,
         tags: r.tags,
         mine: r.memberId === session.member.id,
+        reactions: REACTIONS.map((kind) => {
+          const these = crew.reactions.filter((x) => x.reviewId === r.id && x.kind === kind.key);
+          return {
+            ...kind,
+            count: these.length,
+            mine: these.some((x) => x.memberId === me),
+            by: these.map((x) => by(x.memberId)),
+          };
+        }),
       })),
     log: [
       ...crew.checkins

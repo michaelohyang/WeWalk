@@ -57,7 +57,7 @@ describe("migrations + seed", () => {
       where n.nspname = 'public' and c.relkind = 'r' and c.relname not like '__drizzle%'`)) as unknown as {
       rows: { relname: string; relrowsecurity: boolean }[];
     };
-    expect(rows.length).toBe(6);
+    expect(rows.length).toBe(7);
     for (const r of rows) expect(r, r.relname).toMatchObject({ relrowsecurity: true });
   });
 });
