@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
+import { BROOKLYN, MANHATTAN, type LatLng } from "../geo";
 import {
   geoLabelBox,
   geoLabelPoints,
@@ -10,22 +10,12 @@ import {
   MAP_HEIGHT,
   MAP_WIDTH,
   project,
-} from "./map";
-import { STATIONS } from "./stations";
+} from ".";
+import { STATIONS } from "../stations";
+import { insideRing } from "./projection";
 
-/** Ray-casting point-in-polygon, in projected map units. */
-function inside(at: LatLng, ring: readonly LatLng[]): boolean {
-  const p = project(at);
-  const poly = ring.map(project);
-  let hit = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const a = poly[i]!;
-    const b = poly[j]!;
-    if (a.y > p.y !== b.y > p.y && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x)
-      hit = !hit;
-  }
-  return hit;
-}
+/** Whether a place is inside a shoreline, in projected map units. */
+const inside = (at: LatLng, ring: readonly LatLng[]) => insideRing(project(at), ring.map(project));
 
 describe("project", () => {
   it("stands Manhattan upright: two points on Fifth Ave share an x", () => {
@@ -160,20 +150,18 @@ describe("map labels", () => {
 
 describe("area zones", () => {
   const zones = MAP_GEOMETRY.zones.manhattan.areas;
-  /** Ray-casting point-in-polygon on a zone's path ("Mx yLx y…Z"). */
-  const inZone = (d: string, p: { x: number; y: number }) => {
-    const ring = d
-      .slice(1, -1)
-      .split("L")
-      .map((xy) => xy.split(" ").map(Number) as [number, number]);
-    let hit = false;
-    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const [ax, ay] = ring[i]!;
-      const [bx, by] = ring[j]!;
-      if (ay > p.y !== by > p.y && p.x < ((bx - ax) * (p.y - ay)) / (by - ay) + ax) hit = !hit;
-    }
-    return hit;
-  };
+  /** Whether a point is inside a zone's path ("Mx yLx y…Z"). */
+  const inZone = (d: string, p: { x: number; y: number }) =>
+    insideRing(
+      p,
+      d
+        .slice(1, -1)
+        .split("L")
+        .map((xy) => {
+          const [x, y] = xy.split(" ").map(Number);
+          return { x: x!, y: y! };
+        }),
+    );
 
   it("has one zone per Manhattan area, north first", () => {
     expect(zones.map((z) => z.area)).toEqual(["uptown", "midtown", "flatiron", "downtown"]);

@@ -6,18 +6,19 @@ import { fieldErrors } from "@/client/api";
 import { clearDraft, loadDraft, saveDraft } from "@/client/draft";
 import { localToday, newId } from "@/client/ids";
 import { outcome, pending, send, subscribe } from "@/client/outbox";
-import { CATEGORIES, type CategoryKey, type Score } from "@/domain/categories";
-import { TAGS, type Tag } from "@/domain/tags";
+import type { CategoryKey, Score } from "@/domain/categories";
+import type { Tag } from "@/domain/tags";
 import type { RateView } from "@/server/services/views";
 import { ButtonLink } from "@/ui/Button";
-import { Icon } from "@/ui/Icon";
 import { Page } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
+import { DetailsFields } from "./details-fields";
 import styles from "./rate.module.css";
+import { ScorePicker } from "./score-picker";
 
-type Scores = Partial<Record<CategoryKey, Score>>;
+export type Scores = Partial<Record<CategoryKey, Score>>;
 
-interface Draft {
+export interface Draft {
   id: string;
   scores: Scores;
   hotTake: string;
@@ -27,14 +28,6 @@ interface Draft {
   /** Typed before a building was picked, then carried over: not a draft to "pick up". */
   carried?: boolean;
 }
-
-const SCORE_COLOR: Record<Score, string> = {
-  1: "var(--s-bad)",
-  2: "var(--s-ok)",
-  3: "var(--s-ok)",
-  4: "var(--s-good)",
-  5: "var(--s-great)",
-};
 
 export function RateForm({ view }: { view: RateView }) {
   const router = useRouter();
@@ -109,23 +102,13 @@ export function RateForm({ view }: { view: RateView }) {
       return next;
     });
 
-  const setScore = (key: CategoryKey, score: Score) => {
-    update({ scores: { ...draft.scores, [key]: draft.scores[key] === score ? undefined : score } });
+  const setScores = (scores: Scores) => {
+    update({ scores });
     setErrors((e) => {
       const next = { ...e };
       delete next.scores;
       return next;
     });
-  };
-
-  const arrowKeys = (e: React.KeyboardEvent, key: CategoryKey, value: Score | undefined) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (!step) return;
-    e.preventDefault();
-    const next = ((((value ?? (step > 0 ? 0 : 6)) + step - 1 + 5) % 5) + 1) as Score;
-    update({ scores: { ...draft.scores, [key]: next } });
-    const radios = e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]");
-    radios[next - 1]?.focus();
   };
 
   const discardDraft = () => {
@@ -271,57 +254,12 @@ export function RateForm({ view }: { view: RateView }) {
           </p>
         )}
 
-        <div
+        <ScorePicker
           ref={scoresRef}
-          className={styles.scores}
-          role="group"
-          aria-label="Scores"
-          aria-describedby="scores-hint"
-        >
-          <p id="scores-hint" className={styles.hint}>
-            Rate what you tried. Skip the rest. Tap again to clear.
-          </p>
-          {errors.scores && <p className={styles.error}>{errors.scores}</p>}
-          {CATEGORIES.map((c) => {
-            const value = draft.scores[c.key];
-            return (
-              <div key={c.key} className={styles.tap}>
-                <span className={styles.ic}>
-                  <Icon name={c.key} size={20} />
-                </span>
-                <div className={styles.tapHead}>
-                  <b id={`cat-${c.key}`}>{c.label}</b>
-                  <span className={value ? styles.quipOn : styles.quip} aria-live="polite">
-                    {value ? c.quips[value - 1] : c.hint}
-                  </span>
-                </div>
-                <div
-                  className={styles.tokens}
-                  role="radiogroup"
-                  aria-labelledby={`cat-${c.key}`}
-                  onKeyDown={(e) => arrowKeys(e, c.key, value)}
-                >
-                  {([1, 2, 3, 4, 5] as const).map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      role="radio"
-                      aria-checked={value === n}
-                      aria-label={`${n} out of 5`}
-                      // One Tab stop per category; arrow keys move within it (the radio pattern).
-                      tabIndex={(value ?? 1) === n ? 0 : -1}
-                      className={value === n ? styles.on : undefined}
-                      style={value === n ? { background: SCORE_COLOR[n] } : undefined}
-                      onClick={() => setScore(c.key, n)}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          scores={draft.scores}
+          error={errors.scores}
+          onChange={setScores}
+        />
 
         <button
           type="button"
@@ -333,63 +271,13 @@ export function RateForm({ view }: { view: RateView }) {
           {moreOpen ? "Fewer details" : "Add more: hot take, review, tags, date"}
         </button>
 
-        <div id="more" className={styles.moreBody} hidden={!moreOpen}>
-          <label className={styles.field}>
-            <span>Hot take</span>
-            <input
-              className={styles.input}
-              maxLength={120}
-              value={draft.hotTake}
-              onChange={(e) => update({ hotTake: e.target.value })}
-              placeholder="The phone booths here are a hostage situation."
-              aria-invalid={!!errors.hotTake}
-            />
-            {errors.hotTake && <span className={styles.error}>{errors.hotTake}</span>}
-          </label>
-          <label className={styles.field}>
-            <span>Review</span>
-            <textarea
-              className={styles.input}
-              rows={4}
-              maxLength={1200}
-              value={draft.body}
-              onChange={(e) => update({ body: e.target.value })}
-              placeholder="Got here at 9:40 and every window seat was taken by a guy with three monitors. Cold brew's legit though."
-              aria-invalid={!!errors.body}
-            />
-            {errors.body && <span className={styles.error}>{errors.body}</span>}
-          </label>
-          <fieldset className={styles.tags}>
-            <legend>Tags</legend>
-            {TAGS.map((t) => {
-              const on = draft.tags.includes(t);
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() =>
-                    update({ tags: on ? draft.tags.filter((x) => x !== t) : [...draft.tags, t] })
-                  }
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </fieldset>
-          <label className={styles.field}>
-            <span>Visited</span>
-            <input
-              type="date"
-              className={styles.input}
-              value={draft.visitedOn}
-              max={today}
-              onChange={(e) => update({ visitedOn: e.target.value })}
-              aria-invalid={!!errors.visitedOn}
-            />
-            {errors.visitedOn && <span className={styles.error}>{errors.visitedOn}</span>}
-          </label>
-        </div>
+        <DetailsFields
+          open={moreOpen}
+          draft={draft}
+          errors={errors}
+          today={today}
+          onChange={update}
+        />
 
         <div className={styles.submitBar}>
           {errors.form && (
