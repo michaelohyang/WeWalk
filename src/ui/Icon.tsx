@@ -94,6 +94,12 @@ const PATHS = {
       <path d="M16 6.7v18.6M6.7 16h18.6" />
     </g>
   ),
+  home: (
+    <g strokeWidth="2.6">
+      <path d="M5 15.5 16 6.5l11 9" />
+      <path d="M8.5 13v12.5h15V13" />
+    </g>
+  ),
   back: (
     <g strokeWidth="3.2">
       <path d="M20 6.7 10.7 16l9.3 9.3" />

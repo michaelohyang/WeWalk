@@ -1,4 +1,4 @@
-import { BackLink } from "./BackLink";
+import { BackLink, HomeLink } from "./BackLink";
 import styles from "./Page.module.css";
 
 /** The phone-width column every screen sits in, with an optional header. */
@@ -6,6 +6,7 @@ export function Page({
   title,
   subtitle,
   back,
+  home,
   action,
   children,
 }: {
@@ -13,14 +14,20 @@ export function Page({
   subtitle?: React.ReactNode;
   /** Shows a back button; goes here when there is no in-app history. */
   back?: string;
+  /** Shows a Home button (to Explore) instead. */
+  home?: boolean;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <main className={styles.page}>
-      {back && (
+      {(back || home) && (
         <div className={styles.nav}>
-          <BackLink fallback={back} className={styles.round} />
+          {home ? (
+            <HomeLink className={styles.round} />
+          ) : (
+            <BackLink fallback={back!} className={styles.round} />
+          )}
         </div>
       )}
       {(title || action) && (

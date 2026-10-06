@@ -30,7 +30,7 @@ export default async function StationPage({ params }: Props) {
   const mine = reviews.find((r) => r.mine);
 
   return (
-    <Page back="/">
+    <Page home>
       <header className={styles.hero}>
         <span
           className={styles.hood}

@@ -70,32 +70,30 @@ test.describe("signed in", () => {
     await expect(page).toHaveURL(/area=brooklyn/);
     await expect(chip(page, "Brooklyn")).toHaveAttribute("aria-current", "true");
 
-    // The in-app Back button returns to the same filtered list, not bare Explore.
+    // Home returns to the same filtered list, not bare Explore.
     await listRows(page, /Dumbo Heights/).click();
     await expect(page).toHaveURL(/\/stations\/dumbo-heights$/);
-    await page.getByRole("link", { name: "Back" }).click();
+    await page.getByRole("link", { name: "Home" }).click();
     await expect(page).toHaveURL(/area=brooklyn/);
     await expect(page).toHaveURL(/view=list/);
   });
 
-  test("the in-app Back button on a shared link goes to Explore", async ({ page }) => {
+  // A station page offers Home, not Back: after posting a review, Back would reopen the form.
+  test("a station page's Home button goes to Explore, even from a shared link", async ({
+    page,
+  }) => {
     await page.goto("/stations/dock-72");
-    await page.getByRole("link", { name: "Back" }).click();
+    await expect(page.getByRole("link", { name: "Back" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Home" }).click();
     await expect(page).toHaveURL(/\/$/);
   });
 
   test("the in-app Back button never leaves the app", async ({ page }) => {
-    // Shared link → Explore tab → browser Back → in-app Back: the entry before is not WeWalk.
-    await page.goto("/stations/dock-72");
-    await page
-      .getByRole("navigation", { name: "Main" })
-      .getByRole("link", { name: "Explore" })
-      .click();
-    await expect(page).toHaveURL(/\/$/);
-    await page.goBack();
-    await expect(page).toHaveURL(/\/stations\/dock-72$/);
+    // A shared link to the rate form: the entry before isn't WeWalk, so Back goes to the
+    // building instead of out of the app.
+    await page.goto("/rate/dock-72");
     await page.getByRole("link", { name: "Back" }).click();
-    await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/$/);
+    await expect(page).toHaveURL(/^http:\/\/localhost:\d+\/stations\/dock-72$/);
   });
 
   test("filters and search work before JavaScript loads (plain links and a GET form)", async ({
