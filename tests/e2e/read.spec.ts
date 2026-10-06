@@ -5,7 +5,7 @@ import { checkIn, joinAs, review, uniqueName } from "./helpers";
 
 const SCREENS = [
   "/",
-  "/?view=list",
+  "/?area=brooklyn",
   "/stations/18-w-18th-st",
   "/ranks",
   "/ranks?by=coffee&area=downtown",
@@ -25,6 +25,11 @@ async function noHorizontalScroll(page: Page) {
 const listRows = (page: Page, name: RegExp) =>
   page.getByRole("group", { name: "Matching stations" }).getByRole("link", { name });
 const chip = (page: Page, name: string) => page.getByRole("link", { name, exact: true });
+// Home's area tiles (their names start with the area, then its counts).
+const tile = (page: Page, area: string) =>
+  page
+    .getByRole("navigation", { name: "Areas" })
+    .getByRole("link", { name: new RegExp(`^${area}`) });
 
 test.describe("signed out", () => {
   test("every screen asks you to log in and shows no crew data", async ({ page }) => {
@@ -33,7 +38,7 @@ test.describe("signed out", () => {
       await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
       // The page HTML itself must not carry crew data (not just hide it).
-      expect(await page.content(), path).not.toContain("Crew favorites");
+      expect(await page.content(), path).not.toContain("Latest from the crew");
     }
   });
 });
@@ -56,10 +61,8 @@ test.describe("signed in", () => {
 
   test("filters live in the URL and survive Back", async ({ page }) => {
     await page.goto("/");
-    await chip(page, "List").click();
-    await chip(page, "Brooklyn").click();
+    await tile(page, "Brooklyn").click();
     await expect(page).toHaveURL(/area=brooklyn/);
-    await expect(page).toHaveURL(/view=list/);
     const rows = listRows(page, /Dock 72|Dumbo Heights|195 Montague|134 N 4th/);
     await expect(rows).toHaveCount(4);
     await expect(listRows(page, /1460 Broadway/)).toHaveCount(0);
@@ -75,7 +78,6 @@ test.describe("signed in", () => {
     await expect(page).toHaveURL(/\/stations\/dumbo-heights$/);
     await page.getByRole("link", { name: "Home" }).click();
     await expect(page).toHaveURL(/area=brooklyn/);
-    await expect(page).toHaveURL(/view=list/);
   });
 
   // A station page offers Home, not Back: after posting a review, Back would reopen the form.
@@ -103,9 +105,7 @@ test.describe("signed in", () => {
     const page = await context.newPage();
     await joinAs(page);
     await page.goto("/");
-    await chip(page, "List").click();
-    await expect(page).toHaveURL(/view=list/);
-    await chip(page, "Uptown").click();
+    await tile(page, "Uptown").click();
     await expect(page).toHaveURL(/area=uptown/);
     await expect(listRows(page, /8 W 126th/)).toBeVisible();
     await page.getByRole("searchbox", { name: "Search stations" }).fill("park");
@@ -117,7 +117,7 @@ test.describe("signed in", () => {
   });
 
   test("search narrows the list", async ({ page }) => {
-    await page.goto("/?view=list");
+    await page.goto("/");
     await page.getByRole("searchbox", { name: "Search stations" }).fill("lexington");
     await expect(listRows(page, /Lexington/)).toHaveCount(3);
     await expect(page).toHaveURL(/q=lexington/);
@@ -127,22 +127,40 @@ test.describe("signed in", () => {
     await checkIn(page.request, "135-madison-ave");
     const other = await (await browser.newContext({ ...info.project.use })).newPage();
     await joinAs(other);
-    await other.goto("/?view=list&q=135%20madison");
+    await other.goto("/?q=135%20madison");
     await expect(listRows(other, /135 Madison Ave/)).toContainText("Crew's been");
-    await page.goto("/?view=list&q=135%20madison");
+    await page.goto("/?q=135%20madison");
     await expect(listRows(page, /135 Madison Ave/)).toContainText("You've been");
   });
 
-  test("tapping a map pin opens its preview", async ({ page }) => {
+  test("the home feed shows the crew's reviews, and you can react", async ({
+    page,
+    browser,
+  }, info) => {
+    const other = await (await browser.newContext({ ...info.project.use })).newPage();
+    await joinAs(other);
+    await review(other.request, "dumbo-heights", {
+      scores: { vibe: 5 },
+      hotTake: "Feed me a view",
+    });
     await page.goto("/");
-    await page.getByRole("button", { name: /^33 Irving Pl,/ }).click();
-    const sheet = page.getByRole("dialog", { name: "33 Irving Pl preview" });
-    await expect(sheet).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(sheet).toHaveCount(0);
-    await page.getByRole("button", { name: /^33 Irving Pl,/ }).click();
-    await sheet.getByRole("link", { name: "View station" }).click();
-    await expect(page).toHaveURL(/\/stations\/33-irving-pl$/);
+    const card = page
+      .getByRole("list", { name: "Latest from the crew" })
+      .getByRole("listitem")
+      .filter({ hasText: "Feed me a view" });
+    await expect(card).toBeVisible();
+    const fire = card.getByRole("button", { name: /^Fire/ });
+    await fire.click();
+    await expect(fire).toHaveAttribute("aria-pressed", "true");
+    // Reload: the reaction was saved, not just shown.
+    await page.reload();
+    await expect(
+      page
+        .getByRole("list", { name: "Latest from the crew" })
+        .getByRole("listitem")
+        .filter({ hasText: "Feed me a view" })
+        .getByRole("button", { name: /^Fire/ }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   test("ranks sort by a category, then narrow to a neighborhood", async ({ page }) => {

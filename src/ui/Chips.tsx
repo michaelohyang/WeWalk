@@ -63,42 +63,6 @@ export function Chip({
   );
 }
 
-/** Two or three mutually exclusive options, as links (same progressive behavior as Chip). */
-export function Segmented<T extends string>({
-  label,
-  options,
-  value,
-  onSelect,
-}: {
-  label: string;
-  options: readonly { value: T; label: string; href: string }[];
-  value: T;
-  onSelect?: (v: T) => void;
-}) {
-  return (
-    <div className={styles.seg} role="group" aria-label={label}>
-      {options.map((o) => (
-        <Link
-          key={o.value}
-          href={o.href}
-          aria-current={o.value === value ? "true" : undefined}
-          scroll={false}
-          replace
-          onClick={
-            onSelect &&
-            ((e) => {
-              e.preventDefault();
-              onSelect(o.value);
-            })
-          }
-        >
-          {o.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 /** Segmented control for local settings (not URL state), e.g. the theme. */
 export function SegmentedButtons<T extends string>({
   label,

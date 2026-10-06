@@ -5,12 +5,12 @@ import { CATEGORIES } from "@/domain/categories";
 import { formatScore, tierOf } from "@/domain/scoring";
 import { loadStation } from "@/server/pages";
 import { Avatar } from "@/ui/Avatar";
+import { ReactionBar } from "@/ui/ReactionBar";
 import { Empty } from "@/ui/Empty";
 import { areaColor, formatDate, plural, tierWord } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
 import { ScoreCircle } from "@/ui/ScoreCircle";
-import { ReactionBar } from "./reaction-bar";
 import { PostedToast, ReviewActions, StationActions } from "./station-actions";
 import styles from "./station.module.css";
 

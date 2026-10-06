@@ -1,0 +1,82 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+/* Five areas: the last one spans the row. */
+.tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 118px;
+  padding: 14px 14px 12px;
+  border-radius: 18px;
+  border: 1.5px solid color-mix(in srgb, var(--c) 28%, transparent);
+  background: color-mix(in srgb, var(--c) 10%, var(--card));
+  color: var(--fg);
+  text-decoration: none;
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease;
+}
+.tile:hover {
+  background: color-mix(in srgb, var(--c) 16%, var(--card));
+}
+.tile:active {
+  transform: scale(0.98);
+}
+.tile:focus-visible {
+  outline: 2.5px solid var(--c);
+  outline-offset: 2px;
+}
+.name {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--c) 70%, var(--fg));
+}
+.count {
+  font-size: 12.5px;
+  color: var(--fg-2);
+}
+.best {
+  margin-top: auto;
+  font-size: 13px;
+  color: var(--fg-2);
+}
+.best b {
+  color: var(--fg);
+}
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  overflow: hidden;
+}
+.bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--c);
+}
+.mine {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
+  }
+}

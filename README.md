@@ -11,10 +11,11 @@ phone booths and the rest, and see which building the crew actually likes.
 
 ## Features
 
-- **Map:** a schematic map of Manhattan and Brooklyn with a pin for each of the 29 buildings,
-  tinted by area. Rated buildings show their score, and buildings you've visited show a check.
-- **Search and filters:** find a building by name or neighborhood, filter by area (Uptown,
-  Midtown, Flatiron, Downtown, Brooklyn) or by "Best for" tags, or switch to a list.
+- **Home feed:** who's checked in where today (with a one-tap Join), the five areas as tiles
+  (buildings, your progress, the best-rated one), and the crew's latest reviews and check-ins
+  with photos and reactions.
+- **Search and filters:** find a building by name or neighborhood, or list an area's buildings
+  (Uptown, Midtown, Flatiron, Downtown, Brooklyn) or those tagged "Best for" something.
 - **Ratings:** score a building on up to nine categories, add a hot take, a full review and
   tags. Edit or delete your review at any time.
 - **Check-ins:** record a visit in one tap, with an optional note.
@@ -104,7 +105,7 @@ Never commit real connection strings. `.env.local` is ignored by git.
 ```
 src/
   app/       Routes and pages (kept thin)
-  domain/    Business rules in plain TypeScript: scoring, ranking, the map, validation
+  domain/    Business rules in plain TypeScript: scoring, ranking, the feed, validation
   server/    Database, authentication, repositories and services (server-only)
   client/    Browser-only code: the offline outbox and draft autosave
   ui/        Shared React components and design tokens
