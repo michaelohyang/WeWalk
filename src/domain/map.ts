@@ -1,7 +1,10 @@
 import {
+  BROADWAY,
   BROOKLYN,
   COMPRESS_NORTH_OF,
   GOVERNORS_ISLAND,
+  GRID_ANCHOR,
+  GRID_SOUTH,
   MANHATTAN,
   NEW_JERSEY,
   QUEENS,
@@ -98,24 +101,67 @@ export const LAND = [
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+/**
+ * Manhattan's street grid, north of 14th St: avenues run straight up the map (the map is already
+ * turned to the grid), streets across it. Drawn every few blocks so it reads as texture, not
+ * navigation; north of the squeeze the streets bunch up, which also shows the scale change.
+ * Clipped to Manhattan by the drawing code.
+ */
+function streetGrid(): string {
+  const AVENUE_M = 270; // about one avenue block
+  const STREET_M = 400; // about every fifth street
+  const anchor = rotated(GRID_ANCHOR);
+  const south = rotated(GRID_SOUTH).y;
+  const island = MANHATTAN.map(rotated);
+  const [minX, maxX] = [Math.min(...island.map((p) => p.x)), Math.max(...island.map((p) => p.x))];
+  const maxY = Math.max(...island.map((p) => p.y));
+  const at = (x: number, y: number) => {
+    const q = squeezed({ x, y });
+    return `${((q.x - BOX.minX) * SCALE).toFixed(1)} ${((BOX.maxY - q.y) * SCALE).toFixed(1)}`;
+  };
+  const d: string[] = [];
+  for (
+    let x = anchor.x - Math.ceil((anchor.x - minX) / AVENUE_M) * AVENUE_M;
+    x <= maxX;
+    x += AVENUE_M
+  ) {
+    d.push(`M${at(x, south)}L${at(x, maxY)}`);
+  }
+  for (
+    let y = anchor.y - Math.floor((anchor.y - south) / STREET_M) * STREET_M;
+    y <= maxY;
+    y += STREET_M
+  ) {
+    d.push(`M${at(minX, y)}L${at(maxX, y)}`);
+  }
+  return d.join("");
+}
+
+/** Broadway, as a smooth open line. */
+function broadway(): string {
+  const p = BROADWAY.map(project);
+  return p.map((q, i) => `${i ? "L" : "M"}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join("");
+}
+
 export const MAP_GEOMETRY: MapGeometry = {
   width: MAP_WIDTH,
   height: MAP_HEIGHT,
   land: LAND,
+  streets: { grid: streetGrid(), broadway: broadway(), clip: toPath(MANHATTAN) },
   // Placed by hand in map units (checked by map.test.ts: inside the map, clear of every pin,
   // pin label and each other at 390px).
   labels: [
     { text: "Hudson", x: 32, y: 430, rotate: -90, water: true },
-    { text: "East River", x: 230, y: 320, rotate: -70, water: true },
+    { text: "East River", x: 256, y: 408, rotate: -70, water: true },
     { text: "New Jersey · no comment", x: 13, y: 380, rotate: -90, water: false },
     { text: "Brooklyn", x: 300, y: 500, rotate: 0, water: false },
     { text: "Queens", x: 300, y: 150, rotate: 0, water: false },
   ],
 };
 
-const PIN_GAP = 22;
+const PIN_GAP = 22; // pins are 32×20 bubbles: keep centers at least this far apart
 /** Distance from a pin's center to its side label: past the 16px half-bubble, or the dot. */
-export const LABEL_GAP = { lit: 19, dot: 8 } as const; // pins are 32×20 bubbles: keep centers at least this far apart
+export const LABEL_GAP = { lit: 19, dot: 8 } as const;
 const LABEL_HEIGHT = 11;
 /** Label widths per character, measured: 8.5px semibold for visited pins, 7.5px for the rest. */
 const CHAR_WIDTH = { lit: 5.5, dot: 4.7 } as const;
@@ -263,4 +309,41 @@ export function geoLabelBox(l: MapGeometry["labels"][number]) {
   return l.rotate === 0
     ? { x1: l.x - long / 2, y1: l.y - 5, x2: l.x + long / 2, y2: l.y + 5 }
     : { x1: l.x - 5, y1: l.y - long / 2, x2: l.x + 5, y2: l.y + long / 2 };
+}
+
+const LAND_RINGS = [
+  MANHATTAN,
+  BROOKLYN,
+  QUEENS,
+  NEW_JERSEY,
+  ROOSEVELT_ISLAND,
+  GOVERNORS_ISLAND,
+].map((ring) => ring.map(project));
+
+/** Whether a map point is on land (ray casting against the shorelines). */
+export function isOnLand(pt: { x: number; y: number }): boolean {
+  return LAND_RINGS.some((ring) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[i]!;
+      const b = ring[j]!;
+      if (a.y > pt.y !== b.y > pt.y && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y) + a.x) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  });
+}
+
+/** Points along a place name's text (its center line, plus a margin either side), map units. */
+export function geoLabelPoints(l: MapGeometry["labels"][number]) {
+  const half = (l.text.length * 6.2) / 2;
+  const rad = (l.rotate * Math.PI) / 180;
+  const [dx, dy] = [Math.cos(rad), Math.sin(rad)];
+  const pts: { x: number; y: number }[] = [];
+  for (let t = -half; t <= half; t += 4) {
+    for (const off of [-5, 0, 5])
+      pts.push({ x: l.x + dx * t - dy * off, y: l.y + dy * t + dx * off });
+  }
+  return pts;
 }

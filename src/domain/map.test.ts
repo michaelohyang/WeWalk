@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { BROOKLYN, MANHATTAN, type LatLng } from "./geo";
 import {
   geoLabelBox,
+  geoLabelPoints,
+  isOnLand,
   labelBoxes,
   layoutPins,
   MAP_GEOMETRY,
@@ -110,6 +112,10 @@ describe("layoutPins", () => {
     for (const id of visited) expect(laid.find((p) => p.id === id)!.label, id).not.toBeNull();
   });
 
+  it("knows land from water (every station is on land)", () => {
+    for (const s of STATIONS) expect(isOnLand(project([s.lat, s.lng])), s.id).toBe(true);
+  });
+
   it("is deterministic", () => {
     expect(layoutPins(STATIONS)).toEqual(pins);
   });
@@ -141,6 +147,11 @@ describe("map labels", () => {
       expect(b.y1).toBeGreaterThanOrEqual(2);
       expect(b.y2).toBeLessThanOrEqual(MAP_GEOMETRY.height - 2);
       for (const t of taken) expect(hit(b, t)).toBe(false);
+      // River names sit in the water, every letter of them.
+      if (l.water) {
+        for (const p of geoLabelPoints(l))
+          expect(isOnLand(p), `${l.text} at ${p.x},${p.y}`).toBe(false);
+      }
       for (const other of MAP_GEOMETRY.labels)
         if (other !== l) expect(hit(b, labelBox(other))).toBe(false);
     },

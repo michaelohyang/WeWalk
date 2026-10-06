@@ -111,3 +111,24 @@ export const GOVERNORS_ISLAND: readonly LatLng[] = [
 
 /** A point on Manhattan's grid near E 63rd St: the map compresses everything north of it. */
 export const COMPRESS_NORTH_OF: LatLng = [40.7655, -73.9675];
+
+/** Broadway, Bowling Green to 125th St: the one avenue that cuts across the grid. */
+export const BROADWAY: readonly LatLng[] = [
+  [40.7049, -74.0137],
+  [40.7128, -74.006],
+  [40.719, -74.002],
+  [40.7253, -73.997],
+  [40.7359, -73.9906],
+  [40.7411, -73.9897],
+  [40.7497, -73.9877],
+  [40.757, -73.986],
+  [40.7681, -73.9819],
+  [40.7788, -73.9819],
+  [40.7937, -73.9722],
+  [40.8076, -73.964],
+  [40.8148, -73.959],
+];
+
+/** Where the street grid is anchored: Fifth Avenue at 42nd St, and its southern edge (14th St). */
+export const GRID_ANCHOR: LatLng = [40.7536, -73.9832];
+export const GRID_SOUTH: LatLng = [40.7359, -73.9937];

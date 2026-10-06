@@ -8,6 +8,8 @@ export interface MapGeometry {
   width: number;
   height: number;
   land: readonly { name: string; far: boolean; d: string }[];
+  /** Street texture for Manhattan: the grid north of 14th St and Broadway, clipped to `clip`. */
+  streets: { grid: string; broadway: string; clip: string };
   /** Water and borough names, with a rotation for the rivers. */
   labels: readonly { text: string; x: number; y: number; rotate: number; water: boolean }[];
 }
