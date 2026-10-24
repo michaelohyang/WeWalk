@@ -166,6 +166,11 @@ export function Explore({ view }: { view: ExploreView }) {
       ) : (
         <>
           <HereToday here={view.hereToday} />
+          {/* No prefetch: the map page pulls in the map library, which Home shouldn't pay for. */}
+          <Link href="/map" prefetch={false} className={styles.mapLink}>
+            <Icon name="explore" size={18} />
+            See every station on the map
+          </Link>
           <AreaTiles
             areas={view.areas}
             href={(area) => href({ area })}

@@ -8,6 +8,7 @@ import { peekLink } from "./services/auth";
 import {
   crewView,
   exploreView,
+  mapView,
   passportView,
   ranksView,
   rateView,
@@ -37,6 +38,12 @@ export async function loadRanks(key: RankKey, area: AreaKey | null) {
   const session = await getSession();
   if (!session) return null;
   return ranksView(await crewData(), session, key, area, new Date());
+}
+
+export async function loadMap() {
+  const session = await getSession();
+  if (!session) return null;
+  return mapView(await crewData(), session);
 }
 
 export async function loadPassport() {

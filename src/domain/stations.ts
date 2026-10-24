@@ -5,7 +5,8 @@ import type { AreaKey } from "./areas";
  * edit it, then run `pnpm db:seed`, to add, fix or hide a station. Never delete an entry that has reviews;
  * set `hidden: true` instead so reviews and stamps are kept.
  *
- * lat/lng are approximate building positions, used to place pins on the schematic map.
+ * lat/lng place each pin on the street map (/map). They were checked against OpenStreetMap
+ * geocoding in October 2026; keep new entries within about 100 m of the building.
  */
 export interface StationSeed {
   slug: string;
@@ -69,7 +70,7 @@ export const STATIONS: readonly StationSeed[] = [
     neighborhood: "Harlem",
     area: "uptown",
     lat: 40.8073,
-    lng: -73.9447,
+    lng: -73.9426,
   },
   {
     slug: "430-park-ave",
@@ -228,8 +229,8 @@ export const STATIONS: readonly StationSeed[] = [
     address: "134 N 4th St, Brooklyn, NY 11249",
     neighborhood: "Williamsburg",
     area: "brooklyn",
-    lat: 40.718,
-    lng: -73.96,
+    lat: 40.7164,
+    lng: -73.9597,
   },
   {
     slug: "575-fifth-ave",
@@ -288,8 +289,8 @@ export const STATIONS: readonly StationSeed[] = [
     address: "77 Sands St, Brooklyn, NY 11201",
     neighborhood: "Dumbo",
     area: "brooklyn",
-    lat: 40.6996,
-    lng: -73.9867,
+    lat: 40.7008,
+    lng: -73.9875,
   },
   {
     slug: "524-broadway",

@@ -10,7 +10,7 @@ const TABS: { href: string; label: string; icon: IconName; match: (p: string) =>
     href: "/",
     label: "Explore",
     icon: "explore",
-    match: (p) => p === "/" || p.startsWith("/stations/"),
+    match: (p) => p === "/" || p === "/map" || p.startsWith("/stations/"),
   },
   { href: "/ranks", label: "Ranks", icon: "ranks", match: (p) => p.startsWith("/ranks") },
   {

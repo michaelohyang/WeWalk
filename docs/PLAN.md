@@ -16,7 +16,8 @@ it into a real web app that a group of friends can share from one link.
 - Keep the Beli-style design (white canvas, teal, colored score circles) and the casual copy.
 
 **Not goals for v1:** public sign-ups, email or passwords, social features (comments, likes),
-native apps, real street maps.
+native apps, real street maps. (Street maps were added after v1, in October 2026, as the
+/map screen; see the README.)
 
 ## 2. Product review findings (from the product engineer review)
 
