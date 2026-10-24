@@ -1,9 +1,5 @@
 .card {
-  margin-top: 14px;
-  padding: 14px 16px 6px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--brand) 8%, var(--card));
-  border: 1.5px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  margin-top: 24px;
 }
 .title {
   display: flex;
@@ -41,7 +37,7 @@
   min-height: 52px;
 }
 .row + .row {
-  border-top: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  border-top: 1px solid var(--line);
 }
 .text {
   flex: 1;

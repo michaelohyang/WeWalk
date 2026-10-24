@@ -62,7 +62,14 @@ function markSelected(root: HTMLElement | null, slug: string | null) {
  * shows that station's card under the map. MapLibre needs `window` and WebGL, so it loads in
  * the browser only, and only on this screen.
  */
-export function StationMap({ pins }: { pins: MapPin[] }) {
+export function StationMap({
+  pins,
+  compact = false,
+}: {
+  pins: MapPin[];
+  /** Shorter, without the "drag to explore" hint: the map card on Home. */
+  compact?: boolean;
+}) {
   const container = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -105,11 +112,21 @@ export function StationMap({ pins }: { pins: MapPin[] }) {
           dragRotate: false,
           pitchWithRotate: false,
           touchPitch: false,
+          // Embedded in a scrolling page (Home): one finger scrolls the page, two move the map.
+          cooperativeGestures: compact,
         });
         map = m;
         m.touchZoomRotate.disableRotation();
         m.addControl(new NavigationControl({ showCompass: false }), "top-right");
         m.addControl(new AttributionControl({ compact: true }), "bottom-right");
+        let moved = false;
+        m.once("dragstart", () => (moved = true));
+        m.once("load", () => {
+          // The container can settle to its final size after the map is created (the Home card):
+          // measure again and frame every station, unless you've already started exploring.
+          m.resize();
+          if (!moved) m.fitBounds(bounds, { padding: 36, animate: false });
+        });
 
         // A data attribute, not a class: React owns this element's className.
         const sizePins = () => {
@@ -148,7 +165,7 @@ export function StationMap({ pins }: { pins: MapPin[] }) {
       stopWatchingTheme();
       map?.remove();
     };
-  }, [framePins]);
+  }, [framePins, compact]);
 
   // (Re)place the pins whenever the station data changes, keeping the selection marked.
   useEffect(() => {
@@ -192,13 +209,18 @@ export function StationMap({ pins }: { pins: MapPin[] }) {
   const station = pins.find((p) => p.slug === selected);
   return (
     <>
-      <div ref={container} className={styles.map} />
-      <div className={styles.card} aria-live="polite">
+      <div ref={container} className={compact ? `${styles.map} ${styles.compact}` : styles.map} />
+      <div className={compact ? styles.cardCompact : styles.card} aria-live="polite">
         {station ? (
           <article className={styles.station} aria-label={station.name}>
             <ScoreCircle value={station.overall} />
             <div className={styles.info}>
-              <h2 className={styles.name}>{station.name}</h2>
+              {/* On Home the card sits under the map section's own h2. */}
+              {compact ? (
+                <h3 className={styles.name}>{station.name}</h3>
+              ) : (
+                <h2 className={styles.name}>{station.name}</h2>
+              )}
               <p className={styles.meta}>
                 {station.neighborhood} · {plural(station.reviewCount, "review")}
                 {station.mine ? " · you've been" : station.visited ? " · crew's been" : ""}
@@ -209,7 +231,7 @@ export function StationMap({ pins }: { pins: MapPin[] }) {
             </ButtonLink>
           </article>
         ) : (
-          <p className={styles.hint}>Drag to explore. Tap a pin to see the station.</p>
+          !compact && <p className={styles.hint}>Drag to explore. Tap a pin to see the station.</p>
         )}
       </div>
     </>

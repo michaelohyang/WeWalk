@@ -10,6 +10,7 @@ import { hereToday } from "@/domain/today";
 import type { Session } from "../auth";
 import type { CrewData } from "../crew";
 import { cards, type StationCard } from "./cards";
+import { mapView, type MapStation } from "./map";
 
 /* The home screen: who's out today, the areas at a glance, and what the crew's been up to. */
 
@@ -46,7 +47,11 @@ export interface AreaTile {
 }
 
 export interface ExploreView {
+  /** Your name, for the greeting. */
+  me: { name: string };
   stations: StationCard[];
+  /** Every station with its position, for the map. */
+  pins: MapStation[];
   /** Tags someone has used, most common first. */
   tags: Tag[];
   /** Who in the crew is where today (New York's date), latest check-in first. */
@@ -90,7 +95,9 @@ export async function exploreView(
     for (const t of s.tags) tagCounts.set(t.tag, (tagCounts.get(t.tag) ?? 0) + t.count);
 
   return {
+    me: { name: session.member.name },
     stations,
+    pins: mapView(crew, session).stations,
     tags: [...tagCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t),
     hereToday: hereToday(crew.checkins, cityDate(now)).flatMap((h) => {
       const card = bySlug.get(h.stationSlug);

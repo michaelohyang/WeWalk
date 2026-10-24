@@ -212,12 +212,14 @@
   font-size: 14px;
 }
 
+/* The whole photo, never cropped: tall ones get bars at the sides. */
 .photo {
   display: block;
   width: 100%;
-  max-height: 320px;
+  height: auto;
+  max-height: 460px;
   margin-top: 10px;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 14px;
   background: var(--surface);
 }
