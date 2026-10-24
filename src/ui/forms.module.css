@@ -101,9 +101,6 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
-.danger {
-  color: var(--s-bad-ink);
-}
 .inlineLink {
   display: inline-block;
   min-height: 44px;

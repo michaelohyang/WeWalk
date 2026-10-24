@@ -1,6 +1,7 @@
 "use client";
 
-import { TAGS } from "@/domain/tags";
+import * as ToggleGroup from "@radix-ui/react-toggle-group";
+import { TAGS, type Tag } from "@/domain/tags";
 import { PhotoField } from "./photo-field";
 import type { Draft } from "./rate-form";
 import styles from "./rate.module.css";
@@ -48,22 +49,21 @@ export function DetailsFields({
         {errors.body && <span className={styles.error}>{errors.body}</span>}
       </label>
       <fieldset className={styles.tags}>
-        <legend>Tags</legend>
-        {TAGS.map((t) => {
-          const on = draft.tags.includes(t);
-          return (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={on}
-              onClick={() =>
-                onChange({ tags: on ? draft.tags.filter((x) => x !== t) : [...draft.tags, t] })
-              }
-            >
+        <legend id="tags-label">Tags</legend>
+        <ToggleGroup.Root
+          type="multiple"
+          className={styles.tagList}
+          aria-labelledby="tags-label"
+          value={draft.tags}
+          // Keep the tags in TAGS order, whatever order they were tapped in.
+          onValueChange={(tags) => onChange({ tags: TAGS.filter((t: Tag) => tags.includes(t)) })}
+        >
+          {TAGS.map((t) => (
+            <ToggleGroup.Item key={t} value={t}>
               {t}
-            </button>
-          );
-        })}
+            </ToggleGroup.Item>
+          ))}
+        </ToggleGroup.Root>
       </fieldset>
       <label className={styles.field}>
         <span>Visited</span>

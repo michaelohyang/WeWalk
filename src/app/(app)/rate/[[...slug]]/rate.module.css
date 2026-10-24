@@ -154,6 +154,8 @@ textarea.input {
   border: 0;
   padding: 0;
   margin: 0;
+}
+.tagList {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

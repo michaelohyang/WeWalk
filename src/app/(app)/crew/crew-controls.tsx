@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { fieldErrors, request } from "@/client/api";
 import styles from "@/ui/forms.module.css";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { useToast } from "@/ui/Toast";
 
 /** A link with Copy (and Share, where the phone has it). */
@@ -202,7 +203,6 @@ export function SetPassword({ hasPassword }: { hasPassword: boolean }) {
 export function SignOutPhone({ deviceId, current }: { deviceId: string; current: boolean }) {
   const router = useRouter();
   const toast = useToast();
-  const [confirming, setConfirming] = useState(false);
 
   async function signOut() {
     const res = await request("DELETE", `/api/me/devices/${deviceId}`);
@@ -214,26 +214,22 @@ export function SignOutPhone({ deviceId, current }: { deviceId: string; current:
     router.refresh();
   }
 
-  if (!confirming) {
-    return (
-      <button type="button" className={styles.textBtn} onClick={() => setConfirming(true)}>
-        Sign out
-      </button>
-    );
-  }
   return (
-    <span
-      role="group"
-      aria-label="Sign out this phone?"
-      style={{ display: "inline-flex", gap: 12, alignItems: "center" }}
-    >
-      <button type="button" className={`${styles.textBtn} ${styles.danger}`} onClick={signOut}>
-        {current ? "Sign out here" : "Yes, sign out"}
-      </button>
-      <button type="button" className={styles.textBtn} onClick={() => setConfirming(false)}>
-        Cancel
-      </button>
-    </span>
+    <ConfirmDialog
+      trigger={
+        <button type="button" className={styles.textBtn}>
+          Sign out
+        </button>
+      }
+      title={current ? "Sign out on this phone?" : "Sign out that phone?"}
+      description={
+        current
+          ? "You'll need your password to get back in."
+          : "It'll need your password to get back in."
+      }
+      confirmLabel={current ? "Sign out here" : "Yes, sign out"}
+      onConfirm={signOut}
+    />
   );
 }
 

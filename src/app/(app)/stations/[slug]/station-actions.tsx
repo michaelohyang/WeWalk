@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { localToday, newId } from "@/client/ids";
 import { queuedCheckin, sendCheckin } from "@/client/checkin";
 import { send, waiting } from "@/client/outbox";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { useToast } from "@/ui/Toast";
 import styles from "./actions.module.css";
 
@@ -128,7 +129,7 @@ export function StationActions({
   );
 }
 
-/** Edit / Delete on your own review. Delete asks first. */
+/** Edit / Delete on your own review. Delete asks first, in a dialog. */
 export function ReviewActions({
   reviewId,
   stationSlug,
@@ -138,8 +139,6 @@ export function ReviewActions({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [queued, setQueued] = useState(false);
   const key = `delete-review:${reviewId}`;
 
@@ -156,15 +155,12 @@ export function ReviewActions({
   }
 
   async function remove() {
-    setBusy(true);
     const result = await send({
       key,
       method: "DELETE",
       url: `/api/reviews/${reviewId}`,
       label: "Deleting your review",
     });
-    setBusy(false);
-    setConfirming(false);
     if (result.status === "rejected") toast(result.error.message);
     else if (result.status === "queued") {
       setQueued(true);
@@ -180,26 +176,18 @@ export function ReviewActions({
       <Link href={`/rate/${stationSlug}`} className={styles.textBtn}>
         Edit
       </Link>
-      {confirming ? (
-        <span className={styles.confirm} role="group" aria-label="Delete this review?">
-          <span>Delete for good?</span>
-          <button
-            type="button"
-            className={`${styles.textBtn} ${styles.danger}`}
-            onClick={remove}
-            disabled={busy}
-          >
+      <ConfirmDialog
+        trigger={
+          <button type="button" className={styles.textBtn}>
             Delete
           </button>
-          <button type="button" className={styles.textBtn} onClick={() => setConfirming(false)}>
-            Keep it
-          </button>
-        </span>
-      ) : (
-        <button type="button" className={styles.textBtn} onClick={() => setConfirming(true)}>
-          Delete
-        </button>
-      )}
+        }
+        title="Delete this review?"
+        description="It's gone for good, for everyone in the crew."
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        onConfirm={remove}
+      />
     </div>
   );
 }

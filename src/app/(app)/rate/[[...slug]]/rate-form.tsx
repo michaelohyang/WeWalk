@@ -10,6 +10,7 @@ import type { CategoryKey, Score } from "@/domain/categories";
 import type { Tag } from "@/domain/tags";
 import type { RateView } from "@/server/services/views";
 import { ButtonLink } from "@/ui/Button";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { Page } from "@/ui/Page";
 import { useToast } from "@/ui/Toast";
 import { DetailsFields } from "./details-fields";
@@ -251,9 +252,18 @@ export function RateForm({ view }: { view: RateView }) {
         {restored && (
           <p className={styles.restored}>
             Picked up where you left off.{" "}
-            <button type="button" className={styles.link} onClick={discardDraft}>
-              Start over
-            </button>
+            <ConfirmDialog
+              trigger={
+                <button type="button" className={styles.link}>
+                  Start over
+                </button>
+              }
+              title="Start over?"
+              description="This clears the scores and details you've filled in so far."
+              confirmLabel="Start over"
+              cancelLabel="Keep editing"
+              onConfirm={discardDraft}
+            />
           </p>
         )}
 

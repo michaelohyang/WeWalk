@@ -262,7 +262,7 @@ test.describe("rating", () => {
     await expect(page).toHaveURL(/\/stations\/408-broadway/);
     await myReviews(page, "").getByRole("button", { name: "Delete" }).click();
     await page
-      .getByRole("group", { name: "Delete this review?" })
+      .getByRole("alertdialog", { name: "Delete this review?" })
       .getByRole("button", { name: "Delete" })
       .click();
     await expect(page.getByRole("status").filter({ hasText: "Review deleted." })).toBeVisible();
