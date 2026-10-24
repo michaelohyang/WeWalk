@@ -7,6 +7,7 @@ import { formatScore, tierOf } from "@/domain/scoring";
 import { loadStation } from "@/server/pages";
 import { Avatar } from "@/ui/Avatar";
 import { ReactionBar } from "@/ui/ReactionBar";
+import { ReportButton } from "@/ui/ReportButton";
 import { Empty } from "@/ui/Empty";
 import { areaColor, formatDate, plural, tierWord } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
@@ -168,6 +169,7 @@ export default async function StationPage({ params }: Props) {
                   </ul>
                 )}
                 <ReactionBar reviewId={r.id} reactions={r.reactions} own={r.mine} />
+                {!r.mine && <ReportButton kind="review" id={r.id} by={r.by} />}
               </li>
             ))}
           </ul>

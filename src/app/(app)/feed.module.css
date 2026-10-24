@@ -67,3 +67,11 @@
   line-height: 1.3;
   overflow-wrap: anywhere;
 }
+/* Reactions on the left, Report tucked at the right. */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

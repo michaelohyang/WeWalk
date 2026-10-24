@@ -3,7 +3,7 @@ import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import type { CheckinInput } from "@/domain/schemas";
 import type { CheckinRecord } from "@/domain/records";
 import type { Db } from "../db/client";
-import { checkinCrews, checkins, stations } from "../db/schema";
+import { checkinCrews, checkinHides, checkins, crews, stations } from "../db/schema";
 import { stationKey } from "./stations";
 
 type CheckinRow = typeof checkins.$inferSelect & { stationSlug: string };
@@ -53,13 +53,21 @@ export async function listCheckinsBy(db: Db, memberId: string): Promise<CheckinR
   return (await select(db).where(eq(checkins.memberId, memberId))).map(toRecord);
 }
 
-/** Shares a check-in with crews (sharing it again changes nothing). */
+/** Shares a check-in with crews (sharing it again changes nothing), skipping crews that hid it. */
 export async function shareCheckin(db: Db, checkinId: string, crewIds: readonly string[]) {
   if (!crewIds.length) return;
-  await db
-    .insert(checkinCrews)
-    .values(crewIds.map((crewId) => ({ checkinId, crewId })))
-    .onConflictDoNothing();
+  const ids = sql.join(
+    crewIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+  await db.execute(sql`
+    insert into ${checkinCrews} (checkin_id, crew_id)
+    select ${checkinId}::uuid, c.id from ${crews} c
+    where c.id in (${ids})
+      and not exists (
+        select 1 from ${checkinHides} h where h.checkin_id = ${checkinId}::uuid and h.crew_id = c.id
+      )
+    on conflict do nothing`);
 }
 
 /** Whether a check-in is already shared with a crew. */

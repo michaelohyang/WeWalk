@@ -10,6 +10,9 @@ import { POST as createCrewRoute } from "@/app/api/crews/route";
 import { POST as leaveCrewRoute } from "@/app/api/crews/leave/route";
 import { PATCH as renameCrewRoute } from "@/app/api/crews/current/route";
 import { POST as newInviteRoute } from "@/app/api/crews/current/invite/route";
+import { DELETE as removeMemberRoute } from "@/app/api/crews/current/members/[id]/route";
+import { POST as handleReportRoute } from "@/app/api/reports/[id]/route";
+import { POST as reportRoute } from "@/app/api/reports/route";
 import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
@@ -37,7 +40,7 @@ import { inCity } from "@/server/services/views/city";
 import { STATIONS } from "@/domain/stations";
 import { insertReview } from "@/server/repos/reviews";
 import { insertCrew, listMemberCrews } from "@/server/repos/crews";
-import { crews as crewsTable } from "@/server/db/schema";
+import { crews as crewsTable, reports as reportsTable } from "@/server/db/schema";
 import { reviewInputSchema } from "@/domain/schemas";
 import { signUp } from "@/server/services/auth";
 import { Phone } from "./client";
@@ -206,6 +209,28 @@ describe("every member route needs a session", () => {
     [
       "PUT owner",
       () => new Phone().call(handOver, "PUT", "/api/admin/owner", { body: { memberId: newId() } }),
+    ],
+    [
+      "POST report",
+      () =>
+        new Phone().call(reportRoute, "POST", "/api/reports", {
+          body: { kind: "review", id: newId() },
+        }),
+    ],
+    [
+      "POST report action",
+      () =>
+        new Phone().call(handleReportRoute, "POST", "/api/reports/x", {
+          params: { id: newId() },
+          body: { action: "dismiss" },
+        }),
+    ],
+    [
+      "DELETE crew member",
+      () =>
+        new Phone().call(removeMemberRoute, "DELETE", "/api/crews/current/members/x", {
+          params: { id: newId() },
+        }),
     ],
   ])("%s → 401", async (_, call) => expect((await call()).status).toBe(401));
 
@@ -1371,5 +1396,61 @@ describe("crews", () => {
     const left = await db.select({ id: crewsTable.id }).from(crewsTable);
     expect(left.map((c) => c.id)).not.toContain(solo.id);
     expect(left.map((c) => c.id)).toContain(crewB.id);
+  });
+});
+
+describe("moderation", () => {
+  async function reportedReview() {
+    const dana = await joined("Dana"); // owner of the first crew
+    const sam = await joined("Sam");
+    const ben = await joined("Ben");
+    const id = newId();
+    await sam.call(putReview, "PUT", "/api/reviews/x", { params: { id }, body: review() });
+    return { dana, sam, ben, id };
+  }
+  const reportIds = async () =>
+    (await db.select({ id: reportsTable.id }).from(reportsTable)).map((r) => r.id);
+
+  it("a member reports a post; only the owner can act on it", async () => {
+    const { dana, sam, ben, id } = await reportedReview();
+    const body = { kind: "review", id, reason: "Not nice" };
+    expect((await ben.call(reportRoute, "POST", "/api/reports", { body })).status).toBe(204);
+    expect((await ben.call(reportRoute, "POST", "/api/reports", { body })).status).toBe(204);
+    expect(
+      (
+        await ben.call(reportRoute, "POST", "/api/reports", {
+          body: { ...body, reason: "x".repeat(301) },
+        })
+      ).status,
+    ).toBe(400);
+    expect((await sam.call(reportRoute, "POST", "/api/reports", { body })).status).toBe(400);
+    const [reportId] = await reportIds();
+    expect(await reportIds()).toHaveLength(1);
+
+    const act = (phone: Phone, action: string) =>
+      phone.call(handleReportRoute, "POST", "/api/reports/x", {
+        params: { id: reportId! },
+        body: { action },
+      });
+    expect((await act(sam, "hide")).status).toBe(403);
+    expect((await act(dana, "delete")).status).toBe(400);
+    expect((await act(dana, "hide")).status).toBe(204);
+    expect((await act(dana, "hide")).status).toBe(404);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
+  });
+
+  it("the owner removes someone, who then can't rejoin", async () => {
+    const { dana, sam, ben } = await reportedReview();
+    const samId = (await sam.call(me, "GET", "/api/me")).body.member.id as string;
+    const remove = (phone: Phone, id: string) =>
+      phone.call(removeMemberRoute, "DELETE", "/api/crews/current/members/x", { params: { id } });
+    expect((await remove(ben, samId)).status).toBe(403);
+    expect((await remove(dana, samId)).status).toBe(204);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
+    const [first] = await db.select({ code: crewsTable.inviteCode }).from(crewsTable);
+    expect(
+      (await sam.call(joinCrewRoute, "POST", "/api/crews/join", { body: { code: first!.code } }))
+        .status,
+    ).toBe(403);
   });
 });

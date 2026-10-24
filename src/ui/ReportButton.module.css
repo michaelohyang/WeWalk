@@ -1,0 +1,16 @@
+/* Quiet on purpose: it's there when needed, not competing with the reactions. */
+.report {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--fg-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.report:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}

@@ -106,3 +106,60 @@
   font-weight: 600;
   color: var(--fg-2);
 }
+.reports {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.report {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.reportHead {
+  margin: 0;
+  line-height: 1.35;
+}
+.reportHead .sub {
+  display: block;
+}
+/* The reported words, set apart so they read as a quote, not as the app speaking. */
+.reported {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--line);
+  background: var(--surface);
+  border-radius: 0 10px 10px 0;
+  overflow-wrap: anywhere;
+}
+.reported p {
+  margin: 0;
+}
+.reportedTake {
+  font-weight: 800;
+}
+.reportedPhoto {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 180px;
+  border-radius: 10px;
+}
+.reason {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.reportActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}

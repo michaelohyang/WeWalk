@@ -545,3 +545,70 @@ export function LeaveCrew({ crewId, crewName }: { crewId: string; crewName: stri
     />
   );
 }
+
+/** Owner: take someone out of the crew. They can't rejoin it with an invite link. */
+export function RemoveMember({
+  crewId,
+  members,
+}: {
+  crewId: string;
+  members: { id: string; name: string }[];
+}) {
+  const router = useRouter();
+  const toast = useToast();
+  const [memberId, setMemberId] = useState("");
+  const name = members.find((m) => m.id === memberId)?.name;
+
+  async function remove() {
+    const res = await request(
+      "DELETE",
+      `/api/crews/current/members/${memberId}`,
+      undefined,
+      crewHeader(crewId),
+    );
+    if (!res.ok) {
+      toast(res.error.message);
+      return;
+    }
+    toast(`${name} is out. Make a new invite link so they can't rejoin with a new account.`);
+    setMemberId("");
+    router.refresh();
+  }
+
+  return (
+    <div className={styles.card}>
+      <p className={styles.lede}>
+        Their reviews and check-ins come out of the crew, and they can&apos;t rejoin with an invite
+        link.
+      </p>
+      <div className={styles.row}>
+        <label className={styles.field}>
+          <span>Remove</span>
+          <Select
+            className={styles.input}
+            value={memberId}
+            onValueChange={setMemberId}
+            placeholder="Pick someone…"
+            groups={[{ label: "", options: members.map((m) => ({ value: m.id, label: m.name })) }]}
+          />
+        </label>
+        <ConfirmDialog
+          trigger={
+            <button
+              type="button"
+              className={styles.secondary}
+              disabled={!memberId}
+              style={{ alignSelf: "end" }}
+            >
+              Remove
+            </button>
+          }
+          title={`Remove ${name ?? "them"} from the crew?`}
+          description="Their posts come out of the crew and they can't rejoin with an invite link. Make a new invite link afterwards, so they can't come back with a new account."
+          confirmLabel={`Remove ${name ?? "them"}`}
+          onConfirm={() => void remove()}
+        />
+      </div>
+    </div>
+  );
+}
