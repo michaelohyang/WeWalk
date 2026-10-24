@@ -130,6 +130,7 @@ owner. Locally, photos are kept in memory, so they disappear when the server res
 | `DATABASE_URL`  | The app at runtime     | Postgres connection string (Supabase transaction pooler, port 6543), or `pglite:…` locally |
 | `DIRECT_URL`    | Migrations and seeding | Postgres connection string (Supabase session pooler, port 5432)                            |
 | `BLOB_STORE_ID` | Review photos          | Added by Vercel when a Blob store is connected to the project; leave empty for local use   |
+| `SIGNUP_CODE`   | Sign-up                | Optional invite code. When set, sign-up needs the invite link from Crew, which carries it  |
 
 Never commit real connection strings or tokens. `.env.local` is ignored by git.
 
@@ -215,7 +216,9 @@ before building the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the step-by-
 - **Writes** must come from the app's own pages (same-origin check), and all input is validated
   with Zod and by database constraints.
 - **The site is private:** every page asks you to sign in, and search engines are told not to
-  index it.
+  index it. Set `SIGNUP_CODE` so only people with the crew's invite link can create an account.
+- **Logins:** an expired lockout starts a fresh count, and after logging in you're only ever
+  sent to a page on this site.
 - **Map tiles come from OpenFreeMap.** Opening the map sends your IP address and the part of
   the city you're viewing to OpenFreeMap, as with any web map. No referrer is sent, and no crew
   data leaves the app.

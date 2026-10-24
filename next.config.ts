@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   // Older short links (already shared in chats) keep working.
   async redirects() {
     return [
-      // Invite links from before accounts had passwords: send people to sign up.
-      { source: "/j/:code", destination: "/signup", permanent: false },
+      // Invite links from before accounts had passwords: sign up, carrying the code along.
+      { source: "/j/:code", destination: "/signup?code=:code", permanent: false },
       { source: "/s/:id", destination: "/stations/:id", permanent: true },
       // Recovery links sent before /pair was renamed (they last 24 hours).
       { source: "/pair/:token", destination: "/recover/:token", permanent: true },

@@ -39,7 +39,7 @@ export default async function CrewPage() {
       </div>
 
       <Section title="Invite friends">
-        <InviteFriends />
+        <InviteFriends code={view.inviteCode} />
       </Section>
 
       <Section title="Leaderboard" note="by stations visited">

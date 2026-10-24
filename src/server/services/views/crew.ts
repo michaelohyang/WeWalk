@@ -1,4 +1,5 @@
 import "server-only";
+import { signupCode } from "../../invite";
 import { CATEGORIES } from "@/domain/categories";
 import { tasteMatch } from "@/domain/taste";
 import type { Db } from "../../db/client";
@@ -8,6 +9,8 @@ import type { CrewData } from "../crew";
 /* The Crew screen: members, your account and your phones. */
 
 export interface CrewView {
+  /** Goes into the invite link; null when signup is open. */
+  inviteCode: string | null;
   me: { id: string; name: string; isOwner: boolean; hasPassword: boolean };
   /** Everyone, for the owner's recovery links. Empty for non-owners. */
   members: { id: string; name: string }[];
@@ -71,6 +74,7 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
     })
     .sort((a, b) => b.agreement - a.agreement || a.name.localeCompare(b.name));
   return {
+    inviteCode: signupCode(),
     taste,
     me: {
       id: session.member.id,

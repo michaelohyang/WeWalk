@@ -12,7 +12,16 @@ type Mode = "login" | "signup";
  * Log in or sign up with a username and password. Used by /login, /signup and the signed-out
  * screen any page shows (so a shared link to a station opens that station after logging in).
  */
-export function AuthForm({ mode: initial, next }: { mode: Mode; next?: string }) {
+export function AuthForm({
+  mode: initial,
+  next,
+  code,
+}: {
+  mode: Mode;
+  next?: string;
+  /** The invite code from the link, sent along when signing up. */
+  code?: string;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(initial);
   const [name, setName] = useState("");
@@ -31,7 +40,9 @@ export function AuthForm({ mode: initial, next }: { mode: Mode; next?: string })
     if (Object.keys(problems).length) return;
 
     setBusy(true);
-    const res = await request("POST", signup ? "/api/signup" : "/api/login", { name, password });
+    const res = signup
+      ? await request("POST", "/api/signup", { name, password, ...(code ? { code } : {}) })
+      : await request("POST", "/api/login", { name, password });
     setBusy(false);
     if (res.ok) {
       if (next) router.replace(next);
@@ -41,6 +52,15 @@ export function AuthForm({ mode: initial, next }: { mode: Mode; next?: string })
     const byField = fieldErrors(res.error);
     setErrors(Object.keys(byField).length ? byField : { form: res.error.message });
   }
+
+  /** The other page, keeping where you were headed and the invite code from your link. */
+  const switchHref = (to: Mode) => {
+    const qs = new URLSearchParams();
+    if (next && next !== "/") qs.set("next", next);
+    if (code) qs.set("code", code);
+    const query = qs.toString();
+    return query ? `/${to}?${query}` : `/${to}`;
+  };
 
   const switchTo = (to: Mode) => (e: React.MouseEvent) => {
     // Without a `next` (the signed-out screen), switch in place and keep the URL.
@@ -106,7 +126,7 @@ export function AuthForm({ mode: initial, next }: { mode: Mode; next?: string })
       <p className={styles.lede}>
         {signup ? "Already have an account? " : "New here? "}
         <Link
-          href={signup ? "/login" : "/signup"}
+          href={switchHref(signup ? "login" : "signup")}
           onClick={switchTo(signup ? "login" : "signup")}
           className={styles.inlineLink}
         >

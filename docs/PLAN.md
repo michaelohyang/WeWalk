@@ -140,6 +140,8 @@ data. No realtime in v1: friends see new posts when they refresh or navigate, wh
 "within 5 seconds" criterion.
 
 **Auth (username + password; revised after launch, replacing invite codes and pairing links).**
+Since October 2026 an optional `SIGNUP_CODE` closes sign-up again: the Crew invite link carries
+it (`/signup?code=…`), so invited friends never type it.
 - **Accounts:** sign up at `/signup` with a username (the display name; unique ignoring case) and
   a password of 8+ characters. Log in anywhere at `/login`. No email.
 - **Passwords** are stored only as salted scrypt hashes (`members.password_hash`,

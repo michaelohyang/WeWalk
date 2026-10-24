@@ -1,0 +1,32 @@
+.skeleton {
+  display: grid;
+  gap: 12px;
+  padding-top: 22px;
+}
+.block {
+  border-radius: 14px;
+  background: var(--surface);
+}
+.title {
+  width: 45%;
+  height: 34px;
+}
+.line {
+  width: 70%;
+  height: 16px;
+  margin-bottom: 8px;
+}
+.card {
+  height: 112px;
+  border-radius: 18px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .block {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}

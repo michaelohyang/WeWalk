@@ -16,7 +16,7 @@ import { createTestDb, resetTestDb } from "@/server/db/testing";
 import { cityDate } from "@/domain/dates";
 import type { Session } from "@/server/services/auth";
 import { loadCrew } from "@/server/services/crew";
-import { exploreView, mapView, stationView } from "@/server/services/views";
+import { exploreView, mapView, ranksView, stationView } from "@/server/services/views";
 import { STATIONS } from "@/domain/stations";
 import { Phone } from "./client";
 
@@ -642,5 +642,23 @@ describe("map: every station at its position", () => {
       reviewCount: 0,
       mine: false,
     });
+  });
+});
+
+describe("ranks: Station of the Month", () => {
+  it("follows New York's calendar, not UTC's", async () => {
+    await joined("Dana");
+    const crew = await loadCrew(db);
+    const me = crew.members.find((m) => m.name === "Dana")!;
+    // 11:30pm on Oct 31 in New York is already Nov 1 in UTC.
+    const halloweenNight = new Date("2026-11-01T03:30:00Z");
+    const view = await ranksView(
+      crew,
+      { member: me, deviceId: "d" } as unknown as Session,
+      "overall",
+      null,
+      halloweenNight,
+    );
+    expect(view.month).toBe("2026-10");
   });
 });

@@ -1,7 +1,7 @@
 import "server-only";
 import { stationOfMonth } from "@/domain/activity";
 import type { AreaKey } from "@/domain/areas";
-import { monthOf, utcDate } from "@/domain/dates";
+import { cityDate, monthOf } from "@/domain/dates";
 import { rankStations, type RankKey } from "@/domain/ranking";
 import { mostDivisive } from "@/domain/taste";
 import type { Session } from "../auth";
@@ -38,7 +38,7 @@ export async function ranksView(
   const inArea = crew.stations.filter((s) => !area || s.area === area);
   const bySlug = new Map(all.map((c) => [c.slug, c]));
   const scores = new Map([...summaries].map(([slug, s]) => [slug, s.score]));
-  const month = monthOf(utcDate(now));
+  const month = monthOf(cityDate(now));
   const som = stationOfMonth(crew.stations, crew.reviews, crew.checkins, month);
   return {
     key,

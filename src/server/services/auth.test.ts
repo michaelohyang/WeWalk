@@ -87,6 +87,19 @@ describe("logIn", () => {
     expect(await code(logIn(db, { name: "Dana", password: PASSWORD }, later))).toBe("ok");
   });
 
+  it("starts counting again after a lock expires, instead of re-locking on one mistake", async () => {
+    await signIn(db, "Dana");
+    for (let i = 0; i < MAX_FAILED_LOGINS; i++) {
+      await code(logIn(db, { name: "Dana", password: "nope" }, NOW));
+    }
+    const later = new Date(NOW.getTime() + LOCKOUT_MS + 1);
+    // One typo after the lock ends is just one wrong password...
+    expect(await code(logIn(db, { name: "Dana", password: "nope" }, later))).toBe("unauthorized");
+    // ...so the right password still works.
+    const soon = new Date(later.getTime() + 1000);
+    expect(await code(logIn(db, { name: "Dana", password: PASSWORD }, soon))).toBe("ok");
+  });
+
   it("can't log in to an account that has no password yet", async () => {
     const me = await signIn(db, "Dana");
     await db.update(members).set({ passwordHash: null });
@@ -184,5 +197,27 @@ describe("rename", () => {
     expect((await rename(db, me, "Dana K")).name).toBe("Dana K");
     expect(await code(rename(db, me, "sal"))).toBe("conflict");
     expect((await rename(db, me, "DANA K")).name).toBe("DANA K");
+  });
+});
+
+describe("signUp with an invite code", () => {
+  const join = (name: string, code: string | undefined, invite: string | null) =>
+    code_(signUp(db, { name, password: PASSWORD, code }, invite));
+  const code_ = code;
+
+  it("lets the first person in without one, so the owner can set up the crew", async () => {
+    expect(await join("Owner", undefined, "sesame")).toBe("ok");
+  });
+
+  it("is open to anyone when no code is set", async () => {
+    await join("Owner", undefined, null);
+    expect(await join("Sam", undefined, null)).toBe("ok");
+  });
+
+  it("refuses a missing or wrong code once the crew exists", async () => {
+    await join("Owner", undefined, "sesame");
+    expect(await join("Sam", undefined, "sesame")).toBe("forbidden");
+    expect(await join("Sam", "open up", "sesame")).toBe("forbidden");
+    expect(await join("Sam", "sesame", "sesame")).toBe("ok");
   });
 });
