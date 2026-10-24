@@ -9,7 +9,7 @@ import { AppError } from "../errors";
 import { memoryPhoto, storePhoto } from "../photos";
 import { clearPassword } from "../repos/members";
 import { deleteAccount, exportData, handOverOwnership } from "./account";
-import { authenticate, createRecoveryLink, logIn, type Session } from "./auth";
+import { authenticate, createRecoveryLink, logIn, MAX_FAILED_LOGINS, type Session } from "./auth";
 import { react } from "./reactions";
 import { NOW, PASSWORD, newId, signIn } from "./testing";
 import { putCheckin, putReview } from "./visits";
@@ -136,6 +136,19 @@ describe("deleteAccount", () => {
       details: { fields: { password: [expect.any(String)] } },
     });
     expect(await rowsOf(sal.member.id)).toEqual(before);
+  });
+
+  it("counts wrong passwords toward the login lockout", async () => {
+    await busyCrew();
+    for (let i = 0; i < MAX_FAILED_LOGINS; i++) {
+      expect(await code(deleteAccount(db, sal, { password: "nope" }, NOW))).toBe("invalid");
+    }
+    // Locked: even the right password is refused, here and when logging in.
+    expect(await code(deleteAccount(db, sal, { password: PASSWORD }, NOW))).toBe("invalid");
+    expect(await code(logIn(db, { name: sal.member.name, password: PASSWORD }, NOW))).toBe(
+      "unauthorized",
+    );
+    expect(await db.select().from(members).where(eq(members.id, sal.member.id))).toHaveLength(1);
   });
 
   it("asks a member without a password to set one first", async () => {
