@@ -1,0 +1,122 @@
+.map {
+  height: min(62vh, 560px);
+  min-height: 320px;
+  margin-top: 12px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* Zoomed out: a dot in a 28px tap target. Zoomed in ([data-near]): a badge with the score. */
+.pin {
+  --c: var(--muted);
+  --ink: var(--fg-2);
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
+}
+.pin::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c);
+  border: 2px solid var(--card);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+[data-near] .pin {
+  padding: 0 8px;
+  border-radius: 14px;
+  border: 2px solid var(--c);
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+}
+[data-near] .pin::before {
+  display: none;
+}
+.pin:focus-visible {
+  outline: 2.5px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 14px;
+}
+
+.great {
+  --c: var(--s-great);
+  --ink: var(--s-great-ink);
+}
+.good {
+  --c: var(--s-good);
+  --ink: var(--s-good-ink);
+}
+.ok {
+  --c: var(--s-ok);
+  --ink: var(--s-ok-ink);
+}
+.bad {
+  --c: var(--s-bad);
+  --ink: var(--s-bad-ink);
+}
+/* Not rated yet: hollow and dashed, like the empty ScoreCircle. */
+.none::before {
+  background: var(--card);
+  border: 2px dashed var(--muted);
+}
+[data-near] .none {
+  border-style: dashed;
+}
+
+/* The selected pin sits on top of its neighbors, ringed in brand teal. */
+.active {
+  z-index: 1;
+}
+.active::before {
+  outline: 3px solid var(--brand);
+  outline-offset: 1px;
+}
+[data-near] .active {
+  outline: 3px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.card {
+  margin-top: 12px;
+  min-height: 72px;
+}
+.station {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+.info {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-size: 17px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.meta {
+  margin-top: 2px;
+  color: var(--fg-2);
+  font-size: 13px;
+}
+.hint {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}

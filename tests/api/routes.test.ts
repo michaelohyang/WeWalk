@@ -16,7 +16,8 @@ import { createTestDb, resetTestDb } from "@/server/db/testing";
 import { cityDate } from "@/domain/dates";
 import type { Session } from "@/server/services/auth";
 import { loadCrew } from "@/server/services/crew";
-import { exploreView, stationView } from "@/server/services/views";
+import { exploreView, mapView, stationView } from "@/server/services/views";
+import { STATIONS } from "@/domain/stations";
 import { Phone } from "./client";
 
 const PASSWORD = "correct horse battery";
@@ -609,5 +610,37 @@ describe("home: areas and the crew feed", () => {
       by: ["Sam"],
     });
     expect(view.feed.find((f) => f.kind === "checkin")).toMatchObject({ by: "Sam", mine: false });
+  });
+});
+
+describe("map: every station at its position", () => {
+  it("places each visible station at its seeded coordinates, with the crew's score", async () => {
+    const dana = await joined("Dana");
+    await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review({ stationSlug: "dock-72", scores: { coffee: 5, wifi: 4 } }),
+    });
+
+    const crew = await loadCrew(db);
+    const me = crew.members.find((m) => m.name === "Dana")!;
+    const view = mapView(crew, { member: me, deviceId: "d" } as unknown as Session);
+
+    const visible = STATIONS.filter((s) => !s.hidden);
+    expect(view.stations.map((s) => s.slug).sort()).toEqual(visible.map((s) => s.slug).sort());
+    for (const s of view.stations) {
+      const seed = visible.find((v) => v.slug === s.slug)!;
+      expect([s.lat, s.lng], s.slug).toEqual([seed.lat, seed.lng]);
+    }
+    expect(view.stations.find((s) => s.slug === "dock-72")).toMatchObject({
+      overall: 4.5,
+      reviewCount: 1,
+      visited: true,
+      mine: true,
+    });
+    expect(view.stations.find((s) => s.slug === "33-irving-pl")).toMatchObject({
+      overall: null,
+      reviewCount: 0,
+      mine: false,
+    });
   });
 });

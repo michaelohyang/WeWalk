@@ -40,6 +40,12 @@ is out today, and find out which of the city's 29 buildings the crew actually li
 - **Search and filters:** find a building by name, address or neighborhood, or by "Best for"
   tags such as _quiet floor_ or _good for calls_.
 
+### Map
+
+- **Street map:** every building on a real, draggable map of the city. Pins are colored by the
+  crew's score and grow into score badges as you zoom in. Tap one for its score and a link to
+  the building. The map follows the app's light or dark theme.
+
 ### Rating and checking in
 
 - **Reviews:** score a building on up to nine categories (coffee, Wi-Fi, phone booths, natural
@@ -210,6 +216,9 @@ before building the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the step-by-
   with Zod and by database constraints.
 - **The site is private:** every page asks you to sign in, and search engines are told not to
   index it.
+- **Map tiles come from OpenFreeMap.** Opening the map sends your IP address and the part of
+  the city you're viewing to OpenFreeMap, as with any web map. No referrer is sent, and no crew
+  data leaves the app.
 
 ## Contributing
 
