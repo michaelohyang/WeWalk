@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AREAS, isArea, type AreaKey } from "@/domain/areas";
+import { CITY_TIME_ZONE } from "@/domain/dates";
 import type { Tag } from "@/domain/tags";
 import type { ExploreView, StationCard } from "@/server/services/views";
 import { ButtonLink } from "@/ui/Button";
@@ -13,6 +14,7 @@ import { areaColor } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
 import { StationRow } from "@/ui/StationRow";
+import { StationMap } from "@/ui/StationMap";
 import { ThemeToggle } from "@/ui/ThemeToggle";
 import { AreaTiles } from "./area-tiles";
 import styles from "./explore.module.css";
@@ -20,6 +22,28 @@ import { Feed } from "./feed";
 import { HereToday } from "./here-today";
 
 type Filters = { q: string; area: AreaKey | null; tag: Tag | null };
+
+const nyHour = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  hourCycle: "h23",
+  timeZone: CITY_TIME_ZONE,
+});
+
+function greeting(now: Date) {
+  const hour = Number(nyHour.format(now));
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
+
+/** One line on who's out: "Priya and Sam are out today." */
+function outToday(here: ExploreView["hereToday"]) {
+  const others = here.filter((h) => !h.mine).map((h) => h.name);
+  if (!others.length) {
+    return here.length ? "You're the first one out today." : "Nobody's checked in yet today.";
+  }
+  if (others.length === 1) return `${others[0]} is out today.`;
+  if (others.length === 2) return `${others[0]} and ${others[1]} are out today.`;
+  return `${others[0]}, ${others[1]} and ${others.length - 2} more are out today.`;
+}
 
 function parseFilters(params: URLSearchParams, tags: readonly Tag[]): Filters {
   const area = params.get("area");
@@ -79,15 +103,20 @@ export function Explore({ view }: { view: ExploreView }) {
   };
 
   return (
-    <Page
-      title={
-        <>
-          We<span className={styles.brand}>Walk</span>
-        </>
-      }
-      subtitle="NYC WeWorks, rated by people who care too much"
-      action={<ThemeToggle />}
-    >
+    <Page>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.wordmark}>
+            We<span className={styles.brand}>Walk</span>
+          </p>
+          {/* The hour can differ between the server and the browser right on the boundary. */}
+          <h1 className={styles.greeting} suppressHydrationWarning>
+            {greeting(new Date())}, {view.me.name}
+          </h1>
+          <p className={styles.summary}>{outToday(view.hereToday)}</p>
+        </div>
+        <ThemeToggle />
+      </header>
       {/* A plain GET form, so search works even before the page's JavaScript loads. */}
       <form
         role="search"
@@ -166,17 +195,24 @@ export function Explore({ view }: { view: ExploreView }) {
       ) : (
         <>
           <HereToday here={view.hereToday} />
-          {/* No prefetch: the map page pulls in the map library, which Home shouldn't pay for. */}
-          <Link href="/map" prefetch={false} className={styles.mapLink}>
-            <Icon name="explore" size={18} />
-            See every station on the map
-          </Link>
-          <AreaTiles
-            areas={view.areas}
-            href={(area) => href({ area })}
-            onSelect={(area) => setFilters({ area })}
-          />
-          <TagChips tags={view.tags} current={filters.tag} href={href} onSelect={setFilters} />
+          <Section
+            title="Station map"
+            note={
+              <Link href="/map" prefetch={false} className={styles.more}>
+                Full map
+              </Link>
+            }
+          >
+            <StationMap pins={view.pins} compact />
+          </Section>
+          <Section title="Neighborhoods">
+            <AreaTiles
+              areas={view.areas}
+              href={(area) => href({ area })}
+              onSelect={(area) => setFilters({ area })}
+            />
+            <TagChips tags={view.tags} current={filters.tag} href={href} onSelect={setFilters} />
+          </Section>
           <Section title="Latest from the crew">
             {view.feed.length ? (
               <Feed entries={view.feed} />

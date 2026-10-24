@@ -25,6 +25,8 @@
 /* Tappable ones get the full 44px; the counts on your own review stay compact. */
 .reaction {
   min-height: 44px;
+  border-color: transparent;
+  background: var(--surface);
   cursor: pointer;
   transition:
     transform 0.12s ease,

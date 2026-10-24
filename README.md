@@ -136,23 +136,24 @@ Never commit real connection strings or tokens. `.env.local` is ignored by git.
 
 ## Scripts
 
-| Command            | Description                                                              |
-| ------------------ | ------------------------------------------------------------------------ |
-| `pnpm dev`         | Start the development server                                             |
-| `pnpm build`       | Create a production build                                                |
-| `pnpm start`       | Serve the production build                                               |
-| `pnpm check`       | Format check, lint, typecheck, unused-code check and unit tests          |
-| `pnpm test`        | Unit and API tests (Vitest)                                              |
-| `pnpm e2e`         | Browser tests (Playwright), in light and dark mode at phone size         |
-| `pnpm lint`        | ESLint, including the architecture layer rules                           |
-| `pnpm typecheck`   | TypeScript type check                                                    |
-| `pnpm knip`        | Find unused files, dependencies and exports                              |
-| `pnpm format`      | Format all files with Prettier                                           |
-| `pnpm db:generate` | Generate a SQL migration after changing `src/server/db/schema.ts`        |
-| `pnpm db:migrate`  | Apply migrations to `DIRECT_URL`                                         |
-| `pnpm db:seed`     | Add new buildings and update existing ones from `src/domain/stations.ts` |
-| `pnpm db:deploy`   | Migrate, seed and verify row-level security (runs on production deploys) |
-| `pnpm smoke <url>` | Read-only health checks against a deployed site                          |
+| Command                          | Description                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                       | Start the development server                                                                      |
+| `pnpm build`                     | Create a production build                                                                         |
+| `pnpm start`                     | Serve the production build                                                                        |
+| `pnpm check`                     | Format check, lint, typecheck, unused-code check and unit tests                                   |
+| `pnpm test`                      | Unit and API tests (Vitest)                                                                       |
+| `pnpm e2e`                       | Browser tests (Playwright), in light and dark mode at phone size                                  |
+| `pnpm lint`                      | ESLint, including the architecture layer rules                                                    |
+| `pnpm typecheck`                 | TypeScript type check                                                                             |
+| `pnpm knip`                      | Find unused files, dependencies and exports                                                       |
+| `pnpm format`                    | Format all files with Prettier                                                                    |
+| `pnpm db:generate`               | Generate a SQL migration after changing `src/server/db/schema.ts`                                 |
+| `pnpm db:migrate`                | Apply migrations to `DIRECT_URL`                                                                  |
+| `pnpm db:seed`                   | Add new buildings and update existing ones from `src/domain/stations.ts`                          |
+| `pnpm db:deploy`                 | Migrate, seed and verify row-level security (runs on production deploys)                          |
+| `pnpm smoke <url>`               | Read-only health checks against a deployed site                                                   |
+| `pnpm photos:backfill [--apply]` | One-time: give photos uploaded before sizes were kept a sized address (dry run without `--apply`) |
 
 ## How it works
 

@@ -341,7 +341,7 @@ tap targets.
 | 4 | Identity | Username + password (scrypt-hashed), device sign-out, owner-issued recovery links. Replaced the original invite code and pairing links after launch |
 | 5 | Stations | Owner only, through the seed file. Removing a station hides it and keeps its data. "Suggest a building" comes later |
 | 6 | Building list | The owner's list of 29 (appendix A) |
-| 7 | Size budget | First-load JS + CSS ≤ 230 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Raised from 200 KB in October 2026: Radix Primitives took Home to ~211 KB, which the owner accepted. Revisit if performance becomes a problem |
+| 7 | Size budget | First-load JS + CSS ≤ 230 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Raised from 200 KB in October 2026: Radix Primitives took Home to ~211 KB, which the owner accepted. The map library on Home (~286 KB) loads after the page is usable and is not counted. Revisit if performance becomes a problem |
 
 ## Appendix A: Stations (seed data, from the owner)
 

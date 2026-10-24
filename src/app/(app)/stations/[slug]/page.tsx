@@ -10,6 +10,7 @@ import { Empty } from "@/ui/Empty";
 import { areaColor, formatDate, plural, tierWord } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
+import { photoSize } from "@/domain/photos";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import { PostedToast, ReviewActions, StationActions } from "./station-actions";
 import styles from "./station.module.css";
@@ -151,6 +152,7 @@ export default async function StationPage({ params }: Props) {
                   // eslint-disable-next-line @next/next/no-img-element -- resized on upload
                   <img
                     src={r.photoUrl}
+                    {...photoSize(r.photoUrl)}
                     alt={`${r.by}'s photo of ${station.name}`}
                     className={styles.photo}
                     loading="lazy"

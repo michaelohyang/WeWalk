@@ -54,17 +54,34 @@
   text-decoration: none;
 }
 
-.mapLink {
+.header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 16px;
-  min-height: 44px;
-  padding-inline: 14px;
-  border-radius: 14px;
-  background: var(--brand-soft);
-  color: var(--brand);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 18px 16px;
+}
+.wordmark {
+  margin: 0 0 6px;
   font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+.greeting {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 850;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.summary {
+  margin: 6px 0 0;
+  color: var(--fg-2);
+  font-size: 15px;
+}
+.more {
+  color: var(--brand);
   font-weight: 700;
   text-decoration: none;
 }

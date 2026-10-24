@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CITY_TIME_ZONE } from "@/domain/dates";
+import { photoSize } from "@/domain/photos";
 import type { FeedEntry } from "@/server/services/views";
 import { Avatar } from "@/ui/Avatar";
 import { areaColor } from "@/ui/format";
@@ -48,6 +49,8 @@ export function Feed({ entries }: { entries: FeedEntry[] }) {
               // eslint-disable-next-line @next/next/no-img-element -- resized on upload
               <img
                 src={e.photoUrl}
+                // Reserves the photo's space before it loads (photos uploaded since sizes were kept).
+                {...photoSize(e.photoUrl)}
                 alt={`${e.by}'s photo of ${e.station.name}`}
                 className={styles.photo}
                 loading="lazy"
