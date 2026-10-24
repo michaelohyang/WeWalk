@@ -107,7 +107,12 @@ const newPasswordSchema = z
   .max(200, "That's a bit much. Keep it under 200 characters.");
 
 export const signupInputSchema = z
-  .object({ name: displayNameSchema, password: newPasswordSchema })
+  .object({
+    name: displayNameSchema,
+    password: newPasswordSchema,
+    /** From the invite link; required once the crew sets SIGNUP_CODE. */
+    code: z.string().max(200).optional(),
+  })
   .strict();
 export type SignupInput = z.infer<typeof signupInputSchema>;
 

@@ -51,7 +51,7 @@ function ShareLink({ url, title }: { url: string; title: string }) {
   );
 }
 
-export function InviteFriends() {
+export function InviteFriends({ code }: { code: string | null }) {
   const [origin, setOrigin] = useState("");
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the public origin is only known in the browser
   useEffect(() => setOrigin(location.origin), []);
@@ -61,7 +61,12 @@ export function InviteFriends() {
         Send this to people you&apos;d share a phone booth with. They pick a username and password,
         and they&apos;re in.
       </p>
-      {origin && <ShareLink url={`${origin}/signup`} title="Join me on WeWalk" />}
+      {origin && (
+        <ShareLink
+          url={`${origin}/signup${code ? `?code=${encodeURIComponent(code)}` : ""}`}
+          title="Join me on WeWalk"
+        />
+      )}
     </div>
   );
 }

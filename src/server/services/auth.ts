@@ -1,4 +1,5 @@
 import "server-only";
+import { codeMatches, signupCode } from "../invite";
 import { nameKey } from "@/domain/names";
 import type { Db } from "../db/client";
 import { AppError, isUniqueViolation } from "../errors";
@@ -32,10 +33,17 @@ async function startDevice(db: Db, memberId: string): Promise<string> {
  * Sign up with a username and password. The first person to sign up becomes the owner.
  * `name` must already be normalized (see domain/schemas).
  */
+const NEEDS_INVITE = "You need an invite link from someone in the crew to join.";
+
+/** `inviteCode` defaults to SIGNUP_CODE; the crew's first member never needs it. */
 export async function signUp(
   db: Db,
-  input: { name: string; password: string },
+  input: { name: string; password: string; code?: string },
+  inviteCode: string | null = signupCode(),
 ): Promise<{ member: Member; token: string }> {
+  if (inviteCode && !codeMatches(input.code, inviteCode) && (await repo.countMembers(db)) > 0) {
+    throw new AppError("forbidden", NEEDS_INVITE);
+  }
   const values = {
     name: input.name,
     nameKey: nameKey(input.name),
@@ -79,6 +87,8 @@ export async function logIn(
       "Too many wrong passwords. Try again in 15 minutes, or ask the crew owner for a recovery link.",
     );
   }
+  // A lock that has run out starts a fresh count; otherwise one typo would lock it again.
+  if (found.lockedUntil) await repo.clearFailedLogins(db, found.id);
   if (!(await verifyPassword(input.password, found.passwordHash))) {
     await repo.recordFailedLogin(db, found.id, now, MAX_FAILED_LOGINS, LOCKOUT_MS);
     throw new AppError("unauthorized", BAD_LOGIN);
