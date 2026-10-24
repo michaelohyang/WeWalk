@@ -230,9 +230,32 @@ before building the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the step-by-
   index it. Set `SIGNUP_CODE` so only people with the crew's invite link can create an account.
 - **Logins:** an expired lockout starts a fresh count, and after logging in you're only ever
   sent to a page on this site.
+- **Your data is yours.** On the Crew screen, **Download my data** saves a JSON file of your
+  profile, phones, reviews, check-ins and the reactions you gave (no password or session hashes,
+  and nothing about other members). **Delete my account**, confirmed with your password, removes
+  you and everything that's yours, including your photos and the reactions on your reviews, and
+  signs you out everywhere. The crew's owner hands the crew to someone else first.
+- **Abuse limits:** requests are counted per IP address or per member in fixed windows, and
+  over the limit the app answers 429 with a `Retry-After` header and a "wait a few minutes"
+  message. The limits live in `src/server/services/rate-limits.ts`:
+  - logging in: 20 tries per IP address per 15 minutes (plus the account lockout above);
+  - signing up: 5 per IP address per hour;
+  - recovery links, used or made: 10 per IP address per 15 minutes;
+  - photo uploads: 10 per member per 10 minutes, and 30 per member per (UTC) day;
+  - reviews and check-ins, new or edited: 30 per member per hour;
+  - reactions: 120 per member per hour.
+
+  Counters are kept in Postgres (`rate_limits`), since serverless functions share no memory.
+  IP addresses and member ids are stored only as (unsalted) SHA-256 hashes, and rows older
+  than two days are deleted. Writes queued offline that hit a limit stay queued and are retried later.
+
 - **Map tiles come from OpenFreeMap.** Opening the map sends your IP address and the part of
   the city you're viewing to OpenFreeMap, as with any web map. No referrer is sent, and no crew
   data leaves the app.
+- **Content Security Policy:** every page only runs scripts carrying a fresh per-request nonce
+  (set in `src/proxy.ts`, policy in `src/server/csp.ts`). Images, map tiles and connections are
+  limited to the app, OpenFreeMap and the photo store; the site can't be framed and plugins are
+  off.
 
 ## Contributing
 

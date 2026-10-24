@@ -26,7 +26,8 @@ export default defineConfig({
     command: isCI ? `pnpm start -p ${PORT}` : `pnpm dev -p ${PORT}`,
     url: BASE_URL,
     // An embedded, in-memory Postgres: every run starts from the seeded stations only.
-    env: { DATABASE_URL: "pglite:memory" },
+    // Limits off: the tests sign up dozens of people from one address (see services/rate-limits.ts).
+    env: { DATABASE_URL: "pglite:memory", RATE_LIMITS: "off" },
     reuseExistingServer: !isCI,
     timeout: 120_000,
   },

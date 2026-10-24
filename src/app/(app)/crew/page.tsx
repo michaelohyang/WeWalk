@@ -7,7 +7,15 @@ import { Empty } from "@/ui/Empty";
 import { plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import { ThemeSwitch } from "@/ui/ThemeSwitch";
-import { InviteFriends, RecoveryLinks, Rename, SetPassword, SignOutPhone } from "./crew-controls";
+import {
+  HandOver,
+  InviteFriends,
+  RecoveryLinks,
+  Rename,
+  SetPassword,
+  SignOutPhone,
+  YourData,
+} from "./crew-controls";
 import styles from "./crew.module.css";
 
 export const metadata: Metadata = { title: "Crew" };
@@ -99,12 +107,19 @@ export default async function CrewPage() {
       </Section>
 
       <Section title="You">
-        <Rename name={me.name} />
-        {view.canManageStations && (
-          <Link href="/admin/stations" className={formStyles.inlineLink}>
-            Manage buildings
-          </Link>
-        )}
+        <div className={styles.stack}>
+          <Rename name={me.name} />
+          {view.canManageStations && (
+            <Link href="/admin/stations" className={formStyles.inlineLink}>
+              Manage buildings
+            </Link>
+          )}
+          <YourData
+            memberId={me.id}
+            hasPassword={me.hasPassword}
+            mustHandOver={me.isOwner && members.length > 0}
+          />
+        </div>
       </Section>
 
       <Section title="Password">
@@ -131,6 +146,12 @@ export default async function CrewPage() {
       {me.isOwner && members.length > 0 && (
         <Section title="Forgot password help">
           <RecoveryLinks members={members} />
+        </Section>
+      )}
+
+      {me.isOwner && members.length > 0 && (
+        <Section title="Hand over the crew">
+          <HandOver members={members} />
         </Section>
       )}
 

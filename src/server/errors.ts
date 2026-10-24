@@ -11,6 +11,7 @@ export type AppErrorCode =
   | "conflict" // 409: clashes with existing data
   | "gone" // 410: a one-time link that expired or was used
   | "too_large" // 413: request body over the limit
+  | "rate_limited" // 429: too many requests; `details.retryAfter` is in seconds
   | "unavailable"; // 503: a feature that isn't set up on this deployment
 
 export class AppError extends Error {

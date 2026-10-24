@@ -14,7 +14,7 @@ export function createTestDb(): Promise<Db> {
  */
 export async function resetTestDb(db: Db): Promise<void> {
   await db.execute(
-    sql`truncate reviews, checkins, links, devices, members, stations restart identity cascade`,
+    sql`truncate reviews, checkins, links, devices, members, stations, rate_limits restart identity cascade`,
   );
   await seedStations(db);
 }

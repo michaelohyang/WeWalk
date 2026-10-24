@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { PUT as handOver } from "@/app/api/admin/owner/route";
 import { POST as adminRecovery } from "@/app/api/admin/recovery-links/route";
 import { PUT as editStation } from "@/app/api/admin/stations/[slug]/route";
 import { POST as addStation } from "@/app/api/admin/stations/route";
@@ -6,7 +7,8 @@ import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
 import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
-import { GET as me, PATCH as renameMe } from "@/app/api/me/route";
+import { GET as exportMe } from "@/app/api/me/export/route";
+import { DELETE as deleteMe, GET as me, PATCH as renameMe } from "@/app/api/me/route";
 import { GET as getPhoto } from "@/app/api/photos/[id]/route";
 import { POST as uploadPhoto } from "@/app/api/photos/route";
 import { POST as recover } from "@/app/api/recover/route";
@@ -184,6 +186,15 @@ describe("every member route needs a session", () => {
         new Phone().call(adminRecovery, "POST", "/api/admin/recovery-links", {
           body: { memberId: newId() },
         }),
+    ],
+    ["GET export", () => new Phone().call(exportMe, "GET", "/api/me/export")],
+    [
+      "DELETE /api/me",
+      () => new Phone().call(deleteMe, "DELETE", "/api/me", { body: { password: PASSWORD } }),
+    ],
+    [
+      "PUT owner",
+      () => new Phone().call(handOver, "PUT", "/api/admin/owner", { body: { memberId: newId() } }),
     ],
   ])("%s → 401", async (_, call) => expect((await call()).status).toBe(401));
 
@@ -366,6 +377,67 @@ describe("check-ins", () => {
   });
 });
 
+describe("abuse limits", () => {
+  it("allows 5 sign-ups an hour from one IP address, then 429 with Retry-After", async () => {
+    const ip = "203.0.113.7";
+    const signUpAs = (name: string, phone = new Phone(ip)) =>
+      phone.call(signup, "POST", "/api/signup", { body: { name, password: PASSWORD } });
+    for (const name of ["Ann", "Ben", "Cat", "Dan", "Eve"]) {
+      expect((await signUpAs(name)).status).toBe(201);
+    }
+    const res = await signUpAs("Fay");
+    expect(res.status).toBe(429);
+    expect(res.body.error).toEqual({
+      code: "rate_limited",
+      message: "Too many tries. Wait a few minutes and try again.",
+      details: { retryAfter: expect.any(Number) },
+    });
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+    // Someone else, behind another address, isn't affected.
+    expect((await signUpAs("Fay", new Phone())).status).toBe(201);
+  });
+
+  it("takes the address from x-forwarded-for when x-real-ip is missing", async () => {
+    const proxied = (name: string) =>
+      new Phone("").call(signup, "POST", "/api/signup", {
+        body: { name, password: PASSWORD },
+        headers: { "x-forwarded-for": "198.51.100.2, 10.0.0.1" },
+      });
+    for (const name of ["Ann", "Ben", "Cat", "Dan", "Eve"]) {
+      expect((await proxied(name)).status).toBe(201);
+    }
+    expect((await proxied("Fay")).status).toBe(429);
+  });
+
+  it("allows 30 reviews and check-ins (new or edited) per member an hour", async () => {
+    const dana = await joined("Dana");
+    const body = { stationSlug: "dock-72", visitedOn: today() };
+    const id = newId();
+    for (let i = 0; i < 30; i++) {
+      const res = await dana.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body });
+      expect(res.status).toBeLessThan(300);
+    }
+    const checkin = await dana.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body });
+    expect(checkin.status).toBe(429);
+    expect(checkin.body.error.message).toMatch(/posting a lot/);
+    const posted = await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+    });
+    expect(posted.status).toBe(429);
+    // Limits are per member: Sam can still post.
+    const sam = await joined("Sam");
+    expect(
+      (
+        await sam.call(putReview, "PUT", "/api/reviews/x", {
+          params: { id: newId() },
+          body: review(),
+        })
+      ).status,
+    ).toBe(201);
+  });
+});
+
 describe("devices and accounts", () => {
   it("lists the devices you're logged in on, and signs one out", async () => {
     const first = await joined("Dana");
@@ -488,6 +560,98 @@ describe("station admin", () => {
       body: building(),
     });
     expect(missing.status).toBe(404);
+  });
+});
+
+describe("your data: export and deletion", () => {
+  const idOf = async (phone: Phone) => (await phone.call(me, "GET", "/api/me")).body.member.id;
+  const deleteAs = (phone: Phone, password: string) =>
+    phone.call(deleteMe, "DELETE", "/api/me", { body: { password } });
+
+  it("downloads your data as a dated JSON file", async () => {
+    const dana = await joined("Dana K.");
+    await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+    });
+    const res = await dana.call(exportMe, "GET", "/api/me/export");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="wewalk-dana-k-\d{4}-\d{2}-\d{2}\.json"$/,
+    );
+    expect(res.headers.get("cache-control")).toMatch(/no-store/);
+    const { body } = res;
+    expect(body.profile).toMatchObject({ name: "Dana K.", isOwner: true });
+    expect(body.reviews).toHaveLength(1);
+    expect(body.reviews[0]).not.toHaveProperty("memberId");
+    expect(JSON.stringify(body)).not.toMatch(/hash/i);
+  });
+
+  it("deletes your account with your password, signs you out everywhere, and keeps others' data", async () => {
+    await joined("Owner");
+    const dana = await joined("Dana");
+    const sam = await joined("Sam");
+    const laptop = new Phone();
+    await laptop.call(login, "POST", "/api/login", { body: { name: "Dana", password: PASSWORD } });
+    const mine = newId();
+    const theirs = newId();
+    await dana.call(putReview, "PUT", "/api/reviews/x", { params: { id: mine }, body: review() });
+    await sam.call(putReview, "PUT", "/api/reviews/x", { params: { id: theirs }, body: review() });
+
+    const wrong = await deleteAs(dana, "not my password");
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.error.details.fields.password).toBeDefined();
+
+    const res = await deleteAs(dana, PASSWORD);
+    expect(res.status).toBe(204);
+    expect(res.setCookie).toMatch(/ww_session=;/);
+    expect(dana.cookie).toBe("");
+    expect((await dana.call(me, "GET", "/api/me")).status).toBe(401);
+    expect((await laptop.call(me, "GET", "/api/me")).status).toBe(401);
+    const login401 = await new Phone().call(login, "POST", "/api/login", {
+      body: { name: "Dana", password: PASSWORD },
+    });
+    expect(login401.status).toBe(401);
+
+    const crew = await loadCrew(db);
+    expect(crew.members.map((m) => m.name)).toEqual(["Owner", "Sam"]);
+    expect(crew.reviews.map((r) => r.id)).toEqual([theirs]);
+  });
+
+  it("holds a write queued by the deleted member: it's refused as signed out (401), never posted", async () => {
+    const owner = await joined("Owner");
+    const sam = await joined("Sam");
+    const samId = await idOf(sam);
+    expect((await deleteAs(sam, PASSWORD)).status).toBe(204);
+    // The same phone, now signed in as someone else, retries Sam's queued review.
+    sam.cookie = owner.cookie;
+    const retry = await sam.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+      headers: { "x-wewalk-member": samId },
+    });
+    expect(retry.status).toBe(401);
+    expect((await loadCrew(db)).reviews).toEqual([]);
+  });
+
+  it("keeps the owner until they hand the crew over (409), then lets them go", async () => {
+    const owner = await joined("Owner");
+    const dana = await joined("Dana");
+    const refused = await deleteAs(owner, PASSWORD);
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.message).toMatch(/Hand it over/);
+
+    const danaId = await idOf(dana);
+    const put = (phone: Phone, memberId: string) =>
+      phone.call(handOver, "PUT", "/api/admin/owner", { body: { memberId } });
+    expect((await put(dana, danaId)).status).toBe(403);
+    expect((await put(owner, danaId)).status).toBe(204);
+    expect((await dana.call(me, "GET", "/api/me")).body.member.isOwner).toBe(true);
+    expect((await owner.call(me, "GET", "/api/me")).body.member.isOwner).toBe(false);
+
+    expect((await deleteAs(owner, PASSWORD)).status).toBe(204);
+    // The last one here, now the owner, may leave too.
+    expect((await deleteAs(dana, PASSWORD)).status).toBe(204);
   });
 });
 
@@ -634,6 +798,33 @@ describe("photos", () => {
     expect((await upload(dana, new TextEncoder().encode("not an image"))).status).toBe(400);
     expect((await upload(dana, jpeg(2 * 1024 * 1024 + 1))).status).toBe(413);
     expect((await upload(new Phone(), jpeg())).status).toBe(401);
+  });
+
+  it("allows 10 uploads per member in 10 minutes and 30 a day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-05T12:00:00Z") });
+    try {
+      const dana = await joined("Dana");
+      const uploadMany = async (count: number) => {
+        for (let i = 0; i < count; i++) expect((await upload(dana, jpeg())).status).toBe(201);
+      };
+      await uploadMany(10);
+      const burst = await upload(dana, jpeg());
+      expect(burst.status).toBe(429);
+      expect(burst.body.error.message).toMatch(/a lot of photos at once/);
+      expect(burst.headers.get("retry-after")).toBe(String(10 * 60));
+      expect((await upload(await joined("Sam"), jpeg())).status).toBe(201);
+
+      vi.setSystemTime(new Date("2026-10-05T12:10:00Z"));
+      await uploadMany(10);
+      vi.setSystemTime(new Date("2026-10-05T12:20:00Z"));
+      await uploadMany(10); // 30 today; the refused one above doesn't count
+      vi.setSystemTime(new Date("2026-10-05T12:30:00Z"));
+      const quota = await upload(dana, jpeg());
+      expect(quota.status).toBe(429);
+      expect(quota.body.error.message).toMatch(/all the photos for today/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("goes on a review, and only if it was uploaded here", async () => {

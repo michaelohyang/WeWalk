@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "@fontsource-variable/figtree";
 import "@/ui/global.css";
+import { NONCE_HEADER } from "@/server/csp";
 import { THEME_BOOT_SCRIPT } from "@/ui/theme";
 
 const SITE = process.env.VERCEL_PROJECT_PRODUCTION_URL
@@ -35,12 +37,14 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Set by src/proxy.ts; the Content-Security-Policy runs only scripts carrying it.
+  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
   return (
     // The boot script may set data-theme before React hydrates.
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body>{children}</body>
     </html>

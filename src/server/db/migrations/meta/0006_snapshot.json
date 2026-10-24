@@ -1,5 +1,5 @@
 {
-  "id": "8c98e2df-35f6-49e0-b6ef-13169d512329",
+  "id": "54cdd33d-9082-4c83-8d7e-2590e90863fb",
   "prevId": "f1b34098-1f79-448a-b574-daf136f64719",
   "version": "7",
   "dialect": "postgresql",
@@ -402,6 +402,46 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "public.rate_limits": {
+      "name": "rate_limits",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "rate_limits_key_window_start_pk": {
+          "name": "rate_limits_key_window_start_pk",
+          "columns": [
+            "key",
+            "window_start"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
     "public.reactions": {
       "name": "reactions",
       "schema": "",
@@ -762,12 +802,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "short": {
-          "name": "short",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "address": {
           "name": "address",

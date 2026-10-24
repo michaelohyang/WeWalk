@@ -1,6 +1,8 @@
-import { renameInputSchema } from "@/domain/schemas";
+import { NextResponse } from "next/server";
+import { deleteAccountInputSchema, renameInputSchema } from "@/domain/schemas";
 import { crewChanged } from "@/server/crew-cache";
-import { authedRoute, json, memberJson, readJson } from "@/server/http";
+import { authedRoute, clearSessionCookie, json, memberJson, readJson } from "@/server/http";
+import { deleteAccount } from "@/server/services/account";
 import { listDevices, rename } from "@/server/services/auth";
 
 /** Who am I, and which phones am I signed in on. */
@@ -14,4 +16,11 @@ export const PATCH = authedRoute(async ({ req, db, session }) => {
   const member = await rename(db, session, name);
   crewChanged();
   return json({ member: memberJson(member) });
+});
+
+/** Delete your account and everything that's yours: `{ password }`. Signs this phone out. */
+export const DELETE = authedRoute(async ({ req, db, session }) => {
+  await deleteAccount(db, session, await readJson(req, deleteAccountInputSchema));
+  crewChanged();
+  return clearSessionCookie(new NextResponse(null, { status: 204 }));
 });

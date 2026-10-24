@@ -44,6 +44,22 @@ export async function listCheckins(db: Db): Promise<CheckinRecord[]> {
   return (await select(db)).map(toRecord);
 }
 
+/** One member's check-ins with the station's name, oldest first (data export). */
+export async function listMemberCheckins(db: Db, memberId: string) {
+  return db
+    .select({
+      stationSlug: stations.slug,
+      stationName: stations.name,
+      visitedOn: checkins.visitedOn,
+      note: checkins.note,
+      createdAt: checkins.createdAt,
+    })
+    .from(checkins)
+    .innerJoin(stations, eq(checkins.stationId, stations.id))
+    .where(eq(checkins.memberId, memberId))
+    .orderBy(checkins.createdAt);
+}
+
 /** Returns undefined if the check-in no longer exists. */
 export async function updateCheckinNote(db: Db, id: string, note: string) {
   const [row] = await db
