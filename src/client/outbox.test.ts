@@ -232,6 +232,25 @@ describe("outbox", () => {
     expect(pending()).toEqual([]);
   });
 
+  it("sends a queued write to the crew it was made in, even after the phone switches", async () => {
+    document.cookie = "ww_crew=crew-a; path=/";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    await send(job());
+    document.cookie = "ww_crew=crew-b; path=/"; // switched crews while offline
+
+    const fetch = vi.fn(() => reply(201, {}));
+    vi.stubGlobal("fetch", fetch);
+    await flush();
+    const headers = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers as Record<
+      string,
+      string
+    >;
+    expect(headers["x-wewalk-crew"]).toBe("crew-a");
+  });
+
   it("clears the form draft only once the server has the write", async () => {
     saveDraft("review:x", { hotTake: "keep me" });
     vi.stubGlobal(

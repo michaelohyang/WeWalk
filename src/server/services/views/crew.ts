@@ -1,21 +1,35 @@
 import "server-only";
-import { signupCode } from "../../invite";
 import { CATEGORIES } from "@/domain/categories";
 import { tasteMatch } from "@/domain/taste";
 import type { Db } from "../../db/client";
-import { isAdmin, listDevices, type Session } from "../auth";
+import { isAdmin, listDevices, ownsCrew, type Session } from "../auth";
+import { ownedCrewsWithOthers } from "../../repos/crews";
+import { listMembers } from "../../repos/members";
 import type { CrewData } from "../crew";
 
 /* The Crew screen: members, your account and your phones. */
 
 export interface CrewView {
-  /** Goes into the invite link; null when signup is open. */
-  inviteCode: string | null;
-  me: { id: string; name: string; isOwner: boolean; hasPassword: boolean };
-  /** Shows the link to the building admin (/admin/stations). */
-  canManageStations: boolean;
-  /** Everyone, for the owner's recovery links. Empty for non-owners. */
+  /** The crew you're looking at, and every crew you're in (for the switcher). */
+  crew: { id: string; name: string };
+  crews: { id: string; name: string }[];
+  /** This crew's invite code, for its /join/<code> link. */
+  inviteCode: string;
+  me: {
+    id: string;
+    name: string;
+    /** Owner of this crew. */
+    isOwner: boolean;
+    hasPassword: boolean;
+    /** Owns some crew with other people in it: must hand it over before deleting the account. */
+    mustHandOver: boolean;
+  };
+  /** App admin: the building admin (/admin/stations) and recovery links. */
+  isAdmin: boolean;
+  /** This crew's other members, for the owner's hand-over. Empty for non-owners. */
   members: { id: string; name: string }[];
+  /** Everyone in every crew, for the admin's recovery links. Empty for non-admins. */
+  recoveryMembers: { id: string; name: string }[];
   devices: { id: string; label: string; lastSeenAt: string; current: boolean }[];
   leaderboard: {
     memberId: string;
@@ -75,17 +89,22 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
       ];
     })
     .sort((a, b) => b.agreement - a.agreement || a.name.localeCompare(b.name));
+  const admin = isAdmin(session);
   return {
-    inviteCode: signupCode(),
+    crew: { id: session.crew.id, name: session.crew.name },
+    crews: session.crews.map((c) => ({ id: c.id, name: c.name })),
+    inviteCode: session.crew.inviteCode,
     taste,
     me: {
       id: session.member.id,
       name: session.member.name,
-      isOwner: session.member.isOwner,
+      isOwner: ownsCrew(session),
       hasPassword: session.member.hasPassword,
+      mustHandOver: (await ownedCrewsWithOthers(db, session.member.id)).length > 0,
     },
-    canManageStations: isAdmin(session),
-    members: session.member.isOwner ? crew.members.filter((m) => m.id !== session.member.id) : [],
+    isAdmin: admin,
+    members: ownsCrew(session) ? crew.members.filter((m) => m.id !== session.member.id) : [],
+    recoveryMembers: admin ? (await listMembers(db)).filter((m) => m.id !== session.member.id) : [],
     devices: devices.map((d) => ({
       id: d.id,
       label: d.label,

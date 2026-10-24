@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { loadCrew } from "@/server/pages";
 import { Avatar } from "@/ui/Avatar";
+import { CrewSwitch } from "@/ui/CrewSwitch";
 import formStyles from "@/ui/forms.module.css";
 import { Empty } from "@/ui/Empty";
 import { plural } from "@/ui/format";
@@ -37,7 +38,8 @@ export default async function CrewPage() {
   const top = leaderboard[0]?.stations;
 
   return (
-    <Page title="Crew">
+    <Page title={view.crew.name} subtitle="Your crew">
+      <CrewSwitch crew={view.crew.id} crews={view.crews} />
       <div className={styles.me}>
         <Avatar name={me.name} seed={me.id} />
         <div>
@@ -109,16 +111,12 @@ export default async function CrewPage() {
       <Section title="You">
         <div className={styles.stack}>
           <Rename name={me.name} />
-          {view.canManageStations && (
+          {view.isAdmin && (
             <Link href="/admin/stations" className={formStyles.inlineLink}>
               Manage buildings
             </Link>
           )}
-          <YourData
-            memberId={me.id}
-            hasPassword={me.hasPassword}
-            mustHandOver={me.isOwner && members.length > 0}
-          />
+          <YourData memberId={me.id} hasPassword={me.hasPassword} mustHandOver={me.mustHandOver} />
         </div>
       </Section>
 
@@ -143,9 +141,9 @@ export default async function CrewPage() {
         </ul>
       </Section>
 
-      {me.isOwner && members.length > 0 && (
+      {view.isAdmin && view.recoveryMembers.length > 0 && (
         <Section title="Forgot password help">
-          <RecoveryLinks members={members} />
+          <RecoveryLinks members={view.recoveryMembers} />
         </Section>
       )}
 

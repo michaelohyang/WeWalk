@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { FIRST_CREW_ID } from "../db/schema";
 import { beforeAll, describe, expect, it } from "vitest";
 import { checkinInputSchema, reviewInputSchema } from "@/domain/schemas";
 import type { Db } from "../db/client";
@@ -37,7 +38,7 @@ describe("loadCrew", () => {
     );
     await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "250-broadway"));
 
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     expect(crew.stations).toHaveLength(STATIONS.length - 1);
     expect(crew.stations.map((s) => s.slug)).not.toContain("250-broadway");
     expect(crew.members).toEqual([{ id: dana.member.id, name: "Dana" }]);

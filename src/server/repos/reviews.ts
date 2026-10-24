@@ -1,12 +1,12 @@
 import "server-only";
-import { and, eq, getTableColumns } from "drizzle-orm";
+import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import { CATEGORY_KEYS, type Score } from "@/domain/categories";
 import type { ReviewInput } from "@/domain/schemas";
 import type { ReviewRecord } from "@/domain/records";
 import type { Scores } from "@/domain/scoring";
 import type { Tag } from "@/domain/tags";
 import type { Db } from "../db/client";
-import { reviews, stations } from "../db/schema";
+import { FIRST_CREW_ID, reviewCrews, reviews, stations } from "../db/schema";
 import { stationKey } from "./stations";
 
 type ReviewRow = typeof reviews.$inferSelect & { stationSlug: string };
@@ -91,8 +91,40 @@ export async function deleteReview(db: Db, id: string) {
   await db.delete(reviews).where(eq(reviews.id, id));
 }
 
-export async function listReviews(db: Db): Promise<ReviewRecord[]> {
-  return (await select(db)).map(toReviewRecord);
+/**
+ * The reviews a crew sees: those shared with it. A review with no crew at all (written by older
+ * code during a deploy) counts as the first crew's.
+ */
+export async function listReviews(db: Db, crewId: string): Promise<ReviewRecord[]> {
+  const shared = sql`exists (select 1 from ${reviewCrews} rc where rc.review_id = ${reviews.id} and rc.crew_id = ${crewId})`;
+  const unlinked = sql`not exists (select 1 from ${reviewCrews} rc where rc.review_id = ${reviews.id})`;
+  const rows = await select(db).where(
+    crewId === FIRST_CREW_ID ? sql`(${shared} or ${unlinked})` : shared,
+  );
+  return rows.map(toReviewRecord);
+}
+
+/** One member's reviews, in every crew. */
+export async function listReviewsBy(db: Db, memberId: string): Promise<ReviewRecord[]> {
+  return (await select(db).where(eq(reviews.memberId, memberId))).map(toReviewRecord);
+}
+
+/** Shares a review with crews (sharing it again changes nothing). */
+export async function shareReview(db: Db, reviewId: string, crewIds: readonly string[]) {
+  if (!crewIds.length) return;
+  await db
+    .insert(reviewCrews)
+    .values(crewIds.map((crewId) => ({ reviewId, crewId })))
+    .onConflictDoNothing();
+}
+
+/** Whether a crew sees a review (shared with it, or unlinked and it's the first crew). */
+export async function crewSeesReview(db: Db, reviewId: string, crewId: string): Promise<boolean> {
+  const links = await db
+    .select({ crewId: reviewCrews.crewId })
+    .from(reviewCrews)
+    .where(eq(reviewCrews.reviewId, reviewId));
+  return links.length ? links.some((l) => l.crewId === crewId) : crewId === FIRST_CREW_ID;
 }
 
 /** One member's reviews with both timestamps and the station's name, oldest first (data export). */

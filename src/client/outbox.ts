@@ -1,5 +1,6 @@
 import { request } from "./api";
 import { clearDraft } from "./draft";
+import { CREW_HEADER, currentCrew } from "./crew";
 import { currentMember, MEMBER_HEADER } from "./member";
 import { store } from "./storage";
 
@@ -18,8 +19,10 @@ import { store } from "./storage";
  *   would block every write queued behind it. The form's draft is kept (it's only cleared once
  *   the server has the write).
  *
- * Each write remembers who made it. Only the signed-in member's writes are sent (and the
- * server double-checks), so on a shared phone nothing posts under the wrong name.
+ * Each write remembers who made it and in which crew. Only the signed-in member's writes are
+ * sent (and the server double-checks), so on a shared phone nothing posts under the wrong name;
+ * and a write lands in the crew it was made in, even after the phone switches crews. If you've
+ * since left that crew, the server refuses it (403) and the caller says so.
  */
 
 export interface Job {
@@ -34,6 +37,11 @@ export interface Job {
   draft?: string;
   /** Who made it (null if unknown: sent by whoever is signed in). */
   memberId?: string | null;
+  /**
+   * The crew it was made in, so it lands there even if the phone switches crews first. Null or
+   * missing (writes queued before crews): the phone's current crew.
+   */
+  crewId?: string | null;
   /** Its last try was refused because the phone is signed out: waiting for a login, not signal. */
   needsLogin?: boolean;
   queuedAt: number;
@@ -82,7 +90,10 @@ const HOLD = new Set([408, 429]);
 const retryable = (status: number) => status >= 500 || HOLD.has(status);
 
 async function attempt(job: Job): Promise<SendResult> {
-  const author: Record<string, string> = job.memberId ? { [MEMBER_HEADER]: job.memberId } : {};
+  const author: Record<string, string> = {
+    ...(job.memberId ? { [MEMBER_HEADER]: job.memberId } : {}),
+    ...(job.crewId ? { [CREW_HEADER]: job.crewId } : {}),
+  };
   const res = await request(job.method, job.url, job.body, author);
   if (res.ok) return { status: "sent", data: res.data };
   if (res.status === 401) return { status: "queued", needsLogin: true };
@@ -109,8 +120,15 @@ function settle(job: Job, result: SendResult) {
 }
 
 /** Queue a write and try to send it now. */
-export async function send(job: Omit<Job, "queuedAt" | "memberId">): Promise<SendResult> {
-  const full: Job = { ...job, memberId: currentMember(), queuedAt: Date.now() };
+export async function send(
+  job: Omit<Job, "queuedAt" | "memberId" | "crewId">,
+): Promise<SendResult> {
+  const full: Job = {
+    ...job,
+    memberId: currentMember(),
+    crewId: currentCrew(),
+    queuedAt: Date.now(),
+  };
   firstTry.add(job.key);
   save([...pending().filter((j) => j.key !== job.key), full]);
   try {

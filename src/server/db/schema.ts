@@ -14,7 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { AREA_KEYS } from "@/domain/areas";
+import { AREA_KEYS, CITIES } from "@/domain/areas";
 import { CATEGORY_KEYS } from "@/domain/categories";
 import { REACTION_KEYS } from "@/domain/reactions";
 
@@ -58,7 +58,10 @@ export const members = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
     nameKey: text("name_key").notNull(),
+    /** Legacy: the first crew's owner. Crew roles live in crew_members; kept for rollbacks. */
     isOwner: boolean("is_owner").notNull().default(false),
+    /** App-wide admin: station management and recovery links. Not a crew role. */
+    isAdmin: boolean("is_admin").notNull().default(false),
     /**
      * A salted scrypt hash (see server/auth/passwords.ts), never the password itself: it can't be
      * turned back into the password, by anyone. Null for people who joined before passwords.
@@ -75,6 +78,59 @@ export const members = pgTable(
     uniqueIndex("members_one_owner")
       .on(t.isOwner)
       .where(sql`${t.isOwner}`),
+  ],
+).enableRLS();
+
+/**
+ * The crew that existed before crews: everyone and everything from then belongs to it. Fixed so
+ * the migration can backfill it, and so posts that old code writes with no crew land here.
+ */
+export const FIRST_CREW_ID = "00000000-0000-4000-8000-00000000c4e1";
+
+/** A group of friends: its own feed, rankings, invite link and owner. */
+export const crews = pgTable(
+  "crews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** In the crew's invite link (/join/<code>). Rotating it retires old links. */
+    inviteCode: text("invite_code").notNull().unique(),
+    /** The city new members start in. */
+    homeCity: text("home_city").notNull().default("nyc"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "crews_home_city_known",
+      inList(
+        "home_city",
+        CITIES.map((c) => c.key),
+      ),
+    ),
+    check("crews_name_length", sql`char_length(${t.name}) between 1 and 40`),
+  ],
+).enableRLS();
+
+export const crewMembers = pgTable(
+  "crew_members",
+  {
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.crewId, t.memberId] }),
+    index("crew_members_member_idx").on(t.memberId),
+    // One owner per crew (two people signing up first at once: the loser joins as a member).
+    uniqueIndex("crew_members_one_owner")
+      .on(t.crewId)
+      .where(sql`${t.role} = 'owner'`),
+    check("crew_members_role_known", inList("role", ["owner", "member"])),
   ],
 ).enableRLS();
 
@@ -184,11 +240,51 @@ export const reactions = pgTable(
       .notNull()
       .references(() => members.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
+    /** The crew it was made in (reactions are per crew; a shared review can get them in each). */
+    crewId: uuid("crew_id")
+      .notNull()
+      .default(FIRST_CREW_ID)
+      .references(() => crews.id, { onDelete: "cascade" }),
     createdAt: createdAt(),
   },
   (t) => [
     primaryKey({ columns: [t.reviewId, t.memberId, t.kind] }),
+    index("reactions_crew_idx").on(t.crewId),
     check("reactions_kind_known", inList("kind", REACTION_KEYS)),
+  ],
+).enableRLS();
+
+/** Which crews see a review (one review can be shared to several of its author's crews). */
+export const reviewCrews = pgTable(
+  "review_crews",
+  {
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.reviewId, t.crewId] }),
+    index("review_crews_crew_idx").on(t.crewId),
+  ],
+).enableRLS();
+
+/** Which crews see a check-in. */
+export const checkinCrews = pgTable(
+  "checkin_crews",
+  {
+    checkinId: uuid("checkin_id")
+      .notNull()
+      .references(() => checkins.id, { onDelete: "cascade" }),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.checkinId, t.crewId] }),
+    index("checkin_crews_crew_idx").on(t.crewId),
   ],
 ).enableRLS();
 

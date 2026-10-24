@@ -50,7 +50,10 @@ export async function putReview(
     await assertVisitable(db, input.stationSlug, input.visitedOn, now);
     try {
       const created = await reviewRepo.insertReview(db, id, me, input);
-      if (created) return { review: created, created: true };
+      if (created) {
+        await reviewRepo.shareReview(db, id, [session.crew.id]);
+        return { review: created, created: true };
+      }
       // Lost a race with a retry of this same request; fall through to update it.
     } catch (e) {
       if (!isUniqueViolation(e, "reviews_one_per_member_station")) throw e;
@@ -72,6 +75,8 @@ export async function putReview(
   await assertVisitable(db, input.stationSlug, input.visitedOn, now);
   const updated = await reviewRepo.updateReview(db, id, input, now);
   if (!updated) throw new AppError("not_found", GONE);
+  // Saving your review while looking at a crew shares it there too (one review, many crews).
+  await reviewRepo.shareReview(db, id, [session.crew.id]);
   // A replaced or removed photo isn't shown anywhere any more.
   if (current.photoUrl && current.photoUrl !== updated.photoUrl)
     await deletePhoto(current.photoUrl);
@@ -111,6 +116,7 @@ export async function putCheckin(
       const message = "A check-in can't move to another building or day.";
       throw new AppError("invalid", message, { fields: { visitedOn: [message] } });
     }
+    await checkinRepo.shareCheckin(db, id, [session.crew.id]);
     if (existing.note === input.note) return { checkin: existing, created: false };
     const updated = await checkinRepo.updateCheckinNote(db, id, input.note);
     if (!updated) throw new AppError("not_found", "That check-in was just deleted.");
@@ -120,7 +126,10 @@ export async function putCheckin(
   await assertVisitable(db, input.stationSlug, input.visitedOn, now);
   try {
     const created = await checkinRepo.insertCheckin(db, id, session.member.id, input);
-    if (created) return { checkin: created, created: true };
+    if (created) {
+      await checkinRepo.shareCheckin(db, id, [session.crew.id]);
+      return { checkin: created, created: true };
+    }
     return putCheckin(db, session, id, input, now); // raced with a retry of this request
   } catch (e) {
     if (!isUniqueViolation(e, "checkins_one_per_member_station_day")) throw e;
@@ -130,6 +139,11 @@ export async function putCheckin(
       input.stationSlug,
       input.visitedOn,
     );
+    // Checked in here today from another crew: share that check-in with this one instead.
+    if (today && !(await checkinRepo.checkinSharedWith(db, today.id, session.crew.id))) {
+      await checkinRepo.shareCheckin(db, today.id, [session.crew.id]);
+      return { checkin: today, created: false };
+    }
     throw new AppError("conflict", "You already checked in here today.", { existingId: today?.id });
   }
 }

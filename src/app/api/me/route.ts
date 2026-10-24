@@ -5,9 +5,13 @@ import { authedRoute, clearSessionCookie, json, memberJson, readJson } from "@/s
 import { deleteAccount } from "@/server/services/account";
 import { listDevices, rename } from "@/server/services/auth";
 
-/** Who am I, and which phones am I signed in on. */
+/** Who am I, which crew am I looking at, and which phones am I signed in on. */
 export const GET = authedRoute(async ({ db, session }) =>
-  json({ member: memberJson(session.member), devices: await listDevices(db, session) }),
+  json({
+    member: memberJson(session.member),
+    crew: { id: session.crew.id, name: session.crew.name, role: session.crew.role },
+    devices: await listDevices(db, session),
+  }),
 );
 
 /** Rename yourself: `{ name }`. */

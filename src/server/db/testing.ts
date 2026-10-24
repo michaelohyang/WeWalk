@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { crews, FIRST_CREW_ID } from "./schema";
 import type { Db } from "./client";
 import { openLocalDb } from "./local";
 import { seedStations } from "./seed/seed";
@@ -14,7 +15,9 @@ export function createTestDb(): Promise<Db> {
  */
 export async function resetTestDb(db: Db): Promise<void> {
   await db.execute(
-    sql`truncate reviews, checkins, links, devices, members, stations, rate_limits restart identity cascade`,
+    sql`truncate reviews, checkins, links, devices, members, crews, stations, rate_limits restart identity cascade`,
   );
   await seedStations(db);
+  // The migration's first crew, which sign-ups without an invite join.
+  await db.insert(crews).values({ id: FIRST_CREW_ID, name: "NYC crew", inviteCode: "first-crew" });
 }

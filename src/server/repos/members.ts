@@ -8,7 +8,7 @@ const memberColumns = {
   id: members.id,
   name: members.name,
   nameKey: members.nameKey,
-  isOwner: members.isOwner,
+  isAdmin: members.isAdmin,
   hasPassword: sql<boolean>`${members.passwordHash} is not null`,
   createdAt: members.createdAt,
 };
@@ -16,7 +16,8 @@ export type MemberRow = {
   id: string;
   name: string;
   nameKey: string;
-  isOwner: boolean;
+  /** App-wide admin (stations, recovery links). Crew ownership is a crew role. */
+  isAdmin: boolean;
   hasPassword: boolean;
   createdAt: Date;
 };
@@ -28,7 +29,7 @@ export async function countMembers(db: Db): Promise<number> {
 
 export async function insertMember(
   db: Db,
-  values: { name: string; nameKey: string; isOwner: boolean; passwordHash: string },
+  values: { name: string; nameKey: string; isAdmin: boolean; passwordHash: string },
 ): Promise<MemberRow> {
   const [row] = await db.insert(members).values(values).returning(memberColumns);
   return row!;
@@ -120,39 +121,16 @@ export async function deleteMember(db: Db, id: string): Promise<boolean> {
 }
 
 /**
- * Moves the crew's owner flag. Clears it first (the database allows one owner), so run it in a
- * transaction and roll back unless it returns "moved".
+ * Locks a member's row until the transaction ends (so a hand-over to them, or a join, can't land
+ * between a check and deleting them). False if they're gone.
  */
-export async function transferOwnership(
-  db: Db,
-  fromId: string,
-  toId: string,
-): Promise<"moved" | "not_owner" | "no_member"> {
-  const was = await db
-    .update(members)
-    .set({ isOwner: false })
-    .where(and(eq(members.id, fromId), eq(members.isOwner, true)))
-    .returning({ id: members.id });
-  if (!was.length) return "not_owner";
-  const now = await db
-    .update(members)
-    .set({ isOwner: true })
-    .where(eq(members.id, toId))
-    .returning({ id: members.id });
-  return now.length ? "moved" : "no_member";
-}
-
-/**
- * Whether a member is the owner, locking their row until the transaction ends, so a hand-over
- * to them can't land between this check and deleting them. Undefined if they're gone.
- */
-export async function lockMemberIsOwner(db: Db, id: string): Promise<boolean | undefined> {
+export async function lockMember(db: Db, id: string): Promise<boolean> {
   const [row] = await db
-    .select({ isOwner: members.isOwner })
+    .select({ id: members.id })
     .from(members)
     .where(eq(members.id, id))
     .for("update");
-  return row?.isOwner;
+  return !!row;
 }
 
 export async function insertDevice(db: Db, memberId: string, tokenHash: string, label = "") {

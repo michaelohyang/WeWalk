@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AREA_KEYS } from "./areas";
+import { AREA_KEYS, CITIES, type CityKey } from "./areas";
 import { CATEGORY_KEYS, type CategoryKey } from "./categories";
 import { isIsoDate } from "./dates";
 import { displayNameProblem, normalizeDisplayName } from "./names";
@@ -131,6 +131,21 @@ export const setPasswordInputSchema = z
   .strict();
 
 export const renameInputSchema = z.object({ name: displayNameSchema }).strict();
+
+export const createCrewInputSchema = z
+  .object({
+    name: z
+      .string("Name your crew.")
+      .trim()
+      .min(1, "Name your crew.")
+      .max(40, "Keep it under 40 characters."),
+    homeCity: z.enum(CITIES.map((c) => c.key) as [CityKey, ...CityKey[]]),
+  })
+  .strict();
+
+export const joinCrewInputSchema = z
+  .object({ code: z.string("Open your invite link again.").trim().min(1).max(100) })
+  .strict();
 
 export const recoveryInputSchema = z.object({ memberId: idSchema }).strict();
 

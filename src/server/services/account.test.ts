@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { count, eq } from "drizzle-orm";
 import { checkinInputSchema, reviewInputSchema } from "@/domain/schemas";
 import type { Db } from "../db/client";
-import { checkins, devices, links, members, reactions, reviews } from "../db/schema";
+import { checkins, crewMembers, devices, links, members, reactions, reviews } from "../db/schema";
 import { createTestDb, resetTestDb } from "../db/testing";
 import { AppError } from "../errors";
 import { memoryPhoto, storePhoto } from "../photos";
@@ -163,12 +163,12 @@ describe("handOverOwnership", () => {
   it("moves the owner flag, after which the old owner may leave", async () => {
     await handOverOwnership(db, dana, sal.member.id);
     const owners = await db
-      .select({ id: members.id })
-      .from(members)
-      .where(eq(members.isOwner, true));
+      .select({ id: crewMembers.memberId })
+      .from(crewMembers)
+      .where(eq(crewMembers.role, "owner"));
     expect(owners).toEqual([{ id: sal.member.id }]);
     const formerOwner = (await authenticate(db, dana.token, NOW))!;
-    expect(formerOwner.member.isOwner).toBe(false);
+    expect(formerOwner.crew.role).toBe("member");
     await deleteAccount(db, formerOwner, { password: PASSWORD });
     expect(await db.select({ n: count() }).from(members)).toEqual([{ n: 2 }]);
   });
@@ -179,9 +179,9 @@ describe("handOverOwnership", () => {
     expect(await code(handOverOwnership(db, dana, newId()))).toBe("not_found");
     // A failed hand-over (say, to someone who just deleted their account) keeps the owner.
     const owners = await db
-      .select({ id: members.id })
-      .from(members)
-      .where(eq(members.isOwner, true));
+      .select({ id: crewMembers.memberId })
+      .from(crewMembers)
+      .where(eq(crewMembers.role, "owner"));
     expect(owners).toEqual([{ id: dana.member.id }]);
     // A stale session (the owner already handed it over on another phone) can't do it again.
     await handOverOwnership(db, dana, sal.member.id);
@@ -197,7 +197,8 @@ describe("exportData", () => {
     expect(data.profile).toEqual({
       name: "Sal",
       joinedAt: sal.member.createdAt.toISOString(),
-      isOwner: false,
+      isAdmin: false,
+      crews: [{ name: "NYC crew", role: "member" }],
     });
     expect(data.devices).toHaveLength(2);
     expect(Object.keys(data.devices[0]!).sort()).toEqual(["createdAt", "label", "lastSeenAt"]);

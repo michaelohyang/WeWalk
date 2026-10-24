@@ -57,6 +57,13 @@
       "when": 1792820049836,
       "tag": "0007_station_short_names",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792821657323,
+      "tag": "0008_crews",
+      "breakpoints": true
     }
   ]
 }

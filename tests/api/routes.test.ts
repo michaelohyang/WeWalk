@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { FIRST_CREW_ID } from "@/server/db/schema";
 import { PUT as handOver } from "@/app/api/admin/owner/route";
 import { POST as adminRecovery } from "@/app/api/admin/recovery-links/route";
 import { PUT as editStation } from "@/app/api/admin/stations/[slug]/route";
 import { POST as addStation } from "@/app/api/admin/stations/route";
 import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
+import { POST as joinCrewRoute } from "@/app/api/crews/join/route";
+import { POST as createCrewRoute } from "@/app/api/crews/route";
 import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
@@ -19,7 +22,7 @@ import { setDb, type Db } from "@/server/db/client";
 import { createTestDb, resetTestDb } from "@/server/db/testing";
 import { cityDate } from "@/domain/dates";
 import type { Session } from "@/server/services/auth";
-import { loadCrew } from "@/server/services/crew";
+import { loadCrew, loadMyVisits } from "@/server/services/crew";
 import {
   exploreView,
   mapView,
@@ -29,6 +32,9 @@ import {
 } from "@/server/services/views";
 import { inCity } from "@/server/services/views/city";
 import { STATIONS } from "@/domain/stations";
+import { insertReview } from "@/server/repos/reviews";
+import { reviewInputSchema } from "@/domain/schemas";
+import { signUp } from "@/server/services/auth";
 import { Phone } from "./client";
 
 const PASSWORD = "correct horse battery";
@@ -81,7 +87,7 @@ describe("signing up and logging in", () => {
     expect(res.body.member).toEqual({
       id: expect.any(String),
       name: "Dana",
-      isOwner: true,
+      isAdmin: true,
       hasPassword: true,
     });
     expect(res.setCookie).toMatch(/^ww_session=[\w-]{43};/);
@@ -521,7 +527,9 @@ describe("station admin", () => {
     const res = await owner.call(addStation, "POST", "/api/admin/stations", { body: building() });
     expect(res.status).toBe(201);
     expect(res.body.station).toMatchObject({ slug: "1-seaport-sq", short: "1 Seaport" });
-    expect((await loadCrew(db)).stations.map((s) => s.slug)).toContain("1-seaport-sq");
+    expect((await loadCrew(db, FIRST_CREW_ID)).stations.map((s) => s.slug)).toContain(
+      "1-seaport-sq",
+    );
 
     const again = await owner.call(addStation, "POST", "/api/admin/stations", {
       body: building({ name: "1 Seaport Sq." }),
@@ -547,7 +555,9 @@ describe("station admin", () => {
     });
     expect(res.status).toBe(200);
     expect(res.body.station).toMatchObject({ slug: "250-broadway", hidden: true });
-    expect((await loadCrew(db)).stations.map((s) => s.slug)).not.toContain("250-broadway");
+    expect((await loadCrew(db, FIRST_CREW_ID)).stations.map((s) => s.slug)).not.toContain(
+      "250-broadway",
+    );
 
     const slugChange = await owner.call(editStation, "PUT", "/api/admin/stations/250-broadway", {
       params: { slug: "250-broadway" },
@@ -581,7 +591,7 @@ describe("your data: export and deletion", () => {
     );
     expect(res.headers.get("cache-control")).toMatch(/no-store/);
     const { body } = res;
-    expect(body.profile).toMatchObject({ name: "Dana K.", isOwner: true });
+    expect(body.profile).toMatchObject({ name: "Dana K.", isAdmin: true });
     expect(body.reviews).toHaveLength(1);
     expect(body.reviews[0]).not.toHaveProperty("memberId");
     expect(JSON.stringify(body)).not.toMatch(/hash/i);
@@ -613,7 +623,7 @@ describe("your data: export and deletion", () => {
     });
     expect(login401.status).toBe(401);
 
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     expect(crew.members.map((m) => m.name)).toEqual(["Owner", "Sam"]);
     expect(crew.reviews.map((r) => r.id)).toEqual([theirs]);
   });
@@ -631,7 +641,7 @@ describe("your data: export and deletion", () => {
       headers: { "x-wewalk-member": samId },
     });
     expect(retry.status).toBe(401);
-    expect((await loadCrew(db)).reviews).toEqual([]);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
   });
 
   it("keeps the owner until they hand the crew over (409), then lets them go", async () => {
@@ -646,8 +656,8 @@ describe("your data: export and deletion", () => {
       phone.call(handOver, "PUT", "/api/admin/owner", { body: { memberId } });
     expect((await put(dana, danaId)).status).toBe(403);
     expect((await put(owner, danaId)).status).toBe(204);
-    expect((await dana.call(me, "GET", "/api/me")).body.member.isOwner).toBe(true);
-    expect((await owner.call(me, "GET", "/api/me")).body.member.isOwner).toBe(false);
+    expect((await dana.call(me, "GET", "/api/me")).body.crew.role).toBe("owner");
+    expect((await owner.call(me, "GET", "/api/me")).body.crew.role).toBe("member");
 
     expect((await deleteAs(owner, PASSWORD)).status).toBe(204);
     // The last one here, now the owner, may leave too.
@@ -687,7 +697,7 @@ describe("reactions", () => {
       params: { id, kind },
     });
   const viewAs = async (name: string) => {
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     const member = crew.members.find((m) => m.name === name)!;
     const session = { member, deviceId: "d" } as unknown as Session;
     const station = await stationView(crew, session, "18-w-18th-st");
@@ -718,7 +728,7 @@ describe("reactions", () => {
     const { dana, sam, id } = await posted();
     await reactAs(sam, id, "hundred");
     await dana.call(deleteReview, "DELETE", "/api/reviews/x", { params: { id } });
-    expect((await loadCrew(db)).reactions).toEqual([]);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reactions).toEqual([]);
   });
 });
 
@@ -739,7 +749,7 @@ describe("here today", () => {
       });
       expect(res.status).toBe(201);
     }
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     const me = crew.members.find((m) => m.name === "Dana")!;
     const view = await exploreView(crew, { member: me, deviceId: "d" } as unknown as Session, now);
     const here = view.hereToday.map((h) => [h.name, h.stationSlug, h.mine]);
@@ -876,7 +886,7 @@ describe("home: areas and the crew feed", () => {
       params: { id: reviewId, kind: "fire" },
     });
 
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     const me = crew.members.find((m) => m.name === "Dana")!;
     const view = await exploreView(
       crew,
@@ -918,7 +928,7 @@ describe("map: every station at its position", () => {
       body: review({ stationSlug: "dock-72", scores: { coffee: 5, wifi: 4 } }),
     });
 
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     const me = crew.members.find((m) => m.name === "Dana")!;
     const view = mapView(crew, { member: me, deviceId: "d" } as unknown as Session);
 
@@ -945,7 +955,7 @@ describe("map: every station at its position", () => {
 describe("ranks: Station of the Month", () => {
   it("follows New York's calendar, not UTC's", async () => {
     await joined("Dana");
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     const me = crew.members.find((m) => m.name === "Dana")!;
     // 11:30pm on Oct 31 in New York is already Nov 1 in UTC.
     const halloweenNight = new Date("2026-11-01T03:30:00Z");
@@ -970,7 +980,7 @@ describe("cities", () => {
       });
       expect(res.status, slug).toBe(201);
     }
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     const me = crew.members.find((m) => m.name === "Dana")!;
     return { crew, session: { member: me, deviceId: "d" } as unknown as Session };
   }
@@ -1009,7 +1019,8 @@ describe("cities", () => {
 
   it("Passport counts the picked city, with only its area badges", async () => {
     const { crew, session } = await crewWithReviews();
-    const view = await passportView(crew, session, new Date(), "boston");
+    const mine = await loadMyVisits(db, session.member.id);
+    const view = await passportView(crew, session, new Date(), "boston", mine);
     expect(view.total).toBe(7);
     expect(view.stamps.map((s) => s.station.slug)).toEqual(["501-boylston-st"]);
     const areaBadges = view.badges.filter((b) => b.key.startsWith("area-")).map((b) => b.key);
@@ -1024,5 +1035,151 @@ describe("cities", () => {
     );
     // Milestones count every city: three buildings so far.
     expect(view.badges.find((b) => b.key === "regular")?.progress.have).toBe(3);
+  });
+});
+
+describe("crews", () => {
+  const CREW = "x-wewalk-crew";
+  /** Dana (first crew's owner and app admin) and Sam in the first crew; Ben starts "Brooklyn"
+   * and Dana joins it too. */
+  async function twoCrews() {
+    const dana = await joined("Dana");
+    const sam = await joined("Sam");
+    const ben = await joined("Ben");
+    vi.stubEnv("CREWS_ENABLED", "1");
+    const created = await ben.call(createCrewRoute, "POST", "/api/crews", {
+      body: { name: "Brooklyn", homeCity: "nyc" },
+    });
+    vi.unstubAllEnvs();
+    expect(created.status).toBe(201);
+    const crewB = created.body.crew as { id: string; inviteCode: string };
+    const join = await dana.call(joinCrewRoute, "POST", "/api/crews/join", {
+      body: { code: crewB.inviteCode },
+    });
+    expect(join.status).toBe(200);
+    return { dana, sam, ben, crewB };
+  }
+  const reviewIn = (phone: Phone, crewId: string | null, stationSlug: string, id = newId()) =>
+    phone.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id },
+      headers: crewId ? { [CREW]: crewId } : {},
+      body: review({ stationSlug }),
+    });
+
+  it("each crew sees only its own members and posts", async () => {
+    const { sam, ben, crewB } = await twoCrews();
+    expect((await reviewIn(sam, null, "dock-72")).status).toBe(201);
+    expect((await reviewIn(ben, null, "33-irving-pl")).status).toBe(201);
+
+    const first = await loadCrew(db, FIRST_CREW_ID);
+    const brooklyn = await loadCrew(db, crewB.id);
+    expect(first.reviews.map((r) => r.stationSlug)).toEqual(["dock-72"]);
+    expect(brooklyn.reviews.map((r) => r.stationSlug)).toEqual(["33-irving-pl"]);
+    // Ben started Brooklyn and switched to it; he's in it only (as its owner), with Dana.
+    expect(brooklyn.members.map((m) => m.name).sort()).toEqual(["Ben", "Dana"]);
+    expect(first.members.map((m) => m.name).sort()).toEqual(["Ben", "Dana", "Sam"]);
+  });
+
+  it("a post lands in the crew it was made in, even if the phone has switched since", async () => {
+    const { dana, crewB } = await twoCrews();
+    // Dana's phone is on Brooklyn now (she just joined it), but this write was queued in the
+    // first crew: it says so, and lands there.
+    expect((await reviewIn(dana, FIRST_CREW_ID, "dock-72")).status).toBe(201);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
+    expect((await loadCrew(db, crewB.id)).reviews).toHaveLength(0);
+  });
+
+  it("refuses a write for a crew you're not in (403)", async () => {
+    const { sam, crewB } = await twoCrews();
+    expect((await reviewIn(sam, crewB.id, "dock-72")).status).toBe(403);
+    expect((await loadCrew(db, crewB.id)).reviews).toEqual([]);
+  });
+
+  it("shares your one review with another crew when you save it there", async () => {
+    const { dana, crewB } = await twoCrews();
+    const id = newId();
+    await reviewIn(dana, FIRST_CREW_ID, "dock-72", id);
+    expect((await reviewIn(dana, crewB.id, "dock-72", id)).status).toBe(200);
+    expect((await loadCrew(db, crewB.id)).reviews.map((r) => r.id)).toEqual([id]);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews.map((r) => r.id)).toEqual([id]);
+  });
+
+  it("only lets you react to reviews the crew you're in can see", async () => {
+    const { sam, ben, crewB } = await twoCrews();
+    const id = newId();
+    await reviewIn(sam, FIRST_CREW_ID, "dock-72", id);
+    const outsider = await ben.call(react, "PUT", "/api/reviews/x/reactions/y", {
+      params: { id, kind: "fire" },
+      headers: { [CREW]: crewB.id },
+    });
+    expect(outsider.status).toBe(404);
+  });
+
+  it("shares today's check-in when you check in at the same place from another crew", async () => {
+    const { dana, crewB } = await twoCrews();
+    const visitedOn = cityDate(new Date());
+    const at = (crewId: string) =>
+      dana.call(putCheckin, "PUT", "/api/checkins/x", {
+        params: { id: newId() },
+        headers: { [CREW]: crewId },
+        body: { stationSlug: "dock-72", visitedOn },
+      });
+    expect((await at(FIRST_CREW_ID)).status).toBe(201);
+    expect((await at(crewB.id)).status).toBe(200);
+    expect((await loadCrew(db, crewB.id)).checkins).toHaveLength(1);
+    expect((await at(crewB.id)).status).toBe(409); // already shared here
+  });
+
+  it("counts posts written with no crew (older code, mid-deploy) as the first crew's", async () => {
+    const { sam, crewB } = await twoCrews();
+    const samId = (await sam.call(me, "GET", "/api/me")).body.member.id as string;
+    await insertReview(
+      db,
+      newId(),
+      samId,
+      reviewInputSchema.parse(review({ stationSlug: "dock-72" })),
+    );
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
+    expect((await loadCrew(db, crewB.id)).reviews).toHaveLength(0);
+  });
+
+  it("lets only the app admin make recovery links, not crew owners", async () => {
+    const { ben, dana } = await twoCrews();
+    const danaId = (await dana.call(me, "GET", "/api/me")).body.member.id as string;
+    // Ben owns Brooklyn and Dana is in it, but a recovery link would let him sign in as her.
+    const res = await ben.call(adminRecovery, "POST", "/api/admin/recovery-links", {
+      body: { memberId: danaId },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("keeps an owner of a crew with others in it from deleting their account", async () => {
+    const { ben } = await twoCrews();
+    const res = await ben.call(deleteMe, "DELETE", "/api/me", { body: { password: PASSWORD } });
+    expect(res.status).toBe(409);
+  });
+
+  it("refuses an invite code that doesn't exist, and new crews until they're switched on", async () => {
+    const dana = await joined("Dana");
+    const bad = await dana.call(joinCrewRoute, "POST", "/api/crews/join", {
+      body: { code: "nope" },
+    });
+    expect(bad.status).toBe(404);
+    const off = await dana.call(createCrewRoute, "POST", "/api/crews", {
+      body: { name: "Later", homeCity: "boston" },
+    });
+    expect(off.status).toBe(503);
+  });
+
+  it("lands old SIGNUP_CODE invite links in the first crew, and crew codes in theirs", async () => {
+    const { crewB } = await twoCrews();
+    const old = await signUp(db, { name: "Old", password: PASSWORD, code: "sesame" }, "sesame");
+    expect(old.crewId).toBe(FIRST_CREW_ID);
+    const fresh = await signUp(
+      db,
+      { name: "New", password: PASSWORD, code: crewB.inviteCode },
+      "sesame",
+    );
+    expect(fresh.crewId).toBe(crewB.id);
   });
 });

@@ -35,8 +35,9 @@ describe("signUp", () => {
   it("makes the first member the owner, nobody after", async () => {
     const a = await signIn(db, "Dana");
     const b = await signIn(db, "Sal");
-    expect(a.member.isOwner).toBe(true);
-    expect(b.member.isOwner).toBe(false);
+    expect(a.crew.role).toBe("owner");
+    expect(b.crew.role).toBe("member");
+    expect([a.member.isAdmin, b.member.isAdmin]).toEqual([true, false]);
   });
 
   it("refuses a name that differs only by case", async () => {
@@ -46,7 +47,7 @@ describe("signUp", () => {
 
   it("gives exactly one owner when people sign up at the same time", async () => {
     const sessions = await Promise.all(["A", "B", "C"].map((name) => signIn(db, name)));
-    expect(sessions.filter((x) => x.member.isOwner)).toHaveLength(1);
+    expect(sessions.filter((x) => x.crew.role === "owner")).toHaveLength(1);
   });
 
   it("stores only a hash of the password, and never hands it to the app", async () => {

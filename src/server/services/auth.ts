@@ -5,12 +5,19 @@ import type { Db } from "../db/client";
 import { AppError, isUniqueViolation } from "../errors";
 import { decoyHash, hashPassword, verifyPassword } from "../auth/passwords";
 import { hashToken, newToken } from "../auth/tokens";
+import * as crewsRepo from "../repos/crews";
+import { FIRST_CREW_ID, type CrewRef } from "../repos/crews";
 import * as repo from "../repos/members";
 
 export type Member = repo.MemberRow;
+export type { CrewRef };
 export interface Session {
   member: Member;
   deviceId: string;
+  /** The crew this request is for: the phone's pick (cookie), or the crew a queued write names. */
+  crew: CrewRef;
+  /** Every crew the member is in, oldest membership first. */
+  crews: CrewRef[];
 }
 
 const LINK_TTL_MS = 24 * 60 * 60 * 1000;
@@ -29,41 +36,58 @@ async function startDevice(db: Db, memberId: string): Promise<string> {
   return token;
 }
 
-/**
- * Sign up with a username and password. The first person to sign up becomes the owner.
- * `name` must already be normalized (see domain/schemas).
- */
 const NEEDS_INVITE = "You need an invite link from someone in the crew to join.";
 
-/** `inviteCode` defaults to SIGNUP_CODE; the crew's first member never needs it. */
+/**
+ * Which crew a sign-up joins: the one whose invite code it carries (/join/<code>), else the first
+ * crew, which SIGNUP_CODE (when set) guards, as before crews.
+ */
+async function crewForSignup(
+  db: Db,
+  code: string | undefined,
+  signupGate: string | null,
+): Promise<string> {
+  const crew = code ? await crewsRepo.findCrewByInviteCode(db, code.trim()) : undefined;
+  if (crew) return crew.id;
+  if (signupGate && !codeMatches(code, signupGate) && (await repo.countMembers(db)) > 0) {
+    throw new AppError("forbidden", NEEDS_INVITE);
+  }
+  return FIRST_CREW_ID;
+}
+
+/**
+ * Sign up with a username and password, joining a crew (see crewForSignup). Someone joining an
+ * empty crew becomes its owner; the very first person ever is also the app admin.
+ * `name` must already be normalized (see domain/schemas).
+ */
 export async function signUp(
   db: Db,
   input: { name: string; password: string; code?: string },
-  inviteCode: string | null = signupCode(),
-): Promise<{ member: Member; token: string }> {
-  if (inviteCode && !codeMatches(input.code, inviteCode) && (await repo.countMembers(db)) > 0) {
-    throw new AppError("forbidden", NEEDS_INVITE);
-  }
+  signupGate: string | null = signupCode(),
+): Promise<{ member: Member; token: string; crewId: string }> {
+  const crewId = await crewForSignup(db, input.code, signupGate);
   const values = {
     name: input.name,
     nameKey: nameKey(input.name),
     passwordHash: await hashPassword(input.password),
+    isAdmin: (await repo.countMembers(db)) === 0,
   };
   let member: Member;
   try {
-    const isOwner = (await repo.countMembers(db)) === 0;
-    member = await repo.insertMember(db, { ...values, isOwner }).catch((e: unknown) => {
-      // Two people raced to be first: the loser signs up as a regular member.
-      if (isOwner && isUniqueViolation(e, "members_one_owner")) {
-        return repo.insertMember(db, { ...values, isOwner: false });
-      }
-      throw e;
-    });
+    member = await repo.insertMember(db, values);
   } catch (e) {
     if (isUniqueViolation(e, "members_name_key_unique")) throw new AppError("conflict", NAME_TAKEN);
     throw e;
   }
-  return { member, token: await startDevice(db, member.id) };
+  const empty = (await crewsRepo.countCrewMembers(db, crewId)) === 0;
+  await crewsRepo.addCrewMember(db, crewId, member.id, empty ? "owner" : "member").catch((e) => {
+    // Two people raced into an empty crew: the loser joins as a member.
+    if (empty && isUniqueViolation(e, "crew_members_one_owner")) {
+      return crewsRepo.addCrewMember(db, crewId, member.id, "member");
+    }
+    throw e;
+  });
+  return { member, token: await startDevice(db, member.id), crewId };
 }
 
 /**
@@ -122,28 +146,39 @@ export async function authenticate(
   db: Db,
   token: string | undefined,
   now: Date,
+  preferredCrewId?: string,
 ): Promise<Session | null> {
   if (!token) return null;
   const found = await repo.findDeviceWithMember(db, hashToken(token));
   if (!found) return null;
   await repo.touchDevice(db, found.device.id, now, TOUCH_EVERY_MS);
-  return { member: found.member, deviceId: found.device.id };
+  let crews = await crewsRepo.listMemberCrews(db, found.member.id);
+  if (!crews.length) {
+    // Everyone is in a crew (sign-up and the migration see to it); heal anyone who isn't.
+    await crewsRepo.addCrewMember(db, FIRST_CREW_ID, found.member.id);
+    crews = await crewsRepo.listMemberCrews(db, found.member.id);
+  }
+  const crew = crews.find((c) => c.id === preferredCrewId) ?? crews[0]!;
+  return { member: found.member, deviceId: found.device.id, crew, crews };
 }
 
-/**
- * Who may run app-wide admin (the building list at /admin/stations). Today that's the crew
- * owner; check through this, not `isOwner`, so only this changes when admin becomes its own role.
- */
-export const isAdmin = (session: Session): boolean => session.member.isOwner;
+/** Whether you own the crew this request is for. */
+export const ownsCrew = (session: Session): boolean => session.crew.role === "owner";
 
-/** Owner only: a one-time link for a member who lost every phone. */
+/**
+ * App-wide admin: the building list at /admin/stations and recovery links. Not a crew role: a
+ * crew owner could otherwise take over a member's account through a recovery link.
+ */
+export const isAdmin = (session: Session): boolean => session.member.isAdmin;
+
+/** Admin only: a one-time link for a member who lost every phone. */
 export async function createRecoveryLink(
   db: Db,
   session: Session,
   memberId: string,
   now: Date,
 ): Promise<string> {
-  if (!session.member.isOwner) throw new AppError("forbidden", "Only the crew owner can do that.");
+  if (!isAdmin(session)) throw new AppError("forbidden", "Only the app admin can do that.");
   if (!(await repo.findMember(db, memberId))) throw new AppError("not_found", "No such member.");
   return issueRecoveryLink(db, memberId, now);
 }
