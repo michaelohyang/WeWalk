@@ -53,6 +53,19 @@ export async function findCredentials(db: Db, nameKey: string) {
   return row;
 }
 
+/** Password and lockout state for a signed-in member (by id). */
+export async function findCredentialsById(db: Db, id: string) {
+  const [row] = await db
+    .select({
+      passwordHash: members.passwordHash,
+      failedLogins: members.failedLogins,
+      lockedUntil: members.lockedUntil,
+    })
+    .from(members)
+    .where(eq(members.id, id));
+  return row;
+}
+
 export async function findPasswordHash(db: Db, id: string): Promise<string | null | undefined> {
   const [row] = await db
     .select({ passwordHash: members.passwordHash })

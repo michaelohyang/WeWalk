@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jpegSize, photoSize } from "./photos";
+import { encodeUnder, jpegSize, photoSize } from "./photos";
 
 /** A minimal JPEG: SOI, an APP0 segment, then a baseline SOF0 with the given size. */
 function jpeg(width: number, height: number, sof = 0xc0): Uint8Array {
@@ -59,5 +59,22 @@ describe("photoSize", () => {
     expect(
       photoSize("https://abc.public.blob.vercel-storage.com/photos/0f8fad5b-x1Yz.jpg"),
     ).toBeNull();
+  });
+});
+
+describe("encodeUnder", () => {
+  const blobOf = (size: number) => new Blob([new Uint8Array(size)]);
+
+  it("keeps the best quality that fits, stepping down only when needed", async () => {
+    const tried: number[] = [];
+    const sizes: Record<number, number> = { 0.88: 3_000, 0.8: 1_500, 0.7: 900 };
+    const encode = async (q: number) => (tried.push(q), blobOf(sizes[q]!));
+    expect((await encodeUnder(encode, [0.88, 0.8, 0.7], 2_000))?.size).toBe(1_500);
+    expect(tried).toEqual([0.88, 0.8]);
+  });
+
+  it("is null when nothing fits, or the browser can't encode", async () => {
+    expect(await encodeUnder(async () => blobOf(5_000), [0.88, 0.7], 2_000)).toBeNull();
+    expect(await encodeUnder(async () => null, [0.88], 2_000)).toBeNull();
   });
 });

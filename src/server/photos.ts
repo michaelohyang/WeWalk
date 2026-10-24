@@ -1,7 +1,7 @@
 import "server-only";
 import { del, put } from "@vercel/blob";
 import { randomUUID } from "node:crypto";
-import { jpegSize } from "@/domain/photos";
+import { jpegSize, MAX_PHOTO_BYTES } from "@/domain/photos";
 import { AppError } from "./errors";
 
 /*
@@ -14,8 +14,6 @@ import { AppError } from "./errors";
  *
  * Blob URLs are public but unguessable (a random suffix), and only reachable from a review.
  */
-
-export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 
 const blobConfigured = () => !!(process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN);
 /** Never on Vercel (where VERCEL=1): a serverless function's memory doesn't last. */

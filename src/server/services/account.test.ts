@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { recordPhoto } from "../repos/photos";
 import { count, eq } from "drizzle-orm";
 import { checkinInputSchema, reviewInputSchema } from "@/domain/schemas";
 import type { Db } from "../db/client";
@@ -8,10 +9,10 @@ import { AppError } from "../errors";
 import { memoryPhoto, storePhoto } from "../photos";
 import { clearPassword } from "../repos/members";
 import { deleteAccount, exportData, handOverOwnership } from "./account";
-import { authenticate, createRecoveryLink, logIn, type Session } from "./auth";
+import { authenticate, createRecoveryLink, logIn, MAX_FAILED_LOGINS, type Session } from "./auth";
 import { react } from "./reactions";
 import { NOW, PASSWORD, newId, signIn } from "./testing";
-import { putCheckin, putReview } from "./visits";
+import { deleteReview, putCheckin, putReview } from "./visits";
 
 let db: Db;
 let dana: Session & { token: string }; // the owner (first to sign up)
@@ -49,6 +50,7 @@ const photoId = (url: string) => url.split("/").pop()!;
 /** Each member reviews and checks in at their own station, and reacts to everyone else. */
 async function busyCrew() {
   const photo = await storePhoto(jpeg());
+  await recordPhoto(db, photo, sal.member.id); // as the upload route does
   const ids = { dana: newId(), sal: newId(), kim: newId() };
   await putReview(db, dana, ids.dana, reviewAt("dock-72"), NOW);
   await putReview(db, sal, ids.sal, reviewAt("18-w-18th-st", photo), NOW);
@@ -134,6 +136,19 @@ describe("deleteAccount", () => {
       details: { fields: { password: [expect.any(String)] } },
     });
     expect(await rowsOf(sal.member.id)).toEqual(before);
+  });
+
+  it("counts wrong passwords toward the login lockout", async () => {
+    await busyCrew();
+    for (let i = 0; i < MAX_FAILED_LOGINS; i++) {
+      expect(await code(deleteAccount(db, sal, { password: "nope" }, NOW))).toBe("invalid");
+    }
+    // Locked: even the right password is refused, here and when logging in.
+    expect(await code(deleteAccount(db, sal, { password: PASSWORD }, NOW))).toBe("invalid");
+    expect(await code(logIn(db, { name: sal.member.name, password: PASSWORD }, NOW))).toBe(
+      "unauthorized",
+    );
+    expect(await db.select().from(members).where(eq(members.id, sal.member.id))).toHaveLength(1);
   });
 
   it("asks a member without a password to set one first", async () => {
@@ -236,5 +251,38 @@ describe("exportData", () => {
     }
     expect(text).not.toContain(sal.member.id);
     expect(text).not.toMatch(/scrypt|token|hash|password/i);
+  });
+});
+
+describe("photos shared before uploads were recorded", () => {
+  /** Sam's upload, and Dana's review pointing at it (what the old exploit could do). */
+  async function sharedPhoto() {
+    const photo = await storePhoto(jpeg());
+    await recordPhoto(db, photo, sal.member.id);
+    const id = newId();
+    await putReview(db, dana, id, reviewAt("dock-72"), NOW);
+    await db.update(reviews).set({ photoUrl: photo }).where(eq(reviews.id, id));
+    return { photo, id };
+  }
+
+  it("deleting the other person's review leaves the uploader's photo alone", async () => {
+    const { photo, id } = await sharedPhoto();
+    await deleteReview(db, dana, id);
+    expect(memoryPhoto(photoId(photo))).toBeDefined();
+  });
+
+  it("deleting the uploader's account keeps it while another review still shows it", async () => {
+    const { photo } = await sharedPhoto();
+    await deleteAccount(db, sal, { password: PASSWORD }, NOW);
+    expect(memoryPhoto(photoId(photo))).toBeDefined();
+  });
+});
+
+describe("deleting your account removes your uploads", () => {
+  it("including ones that never made it onto a review", async () => {
+    const draftPhoto = await storePhoto(jpeg());
+    await recordPhoto(db, draftPhoto, sal.member.id);
+    await deleteAccount(db, sal, { password: PASSWORD }, NOW);
+    expect(memoryPhoto(photoId(draftPhoto))).toBeUndefined();
   });
 });
