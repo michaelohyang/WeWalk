@@ -21,8 +21,12 @@ import { inCity } from "./services/views/city";
 import { crewCreationEnabled, crewForInvite } from "./services/crews";
 import { loadMyVisits } from "./services/crew";
 
-/** The crew a page is for. Someone in no crew (they left their last one) goes to /welcome. */
+/**
+ * The crew a page is for. Someone who hasn't finished the welcome steps, or is in no crew (they
+ * left their last one), goes to /welcome.
+ */
 function crewFor(session: Session) {
+  if (!session.member.onboardedAt) redirect("/welcome");
   return session.crew ?? redirect("/welcome");
 }
 
@@ -30,6 +34,10 @@ function crewFor(session: Session) {
 export async function selectedCity(): Promise<CityKey> {
   const value = (await cookies()).get(CITY_COOKIE)?.value;
   return isCity(value) ? value : DEFAULT_CITY;
+}
+
+async function hasCityCookie(): Promise<boolean> {
+  return isCity((await cookies()).get(CITY_COOKIE)?.value);
 }
 
 /*
@@ -133,10 +141,22 @@ export async function loadJoin(code: string) {
   return { signedIn: true as const, crew: await crewForInvite(await getDb(), code) };
 }
 
-/** /welcome, for someone in no crew: join one by link, or start one (once that's switched on). */
+/** /welcome: the welcome steps for someone new, or picking a crew for someone in none. */
 export async function loadWelcome() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.crew) redirect("/");
-  return { name: session.member.name, canStartCrew: crewCreationEnabled() };
+  const onboarded = !!session.member.onboardedAt;
+  if (session.crew && onboarded) redirect("/");
+  return {
+    name: session.member.name,
+    /** This phone's sign-in, so they can sign out from here. */
+    deviceId: session.deviceId,
+    canStartCrew: crewCreationEnabled(),
+    /** New here: the city and first-rating steps too, not just picking a crew. */
+    onboarded,
+    /** The crew they're in already (they came from an invite link): the crew step is skipped. */
+    crew: session.crew && { name: session.crew.name },
+    /** The phone's city, or the crew's home city if the phone hasn't picked one. */
+    city: (await hasCityCookie()) ? await selectedCity() : (session.crew?.homeCity ?? DEFAULT_CITY),
+  };
 }

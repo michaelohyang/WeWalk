@@ -10,21 +10,38 @@ import { Select } from "@/ui/Select";
 /** "https://…/join/abc123" or just "abc123" → "abc123". */
 const inviteCodeFrom = (text: string) => text.trim().split("/join/").pop()!.split(/[?#]/)[0]!;
 
-export function JoinOrStart({ canStartCrew }: { canStartCrew: boolean }) {
+/**
+ * Join a crew by its invite link, or start one. `onJoined` gets the crew's name; without it the
+ * phone goes to Home.
+ */
+export function JoinOrStart({
+  canStartCrew,
+  onJoined,
+  defaultCity = "nyc",
+}: {
+  canStartCrew: boolean;
+  onJoined?: (crewName: string) => void;
+  /** The new crew's home city to start with (the one they just picked). */
+  defaultCity?: CityKey;
+}) {
   const router = useRouter();
   const cityId = useId();
   const [link, setLink] = useState("");
   const [name, setName] = useState("");
-  const [city, setCity] = useState<CityKey>("nyc");
+  const [city, setCity] = useState<CityKey>(defaultCity);
   const [error, setError] = useState<{ join?: string; start?: string }>({});
   const [busy, setBusy] = useState(false);
 
-  async function done(res: Awaited<ReturnType<typeof request>>, which: "join" | "start") {
+  async function done(
+    res: Awaited<ReturnType<typeof request<{ crew: { name: string } }>>>,
+    which: "join" | "start",
+  ) {
     setBusy(false);
     if (!res.ok) {
       setError({ [which]: fieldErrors(res.error).name ?? res.error.message });
       return;
     }
+    if (onJoined) return onJoined(res.data.crew.name);
     router.replace("/");
     router.refresh();
   }
@@ -38,7 +55,9 @@ export function JoinOrStart({ canStartCrew }: { canStartCrew: boolean }) {
           e.preventDefault();
           setBusy(true);
           await done(
-            await request("POST", "/api/crews/join", { code: inviteCodeFrom(link) }),
+            await request<{ crew: { name: string } }>("POST", "/api/crews/join", {
+              code: inviteCodeFrom(link),
+            }),
             "join",
           );
         }}
@@ -71,7 +90,13 @@ export function JoinOrStart({ canStartCrew }: { canStartCrew: boolean }) {
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
-            await done(await request("POST", "/api/crews", { name, homeCity: city }), "start");
+            await done(
+              await request<{ crew: { name: string } }>("POST", "/api/crews", {
+                name,
+                homeCity: city,
+              }),
+              "start",
+            );
           }}
         >
           <label className={styles.field}>

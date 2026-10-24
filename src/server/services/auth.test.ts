@@ -2,10 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "../db/client";
 import { createTestDb, resetTestDb } from "../db/testing";
 import { AppError } from "../errors";
-import { members } from "../db/schema";
+import { FIRST_CREW_ID, members } from "../db/schema";
 import {
   authenticate,
   createRecoveryLink,
+  finishOnboarding,
   listDevices,
   LOCKOUT_MS,
   logIn,
@@ -16,7 +17,7 @@ import {
   signOutDevice,
   signUp,
 } from "./auth";
-import { NOW, PASSWORD, signIn } from "./testing";
+import { firstCrewInvite, NOW, PASSWORD, signIn } from "./testing";
 
 let db: Db;
 beforeAll(async () => {
@@ -220,5 +221,39 @@ describe("signUp with an invite code", () => {
     expect(await join("Sam", undefined, "sesame")).toBe("forbidden");
     expect(await join("Sam", "open up", "sesame")).toBe("forbidden");
     expect(await join("Sam", "sesame", "sesame")).toBe("ok");
+  });
+});
+
+describe("signUp without an invite, and the welcome steps", () => {
+  const signUpAs = async (name: string, code?: string, gate: string | null = null) => {
+    const { token, crewId } = await signUp(db, { name, password: PASSWORD, code }, gate);
+    return { crewId, session: (await authenticate(db, token, NOW))! };
+  };
+
+  it("puts the very first person in the first crew, and nobody after", async () => {
+    const first = await signUpAs("Dana");
+    expect(first.crewId).toBe(FIRST_CREW_ID);
+    const next = await signUpAs("Sam");
+    expect(next.crewId).toBeNull();
+    expect(next.session.crew).toBeNull();
+    expect(next.session.crews).toEqual([]);
+  });
+
+  it("starts everyone, invited or not, with the welcome steps", async () => {
+    const dana = await signUpAs("Dana");
+    const invited = await signUpAs("Sam", await firstCrewInvite(db));
+    expect(invited.session.crew?.id).toBe(FIRST_CREW_ID);
+    expect([dana.session.member.onboardedAt, invited.session.member.onboardedAt]).toEqual([
+      null,
+      null,
+    ]);
+  });
+
+  it("marks the welcome steps done once; doing it again keeps the first time", async () => {
+    const { session } = await signUpAs("Dana");
+    await finishOnboarding(db, session, NOW);
+    await finishOnboarding(db, session, minutes(5));
+    const [row] = await db.select({ at: members.onboardedAt }).from(members);
+    expect(row!.at).toEqual(NOW);
   });
 });

@@ -43,34 +43,38 @@ const NEEDS_INVITE = "You need an invite link from someone in the crew to join."
 const DEAD_INVITE = "That invite link doesn't work any more. Ask for a new one.";
 
 /**
- * Which crew a sign-up joins: the one whose invite code it carries (/join/<code>), else the first
- * crew, which SIGNUP_CODE (when set) guards, as before crews.
+ * Which crew a sign-up joins: the one whose invite code it carries (/join/<code>), or the first
+ * crew for SIGNUP_CODE (the shared code from before crews) and for the very first person ever.
+ * Anyone else joins no crew and picks one in the welcome steps. With SIGNUP_CODE set, signing up
+ * needs a code.
  */
 async function crewForSignup(
   db: Db,
   code: string | undefined,
   signupGate: string | null,
-): Promise<string> {
+): Promise<string | null> {
   const crew = code ? await crewsRepo.findCrewByInviteCode(db, code.trim()) : undefined;
   if (crew) return crew.id;
   if (signupGate && codeMatches(code, signupGate)) return FIRST_CREW_ID;
   // A code that names no crew is a dead invite link: say so rather than drop them somewhere.
   if (code?.trim()) throw new AppError("forbidden", DEAD_INVITE);
-  if (signupGate && (await repo.countMembers(db)) > 0)
-    throw new AppError("forbidden", NEEDS_INVITE);
-  return FIRST_CREW_ID;
+  const firstEver = (await repo.countMembers(db)) === 0;
+  if (firstEver) return FIRST_CREW_ID;
+  if (signupGate) throw new AppError("forbidden", NEEDS_INVITE);
+  return null;
 }
 
 /**
- * Sign up with a username and password, joining a crew (see crewForSignup). Someone joining an
- * empty crew becomes its owner; the very first person ever is also the app admin.
+ * Sign up with a username and password, joining a crew if they have an invite (see
+ * crewForSignup). Someone joining an empty crew becomes its owner; the very first person ever is
+ * also the app admin. Everyone starts with the welcome steps.
  * `name` must already be normalized (see domain/schemas).
  */
 export async function signUp(
   db: Db,
   input: { name: string; password: string; code?: string },
   signupGate: string | null = signupCode(),
-): Promise<{ member: Member; token: string; crewId: string }> {
+): Promise<{ member: Member; token: string; crewId: string | null }> {
   const crewId = await crewForSignup(db, input.code, signupGate);
   const values = {
     name: input.name,
@@ -78,10 +82,11 @@ export async function signUp(
     passwordHash: await hashPassword(input.password),
     isAdmin: (await repo.countMembers(db)) === 0,
   };
-  // The account and its membership together: nobody is ever left without a crew.
+  // The account and its membership together: an invite never leaves them without its crew.
   const member = await db
     .transaction(async (tx) => {
       const created = await repo.insertMember(tx, values);
+      if (!crewId) return created;
       const empty = (await crewsRepo.countCrewMembers(tx, crewId)) === 0;
       try {
         await tx.transaction((inner) =>
@@ -175,6 +180,11 @@ const NO_CREW = "Join a crew first.";
 export function crewOf(session: Session): CrewRef {
   if (!session.crew) throw new AppError("conflict", NO_CREW);
   return session.crew;
+}
+
+/** The welcome steps are done: pages stop sending them to /welcome. */
+export async function finishOnboarding(db: Db, session: Session, now: Date): Promise<void> {
+  await repo.markOnboarded(db, session.member.id, now);
 }
 
 /** Whether you own the crew this request is for. */

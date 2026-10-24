@@ -10,6 +10,7 @@ const memberColumns = {
   nameKey: members.nameKey,
   isAdmin: members.isAdmin,
   hasPassword: sql<boolean>`${members.passwordHash} is not null`,
+  onboardedAt: members.onboardedAt,
   createdAt: members.createdAt,
 };
 export type MemberRow = {
@@ -19,6 +20,8 @@ export type MemberRow = {
   /** App-wide admin (stations, recovery links). Crew ownership is a crew role. */
   isAdmin: boolean;
   hasPassword: boolean;
+  /** Null until they finish the welcome steps. */
+  onboardedAt: Date | null;
   createdAt: Date;
 };
 
@@ -31,7 +34,11 @@ export async function insertMember(
   db: Db,
   values: { name: string; nameKey: string; isAdmin: boolean; passwordHash: string },
 ): Promise<MemberRow> {
-  const [row] = await db.insert(members).values(values).returning(memberColumns);
+  // New people start with the welcome steps (the column's default is for existing rows).
+  const [row] = await db
+    .insert(members)
+    .values({ ...values, onboardedAt: null })
+    .returning(memberColumns);
   return row!;
 }
 
@@ -113,6 +120,14 @@ export async function clearFailedLogins(db: Db, id: string) {
 
 export async function listMembers(db: Db): Promise<Pick<MemberRow, "id" | "name">[]> {
   return db.select({ id: members.id, name: members.name }).from(members).orderBy(members.createdAt);
+}
+
+/** Marks the welcome steps done (once: the first time stays). */
+export async function markOnboarded(db: Db, id: string, now: Date) {
+  await db
+    .update(members)
+    .set({ onboardedAt: now })
+    .where(and(eq(members.id, id), isNull(members.onboardedAt)));
 }
 
 export async function renameMember(db: Db, id: string, name: string, nameKey: string) {

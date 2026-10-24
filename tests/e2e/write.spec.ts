@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { SIGNUP_CODE } from "../../playwright.config";
 import { checkIn, joinAs, PASSWORD, review, toastText, uniqueName } from "./helpers";
 
 const main = (page: Page) => page.getByRole("main");
@@ -14,10 +15,16 @@ const myReviews = (page: Page, name: string) =>
 test.describe("accounts", () => {
   test("sign up with a username and password", async ({ page }) => {
     const name = uniqueName("Dana");
-    await page.goto("/signup");
+    await page.goto(`/signup?code=${SIGNUP_CODE}`);
     await page.getByLabel("Username").fill(name);
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Sign up" }).click();
+    // The welcome steps: the code joined a crew, so it's city, then the first rating.
+    await expect(page).toHaveURL(/\/welcome$/);
+    await expect(page.getByText("Step 1 of 2")).toBeVisible();
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(page.getByRole("heading", { name: /^You're in/ })).toBeFocused();
+    await page.getByRole("button", { name: "Look around first" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
     await page.goto("/crew");
@@ -34,7 +41,7 @@ test.describe("accounts", () => {
     const name = uniqueName("Sal");
     await joinAs(page, name);
     const fresh = await (await browser.newContext({ ...info.project.use })).newPage();
-    await fresh.goto("/signup");
+    await fresh.goto(`/signup?code=${SIGNUP_CODE}`);
     await fresh.getByLabel("Username").fill(name.toUpperCase());
     await fresh.getByLabel("Password").fill(PASSWORD);
     await fresh.getByRole("button", { name: "Sign up" }).click();

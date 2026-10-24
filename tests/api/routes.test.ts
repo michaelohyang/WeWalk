@@ -17,6 +17,7 @@ import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
 import { GET as exportMe } from "@/app/api/me/export/route";
+import { POST as onboarded } from "@/app/api/me/onboarded/route";
 import { DELETE as deleteMe, GET as me, PATCH as renameMe } from "@/app/api/me/route";
 import { GET as getPhoto } from "@/app/api/photos/[id]/route";
 import { POST as uploadPhoto } from "@/app/api/photos/route";
@@ -43,6 +44,7 @@ import { insertCrew, listMemberCrews } from "@/server/repos/crews";
 import { crews as crewsTable, reports as reportsTable } from "@/server/db/schema";
 import { reviewInputSchema } from "@/domain/schemas";
 import { signUp } from "@/server/services/auth";
+import { firstCrewInvite } from "@/server/services/testing";
 import { Phone } from "./client";
 
 const PASSWORD = "correct horse battery";
@@ -76,10 +78,11 @@ beforeAll(async () => {
 afterAll(() => setDb(undefined));
 beforeEach(() => resetTestDb(db));
 
+/** Signs up into the first crew, as someone with its invite link would. */
 async function joined(name: string): Promise<Phone> {
   const phone = new Phone();
   const res = await phone.call(signup, "POST", "/api/signup", {
-    body: { name, password: PASSWORD },
+    body: { name, password: PASSWORD, code: await firstCrewInvite(db) },
   });
   expect(res.status).toBe(201);
   return phone;
@@ -202,6 +205,7 @@ describe("every member route needs a session", () => {
         }),
     ],
     ["GET export", () => new Phone().call(exportMe, "GET", "/api/me/export")],
+    ["POST onboarded", () => new Phone().call(onboarded, "POST", "/api/me/onboarded")],
     [
       "DELETE /api/me",
       () => new Phone().call(deleteMe, "DELETE", "/api/me", { body: { password: PASSWORD } }),
@@ -1452,5 +1456,24 @@ describe("moderation", () => {
       (await sam.call(joinCrewRoute, "POST", "/api/crews/join", { body: { code: first!.code } }))
         .status,
     ).toBe(403);
+  });
+});
+
+describe("welcome steps", () => {
+  it("a sign-up without an invite has no crew until they join one", async () => {
+    await joined("Dana");
+    const sam = new Phone();
+    expect(
+      (await sam.call(signup, "POST", "/api/signup", { body: { name: "Sam", password: PASSWORD } }))
+        .status,
+    ).toBe(201);
+    expect((await sam.call(me, "GET", "/api/me")).body.crew).toBeNull();
+    expect(sam.cookie).not.toContain("ww_crew=");
+    const code = await firstCrewInvite(db);
+    expect(
+      (await sam.call(joinCrewRoute, "POST", "/api/crews/join", { body: { code } })).status,
+    ).toBe(200);
+    expect((await sam.call(onboarded, "POST", "/api/me/onboarded")).status).toBe(204);
+    expect((await sam.call(me, "GET", "/api/me")).body.crew.id).toBe(FIRST_CREW_ID);
   });
 });

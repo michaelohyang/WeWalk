@@ -18,7 +18,12 @@ of a building while looking at another crew shares it there too. Reactions belon
 they were made in. Your passport, badges and streak are yours across every crew.
 
 Everyone from before crews is in the first crew ("NYC crew"). Starting new crews waits for
-`CREWS_ENABLED=1`, so turn that on once a deploy with crews has settled. The app admin (the
+`CREWS_ENABLED=1`, so turn that on once a deploy with crews has settled.
+
+New people go through short welcome steps at `/welcome`: pick a city, join or start a crew
+(skipped when they came from an invite link), then rate a first building. Signing up without an
+invite link puts you in no crew until you join or start one, so with `CREWS_ENABLED` off they
+need someone's invite link to get in. The app admin (the
 original owner) manages buildings and makes recovery links; crew owners hand over ownership.
 
 ### Cities
@@ -146,12 +151,12 @@ owner. Locally, photos are kept in memory, so they disappear when the server res
 
 ## Configuration
 
-| Variable        | Used by                | Value                                                                                      |
-| --------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`  | The app at runtime     | Postgres connection string (Supabase transaction pooler, port 6543), or `pglite:…` locally |
-| `DIRECT_URL`    | Migrations and seeding | Postgres connection string (Supabase session pooler, port 5432)                            |
-| `BLOB_STORE_ID` | Review photos          | Added by Vercel when a Blob store is connected to the project; leave empty for local use   |
-| `SIGNUP_CODE`   | Sign-up                | Optional invite code. When set, sign-up needs the invite link from Crew, which carries it  |
+| Variable        | Used by                | Value                                                                                                   |
+| --------------- | ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`  | The app at runtime     | Postgres connection string (Supabase transaction pooler, port 6543), or `pglite:…` locally              |
+| `DIRECT_URL`    | Migrations and seeding | Postgres connection string (Supabase session pooler, port 5432)                                         |
+| `BLOB_STORE_ID` | Review photos          | Added by Vercel when a Blob store is connected to the project; leave empty for local use                |
+| `SIGNUP_CODE`   | Sign-up                | Optional shared code that joins the first crew. When set, sign-up needs a crew invite link or this code |
 
 Never commit real connection strings or tokens. `.env.local` is ignored by git.
 
