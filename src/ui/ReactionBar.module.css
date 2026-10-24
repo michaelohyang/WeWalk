@@ -22,7 +22,9 @@
   font: inherit;
   font-size: 15px;
 }
+/* Tappable ones get the full 44px; the counts on your own review stay compact. */
 .reaction {
+  min-height: 44px;
   cursor: pointer;
   transition:
     transform 0.12s ease,

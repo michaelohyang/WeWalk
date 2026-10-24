@@ -11,7 +11,7 @@ export function isIsoDate(value: unknown): value is IsoDate {
 }
 
 /** The UTC calendar date of an instant. */
-export function utcDate(now: Date): IsoDate {
+function utcDate(now: Date): IsoDate {
   return now.toISOString().slice(0, 10);
 }
 
