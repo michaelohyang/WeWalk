@@ -1,9 +1,12 @@
 import { authedRoute, json } from "@/server/http";
 import { AppError } from "@/server/errors";
 import { MAX_PHOTO_BYTES, storePhoto } from "@/server/photos";
+import { spend } from "@/server/services/rate-limits";
 
 /** Upload a review photo (the raw JPEG as the body) → `{ url }` to put on the review. */
-export const POST = authedRoute(async ({ req }) => {
+export const POST = authedRoute(async ({ req, db, now, session }) => {
+  await spend(db, "photoBurst", session.member.id, now);
+  await spend(db, "photoQuota", session.member.id, now);
   if (req.headers.get("content-type")?.toLowerCase() !== "image/jpeg") {
     throw new AppError("invalid", "Photos need to be JPEGs.");
   }
