@@ -137,7 +137,9 @@ test.describe("rating", () => {
     await score(page, "Coffee", 2).click();
     await page.getByRole("combobox", { name: "Building" }).click();
     await page
-      .getByRole("option", { name: /^1460 Broadway/ })
+      // Options read "WeWork <neighborhood>" with the street address under it.
+      .getByRole("option")
+      .filter({ hasText: "1460 Broadway" })
       .last()
       .click();
     await expect(page).toHaveURL(/\/rate\/1460-broadway$/);

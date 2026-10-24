@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { placeName } from "@/domain/place-name";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { CATEGORIES } from "@/domain/categories";
@@ -39,7 +40,7 @@ export default async function StationPage({ params }: Props) {
         >
           {station.neighborhood}
         </span>
-        <h1>{station.name}</h1>
+        <h1>{placeName(station)}</h1>
         <p className={styles.addr}>{station.address}</p>
       </header>
 

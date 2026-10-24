@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { placeName, placeNameWithStreet } from "@/domain/place-name";
 import { CITIES } from "@/domain/areas";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fieldErrors } from "@/client/api";
@@ -236,7 +237,9 @@ export function RateForm({ view }: { view: RateView }) {
                       label: "Checked in lately",
                       options: suggested.map((s) => ({
                         value: RECENT + s.slug,
-                        label: `${s.name} · ${s.neighborhood}`,
+                        label: placeName(s),
+                        detail: s.address,
+                        selected: placeNameWithStreet(s),
                       })),
                     },
                   ]
@@ -246,7 +249,12 @@ export function RateForm({ view }: { view: RateView }) {
                 label: c.name,
                 options: view.stations
                   .filter((s) => s.city === c.key)
-                  .map((s) => ({ value: s.slug, label: `${s.name} · ${s.neighborhood}` })),
+                  .map((s) => ({
+                    value: s.slug,
+                    label: placeName(s),
+                    detail: s.address,
+                    selected: placeNameWithStreet(s),
+                  })),
               })).filter((g) => g.options.length),
             ]}
           />

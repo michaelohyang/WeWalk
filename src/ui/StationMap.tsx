@@ -5,6 +5,7 @@ import type { Map as MapLibreMap, Marker as MapLibreMarker } from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import type { AreaKey } from "@/domain/areas";
 import { formatScore, tierOf } from "@/domain/scoring";
+import { placeName } from "@/domain/place-name";
 import { ButtonLink } from "./Button";
 import { Empty } from "./Empty";
 import { plural } from "./format";
@@ -14,6 +15,8 @@ import styles from "./StationMap.module.css";
 export interface MapPin {
   slug: string;
   name: string;
+  /** The full street address, shown under the name (many names are just the address). */
+  address: string;
   neighborhood: string;
   area: AreaKey;
   overall: number | null;
@@ -233,10 +236,11 @@ export function StationMap({
             <div className={styles.info}>
               {/* On Home the card sits under the map section's own h2. */}
               {compact ? (
-                <h3 className={styles.name}>{station.name}</h3>
+                <h3 className={styles.name}>{placeName(station)}</h3>
               ) : (
-                <h2 className={styles.name}>{station.name}</h2>
+                <h2 className={styles.name}>{placeName(station)}</h2>
               )}
+              <p className={styles.address}>{station.address}</p>
               <p className={styles.meta}>
                 {station.neighborhood} · {plural(station.reviewCount, "review")}
                 {station.mine ? " · you've been" : station.visited ? " · crew's been" : ""}

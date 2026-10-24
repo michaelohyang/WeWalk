@@ -109,6 +109,12 @@
   font-weight: 800;
   overflow-wrap: anywhere;
 }
+.address {
+  margin-top: 2px;
+  color: var(--fg);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
 .meta {
   margin-top: 2px;
   color: var(--fg-2);
