@@ -194,16 +194,42 @@ describe("outbox", () => {
     expect(pending()).toEqual([]);
   });
 
-  it("holds writes when signed out or refused (401, 403) instead of dropping them", async () => {
-    for (const status of [401, 403]) {
-      localStorage.clear();
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(() => reply(status, { error: { code: "unauthorized", message: "Signed out" } })),
-      );
-      expect((await send(job())).status).toBe("queued");
-      expect(pending()).toHaveLength(1);
-    }
+  it("holds a write when signed out (401), marked as waiting for a login", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => reply(401, { error: { code: "unauthorized", message: "Signed out" } })),
+    );
+    expect(await send(job())).toEqual({ status: "queued", needsLogin: true });
+    expect(pending()).toMatchObject([{ key: "k1", needsLogin: true }]);
+
+    // Logged back in but offline: it's waiting for signal again, not for a login.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    await flush();
+    expect(pending()[0]!.needsLogin).toBeUndefined();
+  });
+
+  it("drops a refused write (403) and keeps posting the ones behind it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new TypeError("Failed to fetch"))),
+    );
+    await send(job("k1"));
+    await send(job("k2"));
+
+    const fetch = vi.fn((url: string) =>
+      url.endsWith("/k1")
+        ? reply(403, { error: { code: "forbidden", message: "That's someone else's review." } })
+        : reply(201, {}),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const refused: string[] = [];
+    await flush((j, result) => refused.push(`${j.key}: ${result.error.message}`));
+    expect(refused).toEqual(["k1: That's someone else's review."]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(pending()).toEqual([]);
   });
 
   it("clears the form draft only once the server has the write", async () => {

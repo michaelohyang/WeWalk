@@ -58,12 +58,15 @@ export function OutboxStatus() {
   }, [router, toast]);
 
   if (!jobs.length) return null;
+  const saved =
+    jobs.length === 1
+      ? `${jobs[0]!.label} is saved on this phone`
+      : `${jobs.length} updates are saved on this phone`;
   return (
     <div className={styles.bar} role="status">
-      {jobs.length === 1
-        ? `${jobs[0]!.label} is saved on this phone`
-        : `${jobs.length} updates are saved on this phone`}
-      , and will post when you&apos;re back online.
+      {jobs.some((j) => j.needsLogin)
+        ? `${saved}. Log in again to post ${jobs.length === 1 ? "it" : "them"}.`
+        : `${saved}, and will post when you're back online.`}
     </div>
   );
 }

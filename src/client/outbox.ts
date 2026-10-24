@@ -11,10 +11,12 @@ import { store } from "./storage";
  * - sent (2xx): removed from the queue.
  * - no signal, server hiccup (network error, timeout, 5xx, 408, 429): stays queued; retried
  *   when the phone comes back online, the app reopens, or the tab becomes visible again.
- * - signed out or refused (401, 403): stays queued too. Signing back in fixes it, and dropping
- *   someone's review because their session lapsed would be the worst outcome.
- * - rejected (other 4xx): removed; the caller shows why. A rejection won't fix itself, so the
- *   form's draft is kept (it's only cleared once the server has the write).
+ * - signed out (401): stays queued too, marked `needsLogin`. Signing back in fixes it, and
+ *   dropping someone's review because their session lapsed would be the worst outcome.
+ * - rejected (403 and other 4xx): removed; the caller shows why. A refusal won't fix itself
+ *   (every 403 is permanent: someone else's review, owner-only, wrong origin), and holding it
+ *   would block every write queued behind it. The form's draft is kept (it's only cleared once
+ *   the server has the write).
  *
  * Each write remembers who made it. Only the signed-in member's writes are sent (and the
  * server double-checks), so on a shared phone nothing posts under the wrong name.
@@ -32,6 +34,8 @@ export interface Job {
   draft?: string;
   /** Who made it (null if unknown: sent by whoever is signed in). */
   memberId?: string | null;
+  /** Its last try was refused because the phone is signed out: waiting for a login, not signal. */
+  needsLogin?: boolean;
   queuedAt: number;
 }
 
@@ -43,7 +47,7 @@ export interface ApiError {
 
 export type SendResult =
   | { status: "sent"; data: unknown }
-  | { status: "queued" }
+  | { status: "queued"; needsLogin?: boolean }
   | { status: "rejected"; httpStatus: number; error: ApiError };
 
 const KEY = "wewalk:outbox";
@@ -74,13 +78,14 @@ export function subscribe(listener: (jobs: Job[]) => void): () => void {
   return () => listeners.delete(listener);
 }
 
-const HOLD = new Set([401, 403, 408, 429]);
+const HOLD = new Set([408, 429]);
 const retryable = (status: number) => status >= 500 || HOLD.has(status);
 
 async function attempt(job: Job): Promise<SendResult> {
   const author: Record<string, string> = job.memberId ? { [MEMBER_HEADER]: job.memberId } : {};
   const res = await request(job.method, job.url, job.body, author);
   if (res.ok) return { status: "sent", data: res.data };
+  if (res.status === 401) return { status: "queued", needsLogin: true };
   if (res.status === 0 || retryable(res.status)) return { status: "queued" }; // no signal / hiccup
   return { status: "rejected", httpStatus: res.status, error: res.error };
 }
@@ -91,7 +96,13 @@ const outcomes = new Map<string, SendResult["status"]>();
 export const outcome = (key: string) => outcomes.get(key);
 
 function settle(job: Job, result: SendResult) {
-  if (result.status === "queued") return;
+  if (result.status === "queued") {
+    const needsLogin = result.needsLogin || undefined;
+    if (job.needsLogin !== needsLogin) {
+      save(pending().map((j) => (j.key === job.key ? { ...j, needsLogin } : j)));
+    }
+    return;
+  }
   outcomes.set(job.key, result.status);
   if (result.status === "sent" && job.draft) clearDraft(job.draft);
   save(pending().filter((j) => j.key !== job.key));
@@ -123,8 +134,8 @@ export function flush(
   flushing ??= (async () => {
     for (const job of waiting()) {
       const result = await attempt(job);
-      if (result.status === "queued") break; // still offline: try again later
       settle(job, result);
+      if (result.status === "queued") break; // still offline or signed out: try again later
       if (result.status === "rejected") onRejected?.(job, result);
     }
   })().finally(() => {
