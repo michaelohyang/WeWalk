@@ -1,7 +1,17 @@
 import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import type { CityKey } from "@/domain/areas";
 import type { Db } from "../db/client";
-import { crewMembers, crews, FIRST_CREW_ID, members } from "../db/schema";
+import {
+  checkinCrews,
+  checkins,
+  crewMembers,
+  crews,
+  FIRST_CREW_ID,
+  members,
+  reactions,
+  reviewCrews,
+  reviews,
+} from "../db/schema";
 
 export type CrewRole = "owner" | "member";
 
@@ -167,3 +177,30 @@ export async function insertCrew(
 }
 
 export { FIRST_CREW_ID };
+
+/** Takes a member's posts and reactions out of a crew (they stay in the member's other crews). */
+export async function unlinkMemberFromCrew(db: Db, crewId: string, memberId: string) {
+  await db.execute(sql`
+    delete from ${reviewCrews} rc using ${reviews} r
+    where rc.review_id = r.id and r.member_id = ${memberId} and rc.crew_id = ${crewId}`);
+  await db.execute(sql`
+    delete from ${checkinCrews} cc using ${checkins} c
+    where cc.checkin_id = c.id and c.member_id = ${memberId} and cc.crew_id = ${crewId}`);
+  await db
+    .delete(reactions)
+    .where(and(eq(reactions.crewId, crewId), eq(reactions.memberId, memberId)));
+}
+
+export async function removeCrewMember(db: Db, crewId: string, memberId: string) {
+  await db
+    .delete(crewMembers)
+    .where(and(eq(crewMembers.crewId, crewId), eq(crewMembers.memberId, memberId)));
+}
+
+export async function renameCrew(db: Db, crewId: string, name: string) {
+  await db.update(crews).set({ name }).where(eq(crews.id, crewId));
+}
+
+export async function setInviteCode(db: Db, crewId: string, inviteCode: string) {
+  await db.update(crews).set({ inviteCode }).where(eq(crews.id, crewId));
+}

@@ -12,7 +12,14 @@ const base = { stationSlug: "18-w-18th-st", visitedOn: "2026-10-01", scores: { c
 describe("reviewInputSchema", () => {
   it("fills defaults and de-duplicates tags", () => {
     const r = reviewInputSchema.parse({ ...base, tags: ["quiet floor", "quiet floor"] });
-    expect(r).toEqual({ ...base, hotTake: "", body: "", tags: ["quiet floor"], photoUrl: null });
+    expect(r).toEqual({
+      ...base,
+      hotTake: "",
+      body: "",
+      tags: ["quiet floor"],
+      photoUrl: null,
+      alsoCrews: [],
+    });
   });
 
   it.each([

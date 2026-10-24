@@ -9,7 +9,7 @@ import { listDevices, rename } from "@/server/services/auth";
 export const GET = authedRoute(async ({ db, session }) =>
   json({
     member: memberJson(session.member),
-    crew: { id: session.crew.id, name: session.crew.name, role: session.crew.role },
+    crew: session.crew && { id: session.crew.id, name: session.crew.name, role: session.crew.role },
     devices: await listDevices(db, session),
   }),
 );

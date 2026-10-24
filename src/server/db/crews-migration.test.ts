@@ -19,7 +19,11 @@ const before = mkdtempSync(path.join(tmpdir(), "wewalk-before-crews-"));
 cpSync(real, before, { recursive: true });
 const journalFile = path.join(before, "meta/_journal.json");
 const journal = JSON.parse(readFileSync(journalFile, "utf8")) as { entries: { tag: string }[] };
-journal.entries = journal.entries.filter((e) => !e.tag.endsWith("_crews"));
+// Everything before the crews migration (later ones assume crews exist).
+journal.entries = journal.entries.slice(
+  0,
+  journal.entries.findIndex((e) => e.tag.endsWith("_crews")),
+);
 writeFileSync(journalFile, JSON.stringify(journal));
 afterAll(() => rmSync(before, { recursive: true, force: true }));
 

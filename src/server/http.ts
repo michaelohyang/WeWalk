@@ -130,7 +130,7 @@ export function authedRoute<P>(handler: (ctx: AuthedCtx, params: P) => Promise<R
     );
     if (!session)
       throw new AppError("unauthorized", "You're signed out. Open your crew's invite link.");
-    if (writtenIn && session.crew.id !== writtenIn) {
+    if (writtenIn && session.crew?.id !== writtenIn) {
       throw new AppError("forbidden", "You're not in that crew any more.");
     }
     const author = ctx.req.headers.get(MEMBER_HEADER);
@@ -144,7 +144,11 @@ export function authedRoute<P>(handler: (ctx: AuthedCtx, params: P) => Promise<R
       if (ctx.req.cookies.get(MEMBER_COOKIE)?.value !== session.member.id) {
         setMemberCookie(res, session.member.id);
       }
-      if (!writtenIn && ctx.req.cookies.get(CREW_COOKIE)?.value !== session.crew.id) {
+      if (
+        session.crew &&
+        !writtenIn &&
+        ctx.req.cookies.get(CREW_COOKIE)?.value !== session.crew.id
+      ) {
         setCrewCookie(res, session.crew.id);
       }
     }

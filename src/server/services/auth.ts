@@ -14,8 +14,11 @@ export type { CrewRef };
 export interface Session {
   member: Member;
   deviceId: string;
-  /** The crew this request is for: the phone's pick (cookie), or the crew a queued write names. */
-  crew: CrewRef;
+  /**
+   * The crew this request is for: the phone's pick (cookie), or the crew a queued write names.
+   * Null for someone in no crew (they left their last one): pages send them to /welcome.
+   */
+  crew: CrewRef | null;
   /** Every crew the member is in, oldest membership first. */
   crews: CrewRef[];
 }
@@ -161,19 +164,21 @@ export async function authenticate(
   const found = await repo.findDeviceWithMember(db, hashToken(token));
   if (!found) return null;
   await repo.touchDevice(db, found.device.id, now, TOUCH_EVERY_MS);
-  let crews = await crewsRepo.listMemberCrews(db, found.member.id);
-  if (!crews.length) {
-    // Sign-up and the migration put everyone in a crew. Only someone who signed up through
-    // older code mid-deploy (which knew one crew: the first) can arrive without one.
-    await crewsRepo.addCrewMember(db, FIRST_CREW_ID, found.member.id);
-    crews = await crewsRepo.listMemberCrews(db, found.member.id);
-  }
-  const crew = crews.find((c) => c.id === preferredCrewId) ?? crews[0]!;
+  const crews = await crewsRepo.listMemberCrews(db, found.member.id);
+  const crew = crews.find((c) => c.id === preferredCrewId) ?? crews[0] ?? null;
   return { member: found.member, deviceId: found.device.id, crew, crews };
 }
 
+const NO_CREW = "Join a crew first.";
+
+/** The crew this request is for; refuses (409) for someone in no crew. */
+export function crewOf(session: Session): CrewRef {
+  if (!session.crew) throw new AppError("conflict", NO_CREW);
+  return session.crew;
+}
+
 /** Whether you own the crew this request is for. */
-export const ownsCrew = (session: Session): boolean => session.crew.role === "owner";
+export const ownsCrew = (session: Session): boolean => session.crew?.role === "owner";
 
 /**
  * App-wide admin: the building list at /admin/stations and recovery links. Not a crew role: a

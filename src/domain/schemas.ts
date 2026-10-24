@@ -84,6 +84,8 @@ export const reviewInputSchema = z.preprocess(
         .transform((ts) => [...new Set(ts)]),
       /** From POST /api/photos; the server checks it's one of ours. Leaving it out removes it. */
       photoUrl: z.string().max(500).nullable().default(null),
+      /** Your other crews to share it with too (crews you're not in are skipped). */
+      alsoCrews: z.array(z.uuid()).max(20).default([]),
     })
     .strict(),
 );
@@ -140,6 +142,16 @@ export const createCrewInputSchema = z
       .min(1, "Name your crew.")
       .max(40, "Keep it under 40 characters."),
     homeCity: z.enum(CITIES.map((c) => c.key) as [CityKey, ...CityKey[]]),
+  })
+  .strict();
+
+export const renameCrewInputSchema = z
+  .object({
+    name: z
+      .string("Name your crew.")
+      .trim()
+      .min(1, "Name your crew.")
+      .max(40, "Keep it under 40 characters."),
   })
   .strict();
 

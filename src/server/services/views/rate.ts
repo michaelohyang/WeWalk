@@ -27,6 +27,8 @@ export interface RateView {
   visitedSlugs: string[];
   /** Your latest check-ins at buildings you haven't reviewed, newest first: likely next to rate. */
   toReview: { stationSlug: string; visitedOn: IsoDate }[];
+  /** Your other crews, for "Also post to". */
+  otherCrews: { id: string; name: string }[];
 }
 
 export async function rateView(
@@ -64,6 +66,9 @@ export async function rateView(
       : null,
     visitedSlugs: [...new Set(visits.map((v) => v.stationSlug))],
     toReview: toReview(crew, session.member.id),
+    otherCrews: session.crews
+      .filter((c) => c.id !== session.crew?.id)
+      .map((c) => ({ id: c.id, name: c.name })),
   };
 }
 

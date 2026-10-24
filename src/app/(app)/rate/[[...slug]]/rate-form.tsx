@@ -16,6 +16,7 @@ import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { Page } from "@/ui/Page";
 import { Select } from "@/ui/Select";
 import { useToast } from "@/ui/Toast";
+import { AlsoPost } from "./also-post";
 import { DetailsFields } from "./details-fields";
 import styles from "./rate.module.css";
 import { ScorePicker } from "./score-picker";
@@ -35,6 +36,8 @@ export interface Draft {
   photoUrl?: string | null;
   /** Typed before a building was picked, then carried over: not a draft to "pick up". */
   carried?: boolean;
+  /** Other crews to share it with ("Also post to"). */
+  alsoCrews?: string[];
 }
 
 export function RateForm({ view }: { view: RateView }) {
@@ -166,6 +169,8 @@ export function RateForm({ view }: { view: RateView }) {
         body: draft.body,
         tags: draft.tags,
         photoUrl: draft.photoUrl ?? null,
+        // Only crews you're still in (a draft can outlive a crew you've left).
+        alsoCrews: (draft.alsoCrews ?? []).filter((id) => view.otherCrews.some((c) => c.id === id)),
       },
       label: `Your review of ${station.name}`,
       draft: draftKey ?? undefined,
@@ -306,6 +311,12 @@ export function RateForm({ view }: { view: RateView }) {
           errors={errors}
           today={today}
           onChange={update}
+        />
+
+        <AlsoPost
+          crews={view.otherCrews}
+          value={draft.alsoCrews ?? []}
+          onChange={(alsoCrews) => update({ alsoCrews })}
         />
 
         <div className={styles.submitBar}>

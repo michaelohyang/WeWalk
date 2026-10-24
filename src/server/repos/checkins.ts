@@ -3,7 +3,7 @@ import { and, eq, getTableColumns, sql } from "drizzle-orm";
 import type { CheckinInput } from "@/domain/schemas";
 import type { CheckinRecord } from "@/domain/records";
 import type { Db } from "../db/client";
-import { checkinCrews, checkins, FIRST_CREW_ID, stations } from "../db/schema";
+import { checkinCrews, checkins, stations } from "../db/schema";
 import { stationKey } from "./stations";
 
 type CheckinRow = typeof checkins.$inferSelect & { stationSlug: string };
@@ -40,12 +40,10 @@ export async function insertCheckin(db: Db, id: string, memberId: string, input:
   return row && findCheckin(db, row.id);
 }
 
-/** The check-ins a crew sees (as with reviews, unlinked ones count as the first crew's). */
+/** The check-ins a crew sees: those shared with it (one shared with no crew is seen by nobody). */
 export async function listCheckins(db: Db, crewId: string): Promise<CheckinRecord[]> {
-  const shared = sql`exists (select 1 from ${checkinCrews} cc where cc.checkin_id = ${checkins.id} and cc.crew_id = ${crewId})`;
-  const unlinked = sql`not exists (select 1 from ${checkinCrews} cc where cc.checkin_id = ${checkins.id})`;
   const rows = await select(db).where(
-    crewId === FIRST_CREW_ID ? sql`(${shared} or ${unlinked})` : shared,
+    sql`exists (select 1 from ${checkinCrews} cc where cc.checkin_id = ${checkins.id} and cc.crew_id = ${crewId})`,
   );
   return rows.map(toRecord);
 }

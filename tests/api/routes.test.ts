@@ -7,6 +7,9 @@ import { POST as addStation } from "@/app/api/admin/stations/route";
 import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
 import { POST as joinCrewRoute } from "@/app/api/crews/join/route";
 import { POST as createCrewRoute } from "@/app/api/crews/route";
+import { POST as leaveCrewRoute } from "@/app/api/crews/leave/route";
+import { PATCH as renameCrewRoute } from "@/app/api/crews/current/route";
+import { POST as newInviteRoute } from "@/app/api/crews/current/invite/route";
 import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
 import { PUT as setPassword } from "@/app/api/me/password/route";
@@ -1147,17 +1150,24 @@ describe("crews", () => {
     expect((await at(crewB.id)).status).toBe(409); // already shared here
   });
 
-  it("counts posts written with no crew (older code, mid-deploy) as the first crew's", async () => {
-    const { sam, crewB } = await twoCrews();
-    const samId = (await sam.call(me, "GET", "/api/me")).body.member.id as string;
+  it("a post left behind in no crew (its author left them all) is seen by nobody", async () => {
+    const { ben, crewB } = await twoCrews();
+    const id = newId();
+    await reviewIn(ben, crewB.id, "dock-72", id); // Brooklyn only
+    // Ben leaves the first crew, then Brooklyn (Dana leaves it first, so it can go).
+    await ben.call(leaveCrewRoute, "POST", "/api/crews/leave", {
+      headers: { [CREW]: FIRST_CREW_ID },
+    });
+    const benId = (await ben.call(me, "GET", "/api/me")).body.member.id as string;
+    expect((await listMemberCrews(db, benId)).map((c) => c.id)).toEqual([crewB.id]);
     await insertReview(
       db,
       newId(),
-      samId,
-      reviewInputSchema.parse(review({ stationSlug: "dock-72" })),
+      benId,
+      reviewInputSchema.parse(review({ stationSlug: "33-irving-pl" })),
     );
-    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
-    expect((await loadCrew(db, crewB.id)).reviews).toHaveLength(0);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
+    expect((await loadCrew(db, crewB.id)).reviews.map((r) => r.id)).toEqual([id]);
   });
 
   it("lets only the app admin make recovery links, not crew owners", async () => {
@@ -1245,6 +1255,101 @@ describe("crews", () => {
       body: { name: "Lost", password: PASSWORD, code: "expired-code" },
     });
     expect(res.status).toBe(403);
+  });
+
+  it("leaving takes your posts and reactions out of that crew only", async () => {
+    const { dana, sam, crewB } = await twoCrews();
+    await sam.call(joinCrewRoute, "POST", "/api/crews/join", { body: { code: crewB.inviteCode } });
+    const id = newId();
+    await reviewIn(sam, FIRST_CREW_ID, "dock-72", id);
+    await reviewIn(sam, crewB.id, "dock-72", id); // shared with Brooklyn too
+    const danasReview = newId();
+    await reviewIn(dana, crewB.id, "33-irving-pl", danasReview);
+    await sam.call(react, "PUT", "/api/reviews/x/reactions/y", {
+      params: { id: danasReview, kind: "fire" },
+      headers: { [CREW]: crewB.id },
+    });
+    const left = await sam.call(leaveCrewRoute, "POST", "/api/crews/leave", {
+      headers: { [CREW]: crewB.id },
+    });
+    expect(left.status).toBe(204);
+    const brooklyn = await loadCrew(db, crewB.id);
+    expect(brooklyn.members.map((m) => m.name)).not.toContain("Sam");
+    expect(brooklyn.reviews.map((r) => r.id)).toEqual([danasReview]);
+    expect(brooklyn.reactions).toEqual([]);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews.map((r) => r.id)).toEqual([id]);
+  });
+
+  it("keeps an owner with others in the crew from leaving, and deletes a crew left empty", async () => {
+    const { ben, dana, crewB } = await twoCrews();
+    const leave = (phone: Phone) =>
+      phone.call(leaveCrewRoute, "POST", "/api/crews/leave", { headers: { [CREW]: crewB.id } });
+    expect((await leave(ben)).status).toBe(409); // Dana is still in Brooklyn
+    expect((await leave(dana)).status).toBe(204);
+    expect((await leave(ben)).status).toBe(204);
+    const crews = await db.select({ id: crewsTable.id }).from(crewsTable);
+    expect(crews.map((c) => c.id)).not.toContain(crewB.id);
+  });
+
+  it("someone in no crew is told to join one, never put in the first crew", async () => {
+    const { ben } = await twoCrews();
+    // Ben is in the first crew (he signed up) and owns Brooklyn alone after Dana leaves it.
+    await ben.call(leaveCrewRoute, "POST", "/api/crews/leave", {
+      headers: { [CREW]: FIRST_CREW_ID },
+    });
+    const benId = (await ben.call(me, "GET", "/api/me")).body.member.id as string;
+    expect((await listMemberCrews(db, benId)).map((c) => c.name)).toEqual(["Brooklyn"]);
+    const alone = await joined("Alone");
+    await alone.call(leaveCrewRoute, "POST", "/api/crews/leave");
+    const after = await alone.call(me, "GET", "/api/me");
+    expect(after.body.crew).toBeNull();
+    expect((await reviewIn(alone, null, "dock-72")).status).toBe(409);
+    const aloneId = after.body.member.id as string;
+    expect(await listMemberCrews(db, aloneId)).toEqual([]);
+  });
+
+  it("lets only the owner rename the crew or get a new invite link, which retires the old one", async () => {
+    const { ben, dana, crewB } = await twoCrews();
+    const rename = (phone: Phone) =>
+      phone.call(renameCrewRoute, "PATCH", "/api/crews/current", {
+        headers: { [CREW]: crewB.id },
+        body: { name: "BK" },
+      });
+    expect((await rename(dana)).status).toBe(403);
+    expect((await rename(ben)).status).toBe(204);
+    const rotated = await ben.call(newInviteRoute, "POST", "/api/crews/current/invite", {
+      headers: { [CREW]: crewB.id },
+    });
+    expect(rotated.status).toBe(200);
+    expect(rotated.body.inviteCode).not.toBe(crewB.inviteCode);
+    const late = await joined("Late");
+    const old = await late.call(joinCrewRoute, "POST", "/api/crews/join", {
+      body: { code: crewB.inviteCode },
+    });
+    expect(old.status).toBe(404);
+  });
+
+  it("shares a review with your other crews when you tick them, skipping crews you're not in", async () => {
+    const { dana, crewB } = await twoCrews();
+    const res = await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      headers: { [CREW]: FIRST_CREW_ID },
+      body: { ...review({ stationSlug: "dock-72" }), alsoCrews: [crewB.id, newId()] },
+    });
+    expect(res.status).toBe(201);
+    expect((await loadCrew(db, crewB.id)).reviews).toHaveLength(1);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
+  });
+
+  it("leaving the first crew takes your posts out of it too", async () => {
+    const { sam } = await twoCrews();
+    await reviewIn(sam, FIRST_CREW_ID, "dock-72");
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
+    await sam.call(leaveCrewRoute, "POST", "/api/crews/leave", {
+      headers: { [CREW]: FIRST_CREW_ID },
+    });
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
+    expect((await sam.call(me, "GET", "/api/me")).body.crew).toBeNull();
   });
 
   it("deletes a crew along with its last member", async () => {

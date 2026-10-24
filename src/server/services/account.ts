@@ -11,7 +11,7 @@ import * as memberRepo from "../repos/members";
 import { listMemberReactions } from "../repos/reactions";
 import { listMemberReviews } from "../repos/reviews";
 import { deletePhoto } from "../photos";
-import { LOCKOUT_MS, MAX_FAILED_LOGINS, ownsCrew, type Session } from "./auth";
+import { crewOf, LOCKOUT_MS, MAX_FAILED_LOGINS, ownsCrew, type Session } from "./auth";
 
 /*
  * Your account: take a copy of your data, hand the crew to someone else, or leave for good.
@@ -133,7 +133,7 @@ export async function handOverOwnership(db: Db, session: Session, memberId: stri
     // Throwing rolls back, so a failed hand-over never leaves the crew without an owner.
     const result = await crewsRepo.transferCrewOwnership(
       tx,
-      session.crew.id,
+      crewOf(session).id,
       session.member.id,
       memberId,
     );
