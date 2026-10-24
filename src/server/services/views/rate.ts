@@ -4,7 +4,7 @@ import type { IsoDate } from "@/domain/dates";
 import type { ReviewRecord } from "@/domain/records";
 import type { Tag } from "@/domain/tags";
 import type { Session } from "../auth";
-import type { CrewData } from "../crew";
+import type { CrewData, MyVisits } from "../crew";
 
 /* The rate form: what you can rate, your existing review, and likely next ones. */
 
@@ -33,14 +33,13 @@ export async function rateView(
   crew: CrewData,
   session: Session,
   stationSlug: string | undefined,
+  myVisits: MyVisits,
 ): Promise<RateView> {
   const station = crew.stations.find((s) => s.slug === stationSlug);
-  const mine =
-    station &&
-    crew.reviews.find((r) => r.stationSlug === station.slug && r.memberId === session.member.id);
-  const visits = [...crew.reviews, ...crew.checkins].filter(
-    (v) => v.memberId === session.member.id,
-  );
+  // Your review of a building is one review, whichever crew you posted it in: saving it here
+  // shares it with this crew too.
+  const mine = station && myVisits.reviews.find((r) => r.stationSlug === station.slug);
+  const visits = [...myVisits.reviews, ...myVisits.checkins];
   return {
     stations: [...crew.stations]
       .sort((a, b) => a.name.localeCompare(b.name, "en-US", { numeric: true }))

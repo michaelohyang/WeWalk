@@ -19,6 +19,10 @@ export const SESSION_COOKIE = "ww_session";
 const MEMBER_COOKIE = "ww_member";
 /** Sent with queued writes: the member who made the write. */
 const MEMBER_HEADER = "x-wewalk-member";
+/** The phone's crew pick (readable, set by the crew switcher; see client/crew.ts). */
+export const CREW_COOKIE = "ww_crew";
+/** The crew a queued write was made in (see client/outbox.ts). */
+const CREW_HEADER = "x-wewalk-crew";
 const SESSION_MAX_AGE = 400 * 24 * 60 * 60; // the longest browsers allow
 
 const STATUS: Record<AppErrorCode, number> = {
@@ -115,21 +119,34 @@ export function route<P>(handler: (ctx: Ctx, params: P) => Promise<Response>) {
 /** Like `route`, but needs a signed-in phone. */
 export function authedRoute<P>(handler: (ctx: AuthedCtx, params: P) => Promise<Response>) {
   return route<P>(async (ctx, params) => {
-    const session = await authenticate(ctx.db, ctx.req.cookies.get(SESSION_COOKIE)?.value, ctx.now);
+    // A queued write names the crew it was made in; it must land there, whatever the phone's
+    // current pick. Otherwise the phone's pick (cookie) decides.
+    const writtenIn = ctx.req.headers.get(CREW_HEADER) || undefined;
+    const session = await authenticate(
+      ctx.db,
+      ctx.req.cookies.get(SESSION_COOKIE)?.value,
+      ctx.now,
+      writtenIn ?? ctx.req.cookies.get(CREW_COOKIE)?.value,
+    );
     if (!session)
       throw new AppError("unauthorized", "You're signed out. Open your crew's invite link.");
+    if (writtenIn && session.crew.id !== writtenIn) {
+      throw new AppError("forbidden", "You're not in that crew any more.");
+    }
     const author = ctx.req.headers.get(MEMBER_HEADER);
     if (author && author !== session.member.id) {
       // Written by whoever was signed in before. Not lost: the outbox holds it for them.
       throw new AppError("unauthorized", "This phone is signed in as someone else now.");
     }
     const res = await handler({ ...ctx, session }, params);
-    // Keep the readable member cookie in step with the session (it may predate it).
-    if (
-      res instanceof NextResponse &&
-      ctx.req.cookies.get(MEMBER_COOKIE)?.value !== session.member.id
-    ) {
-      setMemberCookie(res, session.member.id);
+    // Keep the readable member and crew cookies in step with the session (they may predate it).
+    if (res instanceof NextResponse) {
+      if (ctx.req.cookies.get(MEMBER_COOKIE)?.value !== session.member.id) {
+        setMemberCookie(res, session.member.id);
+      }
+      if (!writtenIn && ctx.req.cookies.get(CREW_COOKIE)?.value !== session.crew.id) {
+        setCrewCookie(res, session.crew.id);
+      }
     }
     return res;
   });
@@ -179,16 +196,24 @@ function setMemberCookie(res: NextResponse, memberId: string) {
 
 export function setSessionCookie(
   res: NextResponse,
-  { token, memberId }: { token: string; memberId: string },
+  { token, memberId, crewId }: { token: string; memberId: string; crewId?: string },
 ): NextResponse {
   res.cookies.set(SESSION_COOKIE, token, { ...COOKIE, httpOnly: true });
   setMemberCookie(res, memberId);
+  if (crewId) setCrewCookie(res, crewId);
+  return res;
+}
+
+/** Points the phone at a crew (after signing up into it or joining it). */
+export function setCrewCookie(res: NextResponse, crewId: string): NextResponse {
+  res.cookies.set(CREW_COOKIE, crewId, COOKIE);
   return res;
 }
 
 export function clearSessionCookie(res: NextResponse): NextResponse {
   res.cookies.delete(SESSION_COOKIE);
   res.cookies.delete(MEMBER_COOKIE);
+  res.cookies.delete(CREW_COOKIE);
   return res;
 }
 
@@ -196,6 +221,6 @@ export function clearSessionCookie(res: NextResponse): NextResponse {
 export const memberJson = (m: Session["member"]) => ({
   id: m.id,
   name: m.name,
-  isOwner: m.isOwner,
+  isAdmin: m.isAdmin,
   hasPassword: m.hasPassword,
 });

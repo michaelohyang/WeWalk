@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { FIRST_CREW_ID } from "../db/schema";
 import { reviewInputSchema, stationInputSchema } from "@/domain/schemas";
 import type { Db } from "../db/client";
 import { createTestDb, resetTestDb } from "../db/testing";
@@ -66,7 +67,7 @@ describe("createStation", () => {
       lng: -71.0445,
       hidden: false,
     });
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     expect(crew.stations.map((s) => s.slug)).toContain("1-seaport-sq");
   });
 
@@ -136,7 +137,7 @@ describe("updateStation", () => {
     );
     // Un-hiding brings it back with its review.
     await updateStation(db, owner, "250-broadway", fields);
-    const crew = await loadCrew(db);
+    const crew = await loadCrew(db, FIRST_CREW_ID);
     expect(crew.reviews.filter((r) => r.stationSlug === "250-broadway")).toHaveLength(1);
   });
 

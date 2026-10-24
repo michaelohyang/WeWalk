@@ -1,4 +1,6 @@
 import "server-only";
+import * as crewsRepo from "../repos/crews";
+import { FIRST_CREW_ID } from "../db/schema";
 import { listMemberPhotos } from "../repos/photos";
 import { photoInUse } from "../repos/reviews";
 import type { Db } from "../db/client";
@@ -9,7 +11,7 @@ import * as memberRepo from "../repos/members";
 import { listMemberReactions } from "../repos/reactions";
 import { listMemberReviews } from "../repos/reviews";
 import { deletePhoto } from "../photos";
-import { LOCKOUT_MS, MAX_FAILED_LOGINS, type Session } from "./auth";
+import { LOCKOUT_MS, MAX_FAILED_LOGINS, ownsCrew, type Session } from "./auth";
 
 /*
  * Your account: take a copy of your data, hand the crew to someone else, or leave for good.
@@ -29,7 +31,12 @@ export async function exportData(db: Db, session: Session, now: Date) {
   ]);
   return {
     exportedAt: now.toISOString(),
-    profile: { name: me.name, joinedAt: me.createdAt.toISOString(), isOwner: me.isOwner },
+    profile: {
+      name: me.name,
+      joinedAt: me.createdAt.toISOString(),
+      isAdmin: me.isAdmin,
+      crews: session.crews.map((c) => ({ name: c.name, role: c.role })),
+    },
     devices: devices.map((d) => ({
       label: d.label,
       createdAt: d.createdAt.toISOString(),
@@ -56,14 +63,14 @@ const WRONG_PASSWORD = "That's not your password.";
 const LOCKED = "Too many wrong passwords. Try again in 15 minutes.";
 const NEEDS_PASSWORD = "Set a password first. Deleting your account needs it.";
 const OWNER_STAYS =
-  "You run this crew. Hand it over to someone else first, so the crew keeps an owner.";
+  "You run a crew with other people in it. Hand it over to someone first, so it keeps an owner.";
 
 /**
  * Deletes your account and everything that's yours: phones, recovery links, reviews and their
  * photos, check-ins, reactions you gave, and reactions others gave your reviews. Needs your
  * password, so a phone left unlocked can't do it. Members without one (they came back through
- * a recovery link) set one first. The owner can only leave once they're the last one here:
- * otherwise nobody could make recovery links any more.
+ * a recovery link) set one first. A crew's owner can only leave once they're the last one in it,
+ * so no crew is left without an owner.
  */
 export async function deleteAccount(
   db: Db,
@@ -74,14 +81,23 @@ export async function deleteAccount(
   const me = session.member.id;
   await confirmPassword(db, me, input.password, now);
   const photos = await db.transaction(async (tx) => {
-    const isOwner = await memberRepo.lockMemberIsOwner(tx, me);
-    if (isOwner === undefined) throw new AppError("unauthorized", "You're signed out.");
-    if (isOwner && (await memberRepo.countMembers(tx)) > 1) {
+    if (!(await memberRepo.lockMember(tx, me))) {
+      throw new AppError("unauthorized", "You're signed out.");
+    }
+    await crewsRepo.lockMembershipsOf(tx, me);
+    if ((await crewsRepo.ownedCrewsWithOthers(tx, me)).length) {
       throw new AppError("conflict", OWNER_STAYS);
     }
+    const myCrews = (await crewsRepo.listMemberCrews(tx, me)).map((c) => c.id);
     // Your uploads, attached or not (the records go with the account, so read them first).
     const urls = await listMemberPhotos(tx, me);
     await memberRepo.deleteMember(tx, me);
+    // A crew you were the last one in goes with you (it would otherwise keep a live invite link
+    // and no owner).
+    await crewsRepo.deleteEmptyCrews(
+      tx,
+      myCrews.filter((id) => id !== FIRST_CREW_ID),
+    );
     return urls;
   });
   // Only once the reviews are gone for sure: a rolled-back delete would leave broken photos.
@@ -111,12 +127,18 @@ async function confirmPassword(db: Db, me: string, password: string, now: Date) 
 
 /** Owner only: make another member the crew's owner (you become a regular member). */
 export async function handOverOwnership(db: Db, session: Session, memberId: string) {
-  if (!session.member.isOwner) throw new AppError("forbidden", "Only the crew owner can do that.");
+  if (!ownsCrew(session)) throw new AppError("forbidden", "Only the crew owner can do that.");
   if (memberId === session.member.id) throw new AppError("invalid", "You already run this crew.");
   await db.transaction(async (tx) => {
     // Throwing rolls back, so a failed hand-over never leaves the crew without an owner.
-    const result = await memberRepo.transferOwnership(tx, session.member.id, memberId);
+    const result = await crewsRepo.transferCrewOwnership(
+      tx,
+      session.crew.id,
+      session.member.id,
+      memberId,
+    );
+    // A stale session (handed over already on another phone) isn't the owner any more.
     if (result === "not_owner") throw new AppError("forbidden", "Only the crew owner can do that.");
-    if (result === "no_member") throw new AppError("not_found", "No such member.");
+    if (result === "no_member") throw new AppError("not_found", "They're not in this crew.");
   });
 }

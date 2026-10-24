@@ -49,6 +49,8 @@ export const LIMITS = {
     windowMs: HOUR,
     message: "That's a lot of reactions. Wait a few minutes and try again.",
   },
+  /** Joining crews by invite code (keeps codes from being guessed). */
+  join: { per: "member", max: 20, windowMs: HOUR, message: TRY_LATER },
 } as const;
 type LimitName = keyof typeof LIMITS;
 

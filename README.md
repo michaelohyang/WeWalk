@@ -9,6 +9,18 @@ New York City, Boston and Atlanta. Check in when you arrive, rate the coffee, Wi
 booths, see who else is out today, and find out which buildings the crew actually likes: 29 in
 New York, 7 in Boston and Cambridge, and 5 in Atlanta and Decatur.
 
+### Crews
+
+A crew is a group of friends with its own feed, rankings, Here today, leaderboard and invite link
+(`/join/<code>`). One person can be in several crews and switch between them on the Crew page.
+A review or check-in goes to the crew you're looking at when you post it, and saving your review
+of a building while looking at another crew shares it there too. Reactions belong to the crew
+they were made in. Your passport, badges and streak are yours across every crew.
+
+Everyone from before crews is in the first crew ("NYC crew"). Starting new crews waits for
+`CREWS_ENABLED=1`, so turn that on once a deploy with crews has settled. The app admin (the
+original owner) manages buildings and makes recovery links; crew owners hand over ownership.
+
 ### Cities
 
 A **NYC | Boston | Atlanta** switch on Home, Map, Ranks and Passport picks the city those

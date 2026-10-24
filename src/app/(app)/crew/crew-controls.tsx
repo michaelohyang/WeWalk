@@ -56,7 +56,7 @@ function ShareLink({ url, title }: { url: string; title: string }) {
   );
 }
 
-export function InviteFriends({ code }: { code: string | null }) {
+export function InviteFriends({ code }: { code: string }) {
   const [origin, setOrigin] = useState("");
   // eslint-disable-next-line react-hooks/set-state-in-effect -- the public origin is only known in the browser
   useEffect(() => setOrigin(location.origin), []);
@@ -67,10 +67,7 @@ export function InviteFriends({ code }: { code: string | null }) {
         and they&apos;re in.
       </p>
       {origin && (
-        <ShareLink
-          url={`${origin}/signup${code ? `?code=${encodeURIComponent(code)}` : ""}`}
-          title="Join me on WeWalk"
-        />
+        <ShareLink url={`${origin}/join/${encodeURIComponent(code)}`} title="Join me on WeWalk" />
       )}
     </div>
   );
@@ -398,7 +395,8 @@ export function HandOver({ members }: { members: { id: string; name: string }[] 
   return (
     <div className={styles.card}>
       <p className={styles.lede}>
-        Make someone else the crew&apos;s owner. They&apos;ll make the recovery links from then on.
+        Make someone else the crew&apos;s owner. They&apos;ll look after its invite link from then
+        on.
       </p>
       <div className={styles.row}>
         <label className={styles.field}>

@@ -17,6 +17,8 @@ import {
   stationView,
 } from "./services/views";
 import { inCity } from "./services/views/city";
+import { crewForInvite } from "./services/crews";
+import { loadMyVisits } from "./services/crew";
 
 /** The city this phone is looking at (a cookie the city switch sets); unknown values mean NYC. */
 export async function selectedCity(): Promise<CityKey> {
@@ -33,45 +35,56 @@ export async function selectedCity(): Promise<CityKey> {
 export async function loadExplore() {
   const session = await getSession();
   if (!session) return null;
-  return exploreView(await crewData(), session, new Date(), await selectedCity());
+  return exploreView(await crewData(session.crew.id), session, new Date(), await selectedCity());
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */
 export async function loadStation(slug: string) {
   const session = await getSession();
   if (!session) return undefined;
-  return stationView(await crewData(), session, slug);
+  return stationView(await crewData(session.crew.id), session, slug);
 }
 
 export async function loadRanks(key: RankKey, area: AreaKey | null, city: CityKey) {
   const session = await getSession();
   if (!session) return null;
-  return ranksView(inCity(await crewData(), city), session, key, area, new Date());
+  return ranksView(inCity(await crewData(session.crew.id), city), session, key, area, new Date());
 }
 
 export async function loadMap() {
   const session = await getSession();
   if (!session) return null;
   const city = await selectedCity();
-  return { ...mapView(inCity(await crewData(), city), session), city };
+  return { ...mapView(inCity(await crewData(session.crew.id), city), session), city };
 }
 
 export async function loadPassport() {
   const session = await getSession();
   if (!session) return null;
-  return passportView(await crewData(), session, new Date(), await selectedCity());
+  return passportView(
+    await crewData(session.crew.id),
+    session,
+    new Date(),
+    await selectedCity(),
+    await loadMyVisits(await getDb(), session.member.id),
+  );
 }
 
 export async function loadCrew() {
   const session = await getSession();
   if (!session) return null;
-  return crewView(await crewData(), await getDb(), session);
+  return crewView(await crewData(session.crew.id), await getDb(), session);
 }
 
 export async function loadRate(stationSlug: string | undefined) {
   const session = await getSession();
   if (!session) return null;
-  return rateView(await crewData(), session, stationSlug);
+  return rateView(
+    await crewData(session.crew.id),
+    session,
+    stationSlug,
+    await loadMyVisits(await getDb(), session.member.id),
+  );
 }
 
 /** The building admin: `undefined` when signed out, `null` for anyone who isn't an admin. */
@@ -94,4 +107,11 @@ export async function loadRecoveryLink(token: string) {
 /** Login and signup pages: only for people who aren't signed in. */
 export async function isSignedIn() {
   return !!(await getSession());
+}
+
+/** The join page: signed in or not, and which crew the code names (null if it doesn't work). */
+export async function loadJoin(code: string) {
+  const session = await getSession();
+  if (!session) return { signedIn: false as const };
+  return { signedIn: true as const, crew: await crewForInvite(await getDb(), code) };
 }

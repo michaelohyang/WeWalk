@@ -1,10 +1,10 @@
 import "server-only";
 import { passportFor } from "@/domain/activity";
 import { badgesFor, weekStreak, type Badge } from "@/domain/badges";
-import { cityOf, DEFAULT_CITY, isArea, type CityKey } from "@/domain/areas";
+import { cityOf, isArea, type CityKey } from "@/domain/areas";
 import { cityDate, type IsoDate } from "@/domain/dates";
 import type { Session } from "../auth";
-import type { CrewData } from "../crew";
+import type { CrewData, MyVisits } from "../crew";
 import { cards, type StationCard } from "./cards";
 import { inCity } from "./city";
 
@@ -26,10 +26,19 @@ export async function passportView(
   crew: CrewData,
   session: Session,
   now: Date,
-  city: CityKey = DEFAULT_CITY,
+  city: CityKey,
+  myVisits: MyVisits,
 ): Promise<PassportView> {
   const me = session.member.id;
-  const visits = [...crew.reviews, ...crew.checkins];
+  // Your stamps, badges and streak count your visits in every crew; the crew's own visits add
+  // what the crew has been to (each visit once).
+  const byId = new Map(
+    [...crew.reviews, ...crew.checkins, ...myVisits.reviews, ...myVisits.checkins].map((v) => [
+      v.id,
+      v,
+    ]),
+  );
+  const visits = [...byId.values()];
   const { cards: everywhere } = cards(crew, session.member.id);
   const all = everywhere.filter((c) => cityOf(c.area) === city);
   const bySlug = new Map(all.map((c) => [c.slug, c]));

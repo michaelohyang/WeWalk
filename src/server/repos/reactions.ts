@@ -4,32 +4,33 @@ import type { ReactionKey, ReactionRecord } from "@/domain/reactions";
 import type { Db } from "../db/client";
 import { reactions, reviews, stations } from "../db/schema";
 
-export async function listReactions(db: Db): Promise<ReactionRecord[]> {
+/** The reactions made in a crew. */
+export async function listReactions(db: Db, crewId: string): Promise<ReactionRecord[]> {
   const rows = await db
     .select({ reviewId: reactions.reviewId, memberId: reactions.memberId, kind: reactions.kind })
-    .from(reactions);
+    .from(reactions)
+    .where(eq(reactions.crewId, crewId));
   return rows as ReactionRecord[];
 }
 
-/** Adds a reaction; adding one that's already there does nothing. */
-export async function addReaction(db: Db, value: ReactionRecord) {
+/** Adds a reaction in a crew; adding one that's already there does nothing. */
+export async function addReaction(db: Db, value: ReactionRecord & { crewId: string }) {
   await db.insert(reactions).values(value).onConflictDoNothing();
 }
 
-/** Removes a reaction; removing one that isn't there does nothing. */
+/** Removes a reaction in one crew; removing one that isn't there does nothing. */
 export async function removeReaction(
   db: Db,
-  reviewId: string,
-  memberId: string,
-  kind: ReactionKey,
+  value: { reviewId: string; memberId: string; kind: ReactionKey; crewId: string },
 ) {
   await db
     .delete(reactions)
     .where(
       and(
-        eq(reactions.reviewId, reviewId),
-        eq(reactions.memberId, memberId),
-        eq(reactions.kind, kind),
+        eq(reactions.reviewId, value.reviewId),
+        eq(reactions.memberId, value.memberId),
+        eq(reactions.kind, value.kind),
+        eq(reactions.crewId, value.crewId),
       ),
     );
 }

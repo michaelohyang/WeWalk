@@ -1,0 +1,51 @@
+import "server-only";
+import { randomBytes } from "node:crypto";
+import type { CityKey } from "@/domain/areas";
+import type { Db } from "../db/client";
+import { AppError } from "../errors";
+import * as crewsRepo from "../repos/crews";
+import type { Session } from "./auth";
+
+const BAD_INVITE = "That invite link doesn't work any more. Ask for a new one.";
+
+/** The crew an invite code names (for the join page), or null. */
+export async function crewForInvite(db: Db, code: string) {
+  return (await crewsRepo.findCrewByInviteCode(db, code.trim())) ?? null;
+}
+
+/** Join the crew an invite code names. Joining one you're already in just switches to it. */
+export async function joinCrew(
+  db: Db,
+  session: Session,
+  code: string,
+): Promise<{ id: string; name: string }> {
+  const crew = await crewsRepo.findCrewByInviteCode(db, code.trim());
+  if (!crew) throw new AppError("not_found", BAD_INVITE);
+  await crewsRepo.addCrewMember(db, crew.id, session.member.id);
+  return crew;
+}
+
+/**
+ * New crews wait for CREWS_ENABLED=1, so a rollback never meets a second crew (older code would
+ * show its posts to everyone). Turn it on once crews have been live for a deploy.
+ */
+const crewCreationEnabled = () => process.env.CREWS_ENABLED === "1";
+
+/** A fresh invite code: 12 url-safe characters, too many to guess. */
+const newInviteCode = () => randomBytes(9).toString("base64url");
+
+/** Start a crew: you're its owner, and the phone switches to it. */
+export async function createCrew(
+  db: Db,
+  session: Session,
+  input: { name: string; homeCity: CityKey },
+): Promise<{ id: string; name: string; inviteCode: string }> {
+  if (!crewCreationEnabled()) throw new AppError("unavailable", "New crews aren't open yet.");
+  const inviteCode = newInviteCode();
+  const crew = await db.transaction(async (tx) => {
+    const created = await crewsRepo.insertCrew(tx, { ...input, inviteCode });
+    await crewsRepo.addCrewMember(tx, created.id, session.member.id, "owner");
+    return created;
+  });
+  return { id: crew.id, name: input.name, inviteCode };
+}
