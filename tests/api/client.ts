@@ -13,10 +13,19 @@ export interface Reply {
   status: number;
   body: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- test convenience
   setCookie: string | null;
+  headers: Headers;
 }
+
+let phones = 0;
 
 export class Phone {
   private jar = new Map<string, string>();
+
+  /**
+   * The IP address this phone calls from (sent as x-real-ip, as Vercel does). Each phone gets its
+   * own unless given one, so tests that sign up many people don't trip the per-IP limits.
+   */
+  constructor(readonly ip = `10.0.${(++phones >> 8) & 255}.${phones & 255}`) {}
 
   /** The Cookie header this phone sends. Assigning replaces the whole jar (e.g. "" to clear). */
   get cookie(): string {
@@ -44,7 +53,11 @@ export class Phone {
       raw?: string | Uint8Array<ArrayBuffer>;
     } = {},
   ): Promise<Reply> {
-    const headers: Record<string, string> = { origin: ORIGIN, ...opts.headers };
+    const headers: Record<string, string> = {
+      origin: ORIGIN,
+      "x-real-ip": this.ip,
+      ...opts.headers,
+    };
     if (this.cookie) headers.cookie = this.cookie;
     let body: string | Uint8Array<ArrayBuffer> | undefined;
     if (opts.raw !== undefined) body = opts.raw;
@@ -65,9 +78,19 @@ export class Phone {
     }
     // JSON for API replies; the raw bytes for anything else (a photo).
     if (!res.headers.get("content-type")?.includes("json") && res.ok) {
-      return { status: res.status, body: new Uint8Array(await res.arrayBuffer()), setCookie };
+      return {
+        status: res.status,
+        body: new Uint8Array(await res.arrayBuffer()),
+        setCookie,
+        headers: res.headers,
+      };
     }
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null, setCookie };
+    return {
+      status: res.status,
+      body: text ? JSON.parse(text) : null,
+      setCookie,
+      headers: res.headers,
+    };
   }
 }

@@ -29,6 +29,7 @@ const STATUS: Record<AppErrorCode, number> = {
   conflict: 409,
   gone: 410,
   too_large: 413,
+  rate_limited: 429,
   unavailable: 503,
 };
 
@@ -51,7 +52,7 @@ export function json(body: unknown, status = 200): NextResponse {
 }
 
 function errorResponse(error: AppError): NextResponse {
-  return json(
+  const res = json(
     {
       error: {
         code: error.code,
@@ -61,6 +62,20 @@ function errorResponse(error: AppError): NextResponse {
     },
     STATUS[error.code],
   );
+  const retryAfter = error.details?.retryAfter;
+  if (typeof retryAfter === "number") res.headers.set("retry-after", String(retryAfter));
+  return res;
+}
+
+/**
+ * The caller's IP address, for per-IP limits. Vercel sets x-real-ip; x-forwarded-for's first
+ * entry is the original client. Don't log it.
+ */
+export function clientIp(req: NextRequest): string {
+  const real = req.headers.get("x-real-ip")?.trim();
+  if (real) return real;
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || "unknown";
 }
 
 /**

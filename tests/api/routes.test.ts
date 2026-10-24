@@ -340,6 +340,67 @@ describe("check-ins", () => {
   });
 });
 
+describe("abuse limits", () => {
+  it("allows 5 sign-ups an hour from one IP address, then 429 with Retry-After", async () => {
+    const ip = "203.0.113.7";
+    const signUpAs = (name: string, phone = new Phone(ip)) =>
+      phone.call(signup, "POST", "/api/signup", { body: { name, password: PASSWORD } });
+    for (const name of ["Ann", "Ben", "Cat", "Dan", "Eve"]) {
+      expect((await signUpAs(name)).status).toBe(201);
+    }
+    const res = await signUpAs("Fay");
+    expect(res.status).toBe(429);
+    expect(res.body.error).toEqual({
+      code: "rate_limited",
+      message: "Too many tries. Wait a few minutes and try again.",
+      details: { retryAfter: expect.any(Number) },
+    });
+    expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
+    // Someone else, behind another address, isn't affected.
+    expect((await signUpAs("Fay", new Phone())).status).toBe(201);
+  });
+
+  it("takes the address from x-forwarded-for when x-real-ip is missing", async () => {
+    const proxied = (name: string) =>
+      new Phone("").call(signup, "POST", "/api/signup", {
+        body: { name, password: PASSWORD },
+        headers: { "x-forwarded-for": "198.51.100.2, 10.0.0.1" },
+      });
+    for (const name of ["Ann", "Ben", "Cat", "Dan", "Eve"]) {
+      expect((await proxied(name)).status).toBe(201);
+    }
+    expect((await proxied("Fay")).status).toBe(429);
+  });
+
+  it("allows 30 reviews and check-ins (new or edited) per member an hour", async () => {
+    const dana = await joined("Dana");
+    const body = { stationSlug: "dock-72", visitedOn: today() };
+    const id = newId();
+    for (let i = 0; i < 30; i++) {
+      const res = await dana.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body });
+      expect(res.status).toBeLessThan(300);
+    }
+    const checkin = await dana.call(putCheckin, "PUT", "/api/checkins/x", { params: { id }, body });
+    expect(checkin.status).toBe(429);
+    expect(checkin.body.error.message).toMatch(/posting a lot/);
+    const posted = await dana.call(putReview, "PUT", "/api/reviews/x", {
+      params: { id: newId() },
+      body: review(),
+    });
+    expect(posted.status).toBe(429);
+    // Limits are per member: Sam can still post.
+    const sam = await joined("Sam");
+    expect(
+      (
+        await sam.call(putReview, "PUT", "/api/reviews/x", {
+          params: { id: newId() },
+          body: review(),
+        })
+      ).status,
+    ).toBe(201);
+  });
+});
+
 describe("devices and accounts", () => {
   it("lists the devices you're logged in on, and signs one out", async () => {
     const first = await joined("Dana");
@@ -548,6 +609,33 @@ describe("photos", () => {
     expect((await upload(dana, new TextEncoder().encode("not an image"))).status).toBe(400);
     expect((await upload(dana, jpeg(2 * 1024 * 1024 + 1))).status).toBe(413);
     expect((await upload(new Phone(), jpeg())).status).toBe(401);
+  });
+
+  it("allows 10 uploads per member in 10 minutes and 30 a day", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-05T12:00:00Z") });
+    try {
+      const dana = await joined("Dana");
+      const uploadMany = async (count: number) => {
+        for (let i = 0; i < count; i++) expect((await upload(dana, jpeg())).status).toBe(201);
+      };
+      await uploadMany(10);
+      const burst = await upload(dana, jpeg());
+      expect(burst.status).toBe(429);
+      expect(burst.body.error.message).toMatch(/a lot of photos at once/);
+      expect(burst.headers.get("retry-after")).toBe(String(10 * 60));
+      expect((await upload(await joined("Sam"), jpeg())).status).toBe(201);
+
+      vi.setSystemTime(new Date("2026-10-05T12:10:00Z"));
+      await uploadMany(10);
+      vi.setSystemTime(new Date("2026-10-05T12:20:00Z"));
+      await uploadMany(10); // 30 today; the refused one above doesn't count
+      vi.setSystemTime(new Date("2026-10-05T12:30:00Z"));
+      const quota = await upload(dana, jpeg());
+      expect(quota.status).toBe(429);
+      expect(quota.body.error.message).toMatch(/all the photos for today/);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("goes on a review, and only if it was uploaded here", async () => {
