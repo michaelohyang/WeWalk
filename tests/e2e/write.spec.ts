@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { checkIn, joinAs, PASSWORD, review, uniqueName } from "./helpers";
+import { checkIn, joinAs, PASSWORD, review, toastText, uniqueName } from "./helpers";
 
 const main = (page: Page) => page.getByRole("main");
 const score = (page: Page, category: string, n: number) =>
@@ -67,7 +67,7 @@ test.describe("accounts", () => {
     await page.getByLabel("Current password").fill(PASSWORD);
     await page.getByLabel("New password").fill("a brand new password");
     await page.getByRole("button", { name: "Change password" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Password changed." })).toBeVisible();
+    await expect(toastText(page, "Password changed.")).toBeVisible();
     const laptop = await (await browser.newContext({ ...info.project.use })).newPage();
     await laptop.goto("/login");
     await laptop.getByLabel("Username").fill(name);
@@ -91,7 +91,7 @@ test.describe("accounts", () => {
     await page.goto("/crew");
     await page.getByLabel("Username", { exact: true }).fill(name);
     await page.getByRole("button", { name: "Save" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Username updated" })).toBeVisible();
+    await expect(toastText(page, "Username updated")).toBeVisible();
     await expect(main(page).getByText(name).first()).toBeVisible();
   });
 });
@@ -111,7 +111,7 @@ test.describe("rating", () => {
     await score(page, "Overall vibe", 5).click();
     await page.getByRole("button", { name: "Post review" }).click();
     await expect(page).toHaveURL(/\/stations\/368-9th-ave/);
-    await expect(page.getByRole("status").filter({ hasText: "New passport stamp" })).toBeVisible();
+    await expect(toastText(page, "New passport stamp")).toBeVisible();
     expect(Date.now() - started).toBeLessThan(20_000);
     await expect(myReviews(page, "")).toHaveCount(1);
     await expect(myReviews(page, "")).toBeInViewport(); // you see your review without scrolling
@@ -135,7 +135,11 @@ test.describe("rating", () => {
   test("scores tapped before picking the building are kept", async ({ page }) => {
     await page.goto("/rate");
     await score(page, "Coffee", 2).click();
-    await page.getByLabel("Building").selectOption("1460-broadway");
+    await page.getByRole("combobox", { name: "Building" }).click();
+    await page
+      .getByRole("option", { name: /^1460 Broadway/ })
+      .last()
+      .click();
     await expect(page).toHaveURL(/\/rate\/1460-broadway$/);
     await expect(score(page, "Coffee", 2)).toHaveAttribute("aria-checked", "true");
     await expect(page.getByText("Picked up where you left off.")).toHaveCount(0);
@@ -262,10 +266,10 @@ test.describe("rating", () => {
     await expect(page).toHaveURL(/\/stations\/408-broadway/);
     await myReviews(page, "").getByRole("button", { name: "Delete" }).click();
     await page
-      .getByRole("group", { name: "Delete this review?" })
+      .getByRole("alertdialog", { name: "Delete this review?" })
       .getByRole("button", { name: "Delete" })
       .click();
-    await expect(page.getByRole("status").filter({ hasText: "Review deleted." })).toBeVisible();
+    await expect(toastText(page, "Review deleted.")).toBeVisible();
     await expect(myReviews(page, "")).toHaveCount(0);
   });
 });
@@ -275,14 +279,12 @@ test.describe("checking in", () => {
     await joinAs(page);
     await page.goto("/stations/575-lexington-ave");
     await page.getByRole("button", { name: "Check in" }).click();
-    await expect(
-      page.getByRole("status").filter({ hasText: "New passport stamp: 575 Lex" }),
-    ).toBeVisible();
+    await expect(toastText(page, "New passport stamp: 575 Lex")).toBeVisible();
     await page.getByRole("button", { name: "✓ Here · add note" }).click();
     const note = uniqueName("Window seat secured by 8:45."); // the station is shared by all runs
     await page.getByLabel("Today's note").fill(note);
     await page.getByRole("button", { name: "Save note" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Note added." })).toBeVisible();
+    await expect(toastText(page, "Note added.")).toBeVisible();
     await expect(main(page).getByText(note)).toBeVisible();
 
     await page.reload();

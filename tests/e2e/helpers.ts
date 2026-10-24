@@ -50,3 +50,7 @@ export async function checkIn(request: APIRequestContext, stationSlug: string, n
   });
   expect(res.status(), await res.text()).toBe(201);
 }
+
+/** A toast's text, in the "Notifications (F8)" region. */
+export const toastText = (page: Page, text: string) =>
+  page.getByRole("region", { name: /^Notifications/ }).getByText(text);

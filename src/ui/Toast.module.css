@@ -8,6 +8,9 @@
   justify-items: center;
   pointer-events: none;
   padding-inline: 16px;
+  /* Radix's viewport is a list. */
+  margin: 0;
+  list-style: none;
 }
 .toast {
   background: var(--fg);
@@ -20,6 +23,20 @@
   animation: drop 0.25s ease-out;
   max-width: 100%;
   text-align: center;
+  /* The region lets taps through to the page; the toast itself can be swiped away. */
+  pointer-events: auto;
+  touch-action: none;
+}
+.toast[data-swipe="move"] {
+  transform: translateY(var(--radix-toast-swipe-move-y));
+}
+.toast[data-swipe="cancel"] {
+  transform: translateY(0);
+  transition: transform 0.2s ease-out;
+}
+.toast[data-swipe="end"],
+.toast[data-state="closed"] {
+  opacity: 0;
 }
 @keyframes drop {
   from {

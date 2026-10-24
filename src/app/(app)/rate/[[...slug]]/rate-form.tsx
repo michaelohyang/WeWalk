@@ -10,11 +10,15 @@ import type { CategoryKey, Score } from "@/domain/categories";
 import type { Tag } from "@/domain/tags";
 import type { RateView } from "@/server/services/views";
 import { ButtonLink } from "@/ui/Button";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { Page } from "@/ui/Page";
+import { Select } from "@/ui/Select";
 import { useToast } from "@/ui/Toast";
 import { DetailsFields } from "./details-fields";
 import styles from "./rate.module.css";
 import { ScorePicker } from "./score-picker";
+
+const RECENT = "recent:";
 
 export type Scores = Partial<Record<CategoryKey, Score>>;
 
@@ -61,7 +65,7 @@ export function RateForm({ view }: { view: RateView }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<"idle" | "saving" | "queued">("idle");
   const [posted, setPosted] = useState<string | null>(null);
-  const stationRef = useRef<HTMLSelectElement>(null);
+  const stationRef = useRef<HTMLButtonElement>(null);
   const scoresRef = useRef<HTMLDivElement>(null);
 
   // No station in the URL: if you checked in somewhere today and haven't reviewed it, that's
@@ -215,32 +219,36 @@ export function RateForm({ view }: { view: RateView }) {
       <form className={styles.form} onSubmit={submit} noValidate>
         <label className={styles.field}>
           <span>Building</span>
-          <select
-            ref={stationRef}
+          <Select
+            triggerRef={stationRef}
             className={styles.input}
             value={station?.slug ?? ""}
-            onChange={(e) => pickStation(e.target.value)}
-            aria-invalid={!!errors.stationSlug}
-            aria-describedby={errors.stationSlug ? "err-station" : undefined}
-          >
-            <option value="">Pick a building…</option>
-            {suggested.length > 0 && (
-              <optgroup label="Checked in lately">
-                {suggested.map((s) => (
-                  <option key={s.slug} value={s.slug}>
-                    {s.name} · {s.neighborhood}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            <optgroup label="All buildings">
-              {view.stations.map((s) => (
-                <option key={s.slug} value={s.slug}>
-                  {s.name} · {s.neighborhood}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+            // Recent buildings repeat in "All buildings"; their values carry a prefix to stay unique.
+            onValueChange={(v) => pickStation(v.replace(RECENT, ""))}
+            placeholder="Pick a building…"
+            invalid={!!errors.stationSlug}
+            describedBy={errors.stationSlug ? "err-station" : undefined}
+            groups={[
+              ...(suggested.length
+                ? [
+                    {
+                      label: "Checked in lately",
+                      options: suggested.map((s) => ({
+                        value: RECENT + s.slug,
+                        label: `${s.name} · ${s.neighborhood}`,
+                      })),
+                    },
+                  ]
+                : []),
+              {
+                label: "All buildings",
+                options: view.stations.map((s) => ({
+                  value: s.slug,
+                  label: `${s.name} · ${s.neighborhood}`,
+                })),
+              },
+            ]}
+          />
           {errors.stationSlug && (
             <span id="err-station" className={styles.error}>
               {errors.stationSlug}
@@ -251,9 +259,18 @@ export function RateForm({ view }: { view: RateView }) {
         {restored && (
           <p className={styles.restored}>
             Picked up where you left off.{" "}
-            <button type="button" className={styles.link} onClick={discardDraft}>
-              Start over
-            </button>
+            <ConfirmDialog
+              trigger={
+                <button type="button" className={styles.link}>
+                  Start over
+                </button>
+              }
+              title="Start over?"
+              description="This clears the scores and details you've filled in so far."
+              confirmLabel="Start over"
+              cancelLabel="Keep editing"
+              onConfirm={discardDraft}
+            />
           </p>
         )}
 

@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { fieldErrors, request } from "@/client/api";
 import styles from "@/ui/forms.module.css";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { focusSection } from "@/ui/focus";
+import { Select } from "@/ui/Select";
 import { useToast } from "@/ui/Toast";
 
 /** A link with Copy (and Share, where the phone has it). */
@@ -202,7 +205,6 @@ export function SetPassword({ hasPassword }: { hasPassword: boolean }) {
 export function SignOutPhone({ deviceId, current }: { deviceId: string; current: boolean }) {
   const router = useRouter();
   const toast = useToast();
-  const [confirming, setConfirming] = useState(false);
 
   async function signOut() {
     const res = await request("DELETE", `/api/me/devices/${deviceId}`);
@@ -211,29 +213,27 @@ export function SignOutPhone({ deviceId, current }: { deviceId: string; current:
       return;
     }
     toast(current ? "Signed out. See you around." : "That phone is signed out.");
+    // That phone's row (and this button) goes away; signing out here shows the login screen.
+    if (!current) focusSection("Signed in on");
     router.refresh();
   }
 
-  if (!confirming) {
-    return (
-      <button type="button" className={styles.textBtn} onClick={() => setConfirming(true)}>
-        Sign out
-      </button>
-    );
-  }
   return (
-    <span
-      role="group"
-      aria-label="Sign out this phone?"
-      style={{ display: "inline-flex", gap: 12, alignItems: "center" }}
-    >
-      <button type="button" className={`${styles.textBtn} ${styles.danger}`} onClick={signOut}>
-        {current ? "Sign out here" : "Yes, sign out"}
-      </button>
-      <button type="button" className={styles.textBtn} onClick={() => setConfirming(false)}>
-        Cancel
-      </button>
-    </span>
+    <ConfirmDialog
+      trigger={
+        <button type="button" className={styles.textBtn}>
+          Sign out
+        </button>
+      }
+      title={current ? "Sign out on this phone?" : "Sign out that phone?"}
+      description={
+        current
+          ? "You'll need your password to get back in."
+          : "It'll need your password to get back in."
+      }
+      confirmLabel={current ? "Sign out here" : "Yes, sign out"}
+      onConfirm={signOut}
+    />
   );
 }
 
@@ -260,18 +260,13 @@ export function RecoveryLinks({ members }: { members: { id: string; name: string
       <div className={styles.row}>
         <label className={styles.field}>
           <span>Crew member</span>
-          <select
+          <Select
             className={styles.input}
             value={memberId}
-            onChange={(e) => setMemberId(e.target.value)}
-          >
-            <option value="">Pick someone…</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setMemberId}
+            placeholder="Pick someone…"
+            groups={[{ label: "", options: members.map((m) => ({ value: m.id, label: m.name })) }]}
+          />
         </label>
         <button
           type="submit"

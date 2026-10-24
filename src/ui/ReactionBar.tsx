@@ -1,5 +1,6 @@
 "use client";
 
+import * as Toggle from "@radix-ui/react-toggle";
 import { useState } from "react";
 import { send } from "@/client/outbox";
 import type { ReactionKey, ReactionSummary as Reaction } from "@/domain/reactions";
@@ -64,18 +65,17 @@ export function ReactionBar({
   return (
     <div className={styles.bar} role="group" aria-label="React to this review">
       {state.map((r) => (
-        <button
+        <Toggle.Root
           key={r.key}
-          type="button"
           className={styles.reaction}
-          aria-pressed={r.mine}
+          pressed={r.mine}
+          onPressedChange={() => toggle(r)}
           aria-label={`${r.label}${r.count ? `, ${r.count}` : ""}`}
           title={r.by.length ? r.by.join(", ") : r.label}
-          onClick={() => toggle(r)}
         >
           <span aria-hidden="true">{r.emoji}</span>
           {r.count > 0 && <span className={styles.count}>{r.count}</span>}
-        </button>
+        </Toggle.Root>
       ))}
     </div>
   );

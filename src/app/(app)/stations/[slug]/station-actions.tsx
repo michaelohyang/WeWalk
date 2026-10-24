@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { localToday, newId } from "@/client/ids";
 import { queuedCheckin, sendCheckin } from "@/client/checkin";
 import { send, waiting } from "@/client/outbox";
+import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { focusSection } from "@/ui/focus";
 import { useToast } from "@/ui/Toast";
 import styles from "./actions.module.css";
 
@@ -128,7 +130,7 @@ export function StationActions({
   );
 }
 
-/** Edit / Delete on your own review. Delete asks first. */
+/** Edit / Delete on your own review. Delete asks first, in a dialog. */
 export function ReviewActions({
   reviewId,
   stationSlug,
@@ -138,9 +140,9 @@ export function ReviewActions({
 }) {
   const router = useRouter();
   const toast = useToast();
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [queued, setQueued] = useState(false);
+  // The dialog closes on confirm; this keeps Delete from being confirmed twice meanwhile.
+  const [busy, setBusy] = useState(false);
   const key = `delete-review:${reviewId}`;
 
   // Deleted offline (now or before a reload): grey the review out until it syncs.
@@ -164,9 +166,13 @@ export function ReviewActions({
       label: "Deleting your review",
     });
     setBusy(false);
-    setConfirming(false);
-    if (result.status === "rejected") toast(result.error.message);
-    else if (result.status === "queued") {
+    if (result.status === "rejected") {
+      toast(result.error.message);
+      return;
+    }
+    // Either way the Delete button goes away: keep focus on the page.
+    focusSection("Reviews");
+    if (result.status === "queued") {
       setQueued(true);
       toast("Deleted on this phone. It'll sync when you're back online.");
     } else {
@@ -180,26 +186,18 @@ export function ReviewActions({
       <Link href={`/rate/${stationSlug}`} className={styles.textBtn}>
         Edit
       </Link>
-      {confirming ? (
-        <span className={styles.confirm} role="group" aria-label="Delete this review?">
-          <span>Delete for good?</span>
-          <button
-            type="button"
-            className={`${styles.textBtn} ${styles.danger}`}
-            onClick={remove}
-            disabled={busy}
-          >
+      <ConfirmDialog
+        trigger={
+          <button type="button" className={styles.textBtn} disabled={busy}>
             Delete
           </button>
-          <button type="button" className={styles.textBtn} onClick={() => setConfirming(false)}>
-            Keep it
-          </button>
-        </span>
-      ) : (
-        <button type="button" className={styles.textBtn} onClick={() => setConfirming(true)}>
-          Delete
-        </button>
-      )}
+        }
+        title="Delete this review?"
+        description="It's gone for good, for everyone in the crew."
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        onConfirm={remove}
+      />
     </div>
   );
 }
