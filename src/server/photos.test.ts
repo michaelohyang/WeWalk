@@ -4,6 +4,7 @@ import { isOurPhoto } from "./photos";
 describe("isOurPhoto", () => {
   it("accepts photos stored by this app, and nothing else", () => {
     expect(isOurPhoto("/api/photos/0f8fad5b-d9cb-469f-a165-70867728950e")).toBe(true);
+    expect(isOurPhoto("/api/photos/0f8fad5b-d9cb-469f-a165-70867728950e-736x1600")).toBe(true);
     expect(
       isOurPhoto("https://abc123.public.blob.vercel-storage.com/photos/0f8fad5b-x1Yz.jpg"),
     ).toBe(true);

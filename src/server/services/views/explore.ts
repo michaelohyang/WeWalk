@@ -10,7 +10,7 @@ import { hereToday } from "@/domain/today";
 import type { Session } from "../auth";
 import type { CrewData } from "../crew";
 import { cards, type StationCard } from "./cards";
-import { mapView, type MapStation } from "./map";
+import { mapStations, type MapStation } from "./map";
 
 /* The home screen: who's out today, the areas at a glance, and what the crew's been up to. */
 
@@ -97,7 +97,7 @@ export async function exploreView(
   return {
     me: { name: session.member.name },
     stations,
-    pins: mapView(crew, session).stations,
+    pins: mapStations(crew, stations),
     tags: [...tagCounts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t),
     hereToday: hereToday(crew.checkins, cityDate(now)).flatMap((h) => {
       const card = bySlug.get(h.stationSlug);

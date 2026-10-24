@@ -1,6 +1,7 @@
 import "server-only";
 import { del, put } from "@vercel/blob";
 import { randomUUID } from "node:crypto";
+import { jpegSize } from "@/domain/photos";
 import { AppError } from "./errors";
 
 /*
@@ -22,7 +23,7 @@ const inMemoryAllowed = () => process.env.VERCEL !== "1";
 
 /** Local dev and tests only. */
 const memory = new Map<string, Uint8Array>();
-const LOCAL_URL = /^\/api\/photos\/([0-9a-f-]{36})$/;
+const LOCAL_URL = /^\/api\/photos\/([0-9a-f-]{36}(?:-\d{1,5}x\d{1,5})?)$/;
 /** Where Vercel Blob serves public files. */
 const BLOB_URL = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/photos\/[\w.-]+\.jpg$/i;
 
@@ -36,8 +37,11 @@ export async function storePhoto(bytes: Uint8Array): Promise<string> {
   if (!bytes.length) throw new AppError("invalid", "That photo is empty.");
   if (bytes.length > MAX_PHOTO_BYTES) throw new AppError("too_large", "That photo is too big.");
   if (!isJpeg(bytes)) throw new AppError("invalid", "Photos need to be JPEGs.");
+  // The size goes in the name ("…-736x1600"), so pages can reserve the photo's space up front.
+  const size = jpegSize(bytes);
+  const name = `${randomUUID()}${size ? `-${size.width}x${size.height}` : ""}`;
   if (blobConfigured()) {
-    const blob = await put(`photos/${randomUUID()}.jpg`, Buffer.from(bytes), {
+    const blob = await put(`photos/${name}.jpg`, Buffer.from(bytes), {
       access: "public",
       contentType: "image/jpeg",
       addRandomSuffix: true,
@@ -45,9 +49,8 @@ export async function storePhoto(bytes: Uint8Array): Promise<string> {
     return blob.url;
   }
   if (!inMemoryAllowed()) throw new AppError("unavailable", "Photos aren't set up yet.");
-  const id = randomUUID();
-  memory.set(id, bytes);
-  return `/api/photos/${id}`;
+  memory.set(name, bytes);
+  return `/api/photos/${name}`;
 }
 
 /** Local dev and tests: a photo kept in memory. */

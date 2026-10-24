@@ -522,6 +522,19 @@ describe("photos", () => {
     expect(got.body).toEqual(jpeg());
   });
 
+  it("puts the photo's size in its address, so pages can reserve its space", async () => {
+    const dana = await joined("Dana");
+    const sized = new Uint8Array(2048);
+    // SOI, then a baseline frame header: 1600 tall, 736 wide.
+    sized.set([
+      0xff, 0xd8, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x06, 0x40, 0x02, 0xe0, 0x01, 0x01, 0x11, 0x00,
+    ]);
+    const res = await upload(dana, sized);
+    expect(res.status).toBe(201);
+    expect(res.body.url).toMatch(/^\/api\/photos\/[0-9a-f-]{36}-736x1600$/);
+    expect((await fetchPhoto(dana, res.body.url)).status).toBe(200);
+  });
+
   it("refuses what isn't a JPEG, what's too big, and strangers", async () => {
     const dana = await joined("Dana");
     expect((await upload(dana, jpeg(), "image/png")).status).toBe(400);

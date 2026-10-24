@@ -184,13 +184,16 @@ export function StationMap({
       const marker = new Marker({ element: pin }).setLngLat([p.lng, p.lat]).addTo(map);
       // Set after the Marker, which labels its element generically.
       pin.setAttribute("aria-label", pinLabel(p));
+      // On Home, ~30 pins would be Tab stops before the rest of the page; "Full map" (just
+      // before the map) has them all. Taps still work.
+      if (compact) pin.tabIndex = -1;
       return marker;
     });
     markSelected(container.current, selectedRef.current);
     return () => {
       for (const marker of markers) marker.remove();
     };
-  }, [loaded, pins]);
+  }, [loaded, pins, compact]);
 
   useEffect(() => {
     selectedRef.current = selected;
