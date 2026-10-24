@@ -1,7 +1,8 @@
 "use client";
 
+import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import type { Ref } from "react";
-import { CATEGORIES, type CategoryKey, type Score } from "@/domain/categories";
+import { CATEGORIES, type Score } from "@/domain/categories";
 import { Icon } from "@/ui/Icon";
 import type { Scores } from "./rate-form";
 import styles from "./rate.module.css";
@@ -14,9 +15,12 @@ const SCORE_COLOR: Record<Score, string> = {
   5: "var(--s-great)",
 };
 
+/** The toggle group's value back to a score: "" means the score was cleared. */
+const toScore = (v: string): Score | undefined => (v ? (Number(v) as Score) : undefined);
+
 /**
- * One row of 1–5 radio tokens per category. Tap a score again to clear it; arrow keys move
- * within a row (the radio pattern), so each category is one Tab stop.
+ * One row of 1–5 radio tokens per category. Tap a score again to clear it. Each row is one Tab
+ * stop; arrow keys move within it, and Space or Enter picks.
  */
 export function ScorePicker({
   ref,
@@ -29,16 +33,6 @@ export function ScorePicker({
   error?: string;
   onChange: (scores: Scores) => void;
 }) {
-  const arrowKeys = (e: React.KeyboardEvent, key: CategoryKey, value: Score | undefined) => {
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (!step) return;
-    e.preventDefault();
-    const next = ((((value ?? (step > 0 ? 0 : 6)) + step - 1 + 5) % 5) + 1) as Score;
-    onChange({ ...scores, [key]: next });
-    const radios = e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]");
-    radios[next - 1]?.focus();
-  };
-
   return (
     <div
       ref={ref}
@@ -64,29 +58,25 @@ export function ScorePicker({
                 {value ? c.quips[value - 1] : c.hint}
               </span>
             </div>
-            <div
+            <ToggleGroup.Root
+              type="single"
               className={styles.tokens}
-              role="radiogroup"
               aria-labelledby={`cat-${c.key}`}
-              onKeyDown={(e) => arrowKeys(e, c.key, value)}
+              value={value ? String(value) : ""}
+              onValueChange={(v) => onChange({ ...scores, [c.key]: toScore(v) })}
             >
               {([1, 2, 3, 4, 5] as const).map((n) => (
-                <button
+                <ToggleGroup.Item
                   key={n}
-                  type="button"
-                  role="radio"
-                  aria-checked={value === n}
+                  value={String(n)}
                   aria-label={`${n} out of 5`}
-                  // One Tab stop per category; arrow keys move within it (the radio pattern).
-                  tabIndex={(value ?? 1) === n ? 0 : -1}
                   className={value === n ? styles.on : undefined}
                   style={value === n ? { background: SCORE_COLOR[n] } : undefined}
-                  onClick={() => onChange({ ...scores, [c.key]: value === n ? undefined : n })}
                 >
                   {n}
-                </button>
+                </ToggleGroup.Item>
               ))}
-            </div>
+            </ToggleGroup.Root>
           </div>
         );
       })}

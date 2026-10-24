@@ -13,7 +13,7 @@ import { areaColor } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
 import { StationRow } from "@/ui/StationRow";
-import { ThemeToggle } from "@/ui/ThemeSwitch";
+import { ThemeToggle } from "@/ui/ThemeToggle";
 import { AreaTiles } from "./area-tiles";
 import styles from "./explore.module.css";
 import { Feed } from "./feed";

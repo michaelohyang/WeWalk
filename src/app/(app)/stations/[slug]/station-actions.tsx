@@ -1,5 +1,6 @@
 "use client";
 
+import * as Collapsible from "@radix-ui/react-collapsible";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -88,27 +89,26 @@ export function StationActions({
   }
 
   return (
-    <div className={styles.wrap}>
+    <Collapsible.Root
+      className={styles.wrap}
+      open={!!checkin && noteOpen}
+      onOpenChange={setNoteOpen}
+    >
       <div className={styles.actions}>
         <Link href={`/rate/${stationSlug}`} className={`${styles.btn} ${styles.primary}`}>
           {reviewed ? "Edit your rating" : "Rate it"}
         </Link>
         {checkin ? (
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.here}`}
-            onClick={() => setNoteOpen((o) => !o)}
-            aria-expanded={noteOpen}
-          >
+          <Collapsible.Trigger className={`${styles.btn} ${styles.here}`}>
             {checkin.note ? "✓ Here · edit note" : "✓ Here · add note"}
-          </button>
+          </Collapsible.Trigger>
         ) : (
           <button type="button" className={styles.btn} onClick={checkIn} disabled={busy}>
             {busy ? "Checking in…" : "Check in"}
           </button>
         )}
       </div>
-      {checkin && noteOpen && (
+      <Collapsible.Content asChild>
         <form className={styles.note} onSubmit={saveNote}>
           <label htmlFor="checkin-note">Today&apos;s note</label>
           <textarea
@@ -123,8 +123,8 @@ export function StationActions({
             Save note
           </button>
         </form>
-      )}
-    </div>
+      </Collapsible.Content>
+    </Collapsible.Root>
   );
 }
 
