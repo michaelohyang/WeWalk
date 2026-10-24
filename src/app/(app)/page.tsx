@@ -3,5 +3,6 @@ import { Explore } from "./explore";
 
 export default async function ExplorePage() {
   const view = await loadExplore();
-  return view && <Explore view={view} />;
+  // A new city resets the filters and the map's bounds.
+  return view && <Explore key={view.city} view={view} />;
 }

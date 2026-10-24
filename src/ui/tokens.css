@@ -39,6 +39,17 @@
   --a-flatiron: #8e4ec6;
   --a-downtown: #d6409f;
   --a-brooklyn: #0a97b0;
+  /* Other cities reuse the same five colors (only one city shows at a time). As references,
+     they follow the dark theme on their own. */
+  --a-back-bay: var(--a-uptown);
+  --a-boston-downtown: var(--a-midtown);
+  --a-north-station: var(--a-flatiron);
+  --a-cambridge: var(--a-downtown);
+  --a-seaport: var(--a-brooklyn);
+  --a-buckhead: var(--a-uptown);
+  --a-atl-midtown: var(--a-midtown);
+  --a-perimeter: var(--a-flatiron);
+  --a-decatur: var(--a-brooklyn);
 
   /* map */
   --water: #d9e9f2;

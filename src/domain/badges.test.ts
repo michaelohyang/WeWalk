@@ -34,6 +34,23 @@ describe("badgesFor", () => {
     expect(b.has("area-midtown")).toBe(false);
   });
 
+  it("counts Completionist per city, so adding a city takes nobody's badge away", () => {
+    const cities = [...stations, { slug: "x", area: "back-bay" }, { slug: "y", area: "seaport" }];
+    const everyNyc = ["a", "b", "c"].map((slug) => checkin({ stationSlug: slug }));
+    const done = byKey(badgesFor("m1", cities, everyNyc, [])).get("completionist")!;
+    expect(done).toMatchObject({ earned: true, progress: { have: 3, need: 3 } });
+    expect(done.detail).toBe("Visit every building in a city (all 3 in New York)");
+
+    // Partway in two cities: progress shows the city you're furthest along in.
+    const some = [checkin({ stationSlug: "a" }), checkin({ stationSlug: "x" })];
+    const partway = byKey(badgesFor("m1", cities, some, [])).get("completionist")!;
+    expect(partway).toMatchObject({ earned: false, progress: { have: 1, need: 2 } });
+    expect(partway.detail).toBe("Visit every building in a city (1 of 2 in Boston)");
+    expect(byKey(badgesFor("m1", cities, some, [])).get("area-back-bay")).toMatchObject({
+      earned: true,
+    });
+  });
+
   it("gives Trailblazer to whoever reviewed a building first", () => {
     const reviews = [
       review({ stationSlug: "a", memberId: "m2", visitedOn: "2026-10-03" }),

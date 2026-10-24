@@ -35,6 +35,8 @@ type Theme = keyof typeof MAP_STYLES;
 
 /** Pins grow from dots into score badges once neighboring buildings stop overlapping. */
 const NEAR_ZOOM = 13.5;
+/** Room around the stations when framing; more at the bottom, where the map credits sit. */
+const FRAME_PADDING = { top: 36, right: 36, bottom: 72, left: 36 };
 /** How far past the outermost stations you can pan, in degrees (about 30 km). */
 const PAN_MARGIN = 0.3;
 
@@ -103,7 +105,7 @@ export function StationMap({
           container: el,
           style: MAP_STYLES[theme],
           bounds,
-          fitBoundsOptions: { padding: 36 },
+          fitBoundsOptions: { padding: FRAME_PADDING },
           maxBounds: [
             [sw.lng - PAN_MARGIN, sw.lat - PAN_MARGIN],
             [ne.lng + PAN_MARGIN, ne.lat + PAN_MARGIN],
@@ -125,7 +127,7 @@ export function StationMap({
           // The container can settle to its final size after the map is created (the Home card):
           // measure again and frame every station, unless you've already started exploring.
           m.resize();
-          if (!moved) m.fitBounds(bounds, { padding: 36, animate: false });
+          if (!moved) m.fitBounds(bounds, { padding: FRAME_PADDING, animate: false });
         });
 
         // A data attribute, not a class: React owns this element's className.

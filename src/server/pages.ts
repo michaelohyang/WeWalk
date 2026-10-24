@@ -1,5 +1,6 @@
 import "server-only";
-import type { AreaKey } from "@/domain/areas";
+import { cookies } from "next/headers";
+import { CITY_COOKIE, DEFAULT_CITY, isCity, type AreaKey, type CityKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { crewData } from "./crew-cache";
@@ -14,6 +15,13 @@ import {
   rateView,
   stationView,
 } from "./services/views";
+import { inCity } from "./services/views/city";
+
+/** The city this phone is looking at (a cookie the city switch sets); unknown values mean NYC. */
+export async function selectedCity(): Promise<CityKey> {
+  const value = (await cookies()).get(CITY_COOKIE)?.value;
+  return isCity(value) ? value : DEFAULT_CITY;
+}
 
 /*
  * Data loaders for pages. Each one checks the session itself: layouts and pages render in
@@ -24,7 +32,7 @@ import {
 export async function loadExplore() {
   const session = await getSession();
   if (!session) return null;
-  return exploreView(await crewData(), session, new Date());
+  return exploreView(await crewData(), session, new Date(), await selectedCity());
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */
@@ -34,22 +42,23 @@ export async function loadStation(slug: string) {
   return stationView(await crewData(), session, slug);
 }
 
-export async function loadRanks(key: RankKey, area: AreaKey | null) {
+export async function loadRanks(key: RankKey, area: AreaKey | null, city: CityKey) {
   const session = await getSession();
   if (!session) return null;
-  return ranksView(await crewData(), session, key, area, new Date());
+  return ranksView(inCity(await crewData(), city), session, key, area, new Date());
 }
 
 export async function loadMap() {
   const session = await getSession();
   if (!session) return null;
-  return mapView(await crewData(), session);
+  const city = await selectedCity();
+  return { ...mapView(inCity(await crewData(), city), session), city };
 }
 
 export async function loadPassport() {
   const session = await getSession();
   if (!session) return null;
-  return passportView(await crewData(), session, new Date());
+  return passportView(await crewData(), session, new Date(), await selectedCity());
 }
 
 export async function loadCrew() {

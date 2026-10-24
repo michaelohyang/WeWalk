@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { AREAS, isArea, type AreaKey } from "@/domain/areas";
+import { areaIn, areasIn, type AreaKey } from "@/domain/areas";
 import { CATEGORIES, type CategoryKey } from "@/domain/categories";
 import type { RankKey } from "@/domain/ranking";
-import { loadRanks } from "@/server/pages";
+import { loadRanks, selectedCity } from "@/server/pages";
 import { ButtonLink } from "@/ui/Button";
 import { Chip, ChipRow } from "@/ui/Chips";
+import { CitySwitch } from "@/ui/CitySwitch";
 import { Empty } from "@/ui/Empty";
 import { areaColor, plural } from "@/ui/format";
 import { formatScore } from "@/domain/scoring";
@@ -37,10 +38,13 @@ export default async function RanksPage({
 }) {
   const params = await searchParams;
   const sort = SORTS.find((s) => s.key === params.by) ?? SORTS[0]!;
-  const area = isArea(params.area) ? params.area : null;
-  const view = await loadRanks(sort.key, area);
+  const city = await selectedCity();
+  // An area from another city (an old or shared link) is ignored rather than showing nothing.
+  const area = areaIn(city, params.area);
+  const view = await loadRanks(sort.key, area, city);
   if (!view) return null;
-  const areaLabel = AREAS.find((a) => a.key === area)?.label;
+  const areas = areasIn(city);
+  const areaLabel = areas.find((a) => a.key === area)?.label;
   const monthName = new Date(`${view.month}-01T00:00:00Z`).toLocaleDateString("en-US", {
     month: "long",
     timeZone: "UTC",
@@ -49,6 +53,7 @@ export default async function RanksPage({
 
   return (
     <Page title="Ranks">
+      <CitySwitch city={city} />
       {som ? (
         <article className={styles.spot}>
           <div className={styles.spotScore}>
@@ -90,7 +95,7 @@ export default async function RanksPage({
           <Chip current={!area} href={ranksHref(sort.key, null)}>
             All
           </Chip>
-          {AREAS.map((a) => (
+          {areas.map((a) => (
             <Chip
               key={a.key}
               current={area === a.key}

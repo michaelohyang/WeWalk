@@ -18,7 +18,7 @@ export async function AuthPage({
   return (
     <Page
       title={mode === "signup" ? "Join WeWalk" : "Log in"}
-      subtitle="NYC WeWorks, rated by people who care too much"
+      subtitle="WeWorks in NYC, Boston and Atlanta, rated by people who care too much"
     >
       <AuthForm mode={mode} next={next} code={code} />
     </Page>

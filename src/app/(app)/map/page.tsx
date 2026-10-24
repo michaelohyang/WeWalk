@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadMap } from "@/server/pages";
+import { CitySwitch } from "@/ui/CitySwitch";
 import { plural } from "@/ui/format";
 import { Page } from "@/ui/Page";
 import { StationMap } from "@/ui/StationMap";
@@ -15,7 +16,9 @@ export default async function MapPage() {
       subtitle={`${plural(view.stations.length, "station")}, colored by crew score`}
       back="/"
     >
-      <StationMap pins={view.stations} />
+      <CitySwitch city={view.city} />
+      {/* A new city means new bounds: start a fresh map. */}
+      <StationMap key={view.city} pins={view.stations} />
     </Page>
   );
 }
