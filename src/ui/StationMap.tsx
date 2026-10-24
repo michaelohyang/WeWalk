@@ -37,6 +37,8 @@ type Theme = keyof typeof MAP_STYLES;
 const NEAR_ZOOM = 13.5;
 /** Room around the stations when framing; more at the bottom, where the map credits sit. */
 const FRAME_PADDING = { top: 36, right: 36, bottom: 72, left: 36 };
+/** How long the map credits stay open before folding into the (i) button. */
+const CREDITS_SHOWN_MS = 5000;
 /** How far past the outermost stations you can pan, in degrees (about 30 km). */
 const PAN_MARGIN = 0.3;
 
@@ -92,6 +94,7 @@ export function StationMap({
     let cancelled = false;
     let map: MapLibreMap | undefined;
     let stopWatchingTheme = () => {};
+    let creditsTimer: ReturnType<typeof setTimeout> | undefined;
 
     import("maplibre-gl")
       .then(({ AttributionControl, LngLatBounds, Map, Marker, NavigationControl }) => {
@@ -128,6 +131,13 @@ export function StationMap({
           // measure again and frame every station, unless you've already started exploring.
           m.resize();
           if (!moved) m.fitBounds(bounds, { padding: FRAME_PADDING, animate: false });
+          // OpenStreetMap's attribution rules: show the credits first, then they may fold into
+          // the (i) button after five seconds (MapLibre also folds them as soon as you drag).
+          creditsTimer = setTimeout(() => {
+            const credits = el.querySelector(".maplibregl-ctrl-attrib");
+            credits?.classList.remove("maplibregl-compact-show");
+            credits?.removeAttribute("open");
+          }, CREDITS_SHOWN_MS);
         });
 
         // A data attribute, not a class: React owns this element's className.
@@ -164,6 +174,7 @@ export function StationMap({
 
     return () => {
       cancelled = true;
+      clearTimeout(creditsTimer);
       stopWatchingTheme();
       map?.remove();
     };
