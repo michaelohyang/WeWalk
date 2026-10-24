@@ -1,10 +1,13 @@
+import { encodeUnder, MAX_PHOTO_BYTES } from "@/domain/photos";
+
 /*
  * Review photos: shrink on the phone, then upload. A 12-megapixel camera photo is ~4 MB; a
- * 1600px JPEG at 80% is a few hundred KB, plenty for a phone screen and quick on lobby wifi.
+ * 2048px JPEG at 88% is usually 0.4–1 MB: sharp on a phone screen, still quick on lobby wifi.
  */
 
-const MAX_SIDE = 1600;
-const QUALITY = 0.8;
+const MAX_SIDE = 2048;
+/** Tried in order until the photo fits under the server's limit. */
+const QUALITIES = [0.88, 0.8, 0.7] as const;
 const UPLOAD_TIMEOUT_MS = 30_000;
 
 /** Any image the browser can read (camera JPEG, HEIC on iPhone, PNG) → a smaller JPEG. */
@@ -15,9 +18,16 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const ctx = canvas.getContext("2d")!;
+  // The default ("low") blurs and jags a big downscale on iPhone Safari.
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
-  const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/jpeg", QUALITY));
+  const blob = await encodeUnder(
+    (quality) => new Promise((done) => canvas.toBlob(done, "image/jpeg", quality)),
+    QUALITIES,
+    MAX_PHOTO_BYTES,
+  );
   if (!blob) throw new Error("Couldn't read that photo.");
   return blob;
 }

@@ -141,3 +141,13 @@ export async function listMemberReviews(db: Db, memberId: string) {
     createdAt: row.createdAt.toISOString(),
   }));
 }
+
+/** Whether any review shows this photo. */
+export async function photoInUse(db: Db, url: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: reviews.id })
+    .from(reviews)
+    .where(eq(reviews.photoUrl, url))
+    .limit(1);
+  return !!row;
+}

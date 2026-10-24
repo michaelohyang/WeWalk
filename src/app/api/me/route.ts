@@ -23,8 +23,8 @@ export const PATCH = authedRoute(async ({ req, db, session }) => {
 });
 
 /** Delete your account and everything that's yours: `{ password }`. Signs this phone out. */
-export const DELETE = authedRoute(async ({ req, db, session }) => {
-  await deleteAccount(db, session, await readJson(req, deleteAccountInputSchema));
+export const DELETE = authedRoute(async ({ req, db, now, session }) => {
+  await deleteAccount(db, session, await readJson(req, deleteAccountInputSchema), now);
   crewChanged();
   return clearSessionCookie(new NextResponse(null, { status: 204 }));
 });

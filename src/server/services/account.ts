@@ -1,6 +1,8 @@
 import "server-only";
 import * as crewsRepo from "../repos/crews";
 import { FIRST_CREW_ID } from "../db/schema";
+import { listMemberPhotos } from "../repos/photos";
+import { photoInUse } from "../repos/reviews";
 import type { Db } from "../db/client";
 import { AppError } from "../errors";
 import { verifyPassword } from "../auth/passwords";
@@ -9,7 +11,7 @@ import * as memberRepo from "../repos/members";
 import { listMemberReactions } from "../repos/reactions";
 import { listMemberReviews } from "../repos/reviews";
 import { deletePhoto } from "../photos";
-import { ownsCrew, type Session } from "./auth";
+import { LOCKOUT_MS, MAX_FAILED_LOGINS, ownsCrew, type Session } from "./auth";
 
 /*
  * Your account: take a copy of your data, hand the crew to someone else, or leave for good.
@@ -58,6 +60,7 @@ export async function exportData(db: Db, session: Session, now: Date) {
 }
 
 const WRONG_PASSWORD = "That's not your password.";
+const LOCKED = "Too many wrong passwords. Try again in 15 minutes.";
 const NEEDS_PASSWORD = "Set a password first. Deleting your account needs it.";
 const OWNER_STAYS =
   "You run a crew with other people in it. Hand it over to someone first, so it keeps an owner.";
@@ -73,14 +76,10 @@ export async function deleteAccount(
   db: Db,
   session: Session,
   input: { password: string },
+  now: Date = new Date(),
 ): Promise<void> {
   const me = session.member.id;
-  const stored = await memberRepo.findPasswordHash(db, me);
-  if (!stored)
-    throw new AppError("invalid", NEEDS_PASSWORD, { fields: { password: [NEEDS_PASSWORD] } });
-  if (!(await verifyPassword(input.password, stored))) {
-    throw new AppError("invalid", WRONG_PASSWORD, { fields: { password: [WRONG_PASSWORD] } });
-  }
+  await confirmPassword(db, me, input.password, now);
   const photos = await db.transaction(async (tx) => {
     if (!(await memberRepo.lockMember(tx, me))) {
       throw new AppError("unauthorized", "You're signed out.");
@@ -90,7 +89,8 @@ export async function deleteAccount(
       throw new AppError("conflict", OWNER_STAYS);
     }
     const myCrews = (await crewsRepo.listMemberCrews(tx, me)).map((c) => c.id);
-    const urls = (await listMemberReviews(tx, me)).flatMap((r) => r.photoUrl ?? []);
+    // Your uploads, attached or not (the records go with the account, so read them first).
+    const urls = await listMemberPhotos(tx, me);
     await memberRepo.deleteMember(tx, me);
     // A crew you were the last one in goes with you (it would otherwise keep a live invite link
     // and no owner).
@@ -101,7 +101,28 @@ export async function deleteAccount(
     return urls;
   });
   // Only once the reviews are gone for sure: a rolled-back delete would leave broken photos.
-  await Promise.all(photos.map(deletePhoto));
+  // A photo still on someone else's review (shared before uploads were recorded) stays.
+  for (const url of photos) if (!(await photoInUse(db, url))) await deletePhoto(url);
+}
+
+const passwordProblem = (message: string) =>
+  new AppError("invalid", message, { fields: { password: [message] } });
+
+/**
+ * Checks your own password with the same lockout as logging in, so it can't be guessed here
+ * instead: a locked account is refused, a wrong password counts, the right one clears the count.
+ */
+async function confirmPassword(db: Db, me: string, password: string, now: Date) {
+  const found = await memberRepo.findCredentialsById(db, me);
+  if (!found?.passwordHash) throw passwordProblem(NEEDS_PASSWORD);
+  if (found.lockedUntil && found.lockedUntil > now) throw passwordProblem(LOCKED);
+  // A lock that has run out starts a fresh count (as in logIn).
+  if (found.lockedUntil) await memberRepo.clearFailedLogins(db, me);
+  if (!(await verifyPassword(password, found.passwordHash))) {
+    await memberRepo.recordFailedLogin(db, me, now, MAX_FAILED_LOGINS, LOCKOUT_MS);
+    throw passwordProblem(WRONG_PASSWORD);
+  }
+  if (found.failedLogins) await memberRepo.clearFailedLogins(db, me);
 }
 
 /** Owner only: make another member the crew's owner (you become a regular member). */

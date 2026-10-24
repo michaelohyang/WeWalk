@@ -1,85 +1,9 @@
 {
-  "id": "50a0da39-1587-43e3-a55c-005bc9458f05",
+  "id": "5aac6215-0b09-460b-a14a-9ef3fcd880e6",
   "prevId": "22464860-8bb1-4c5f-ac1e-08cbde49edec",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.checkin_crews": {
-      "name": "checkin_crews",
-      "schema": "",
-      "columns": {
-        "checkin_id": {
-          "name": "checkin_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "crew_id": {
-          "name": "crew_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "checkin_crews_crew_idx": {
-          "name": "checkin_crews_crew_idx",
-          "columns": [
-            {
-              "expression": "crew_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "checkin_crews_checkin_id_checkins_id_fk": {
-          "name": "checkin_crews_checkin_id_checkins_id_fk",
-          "tableFrom": "checkin_crews",
-          "tableTo": "checkins",
-          "columnsFrom": [
-            "checkin_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "checkin_crews_crew_id_crews_id_fk": {
-          "name": "checkin_crews_crew_id_crews_id_fk",
-          "tableFrom": "checkin_crews",
-          "tableTo": "crews",
-          "columnsFrom": [
-            "crew_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "checkin_crews_checkin_id_crew_id_pk": {
-          "name": "checkin_crews_checkin_id_crew_id_pk",
-          "columns": [
-            "checkin_id",
-            "crew_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
     "public.checkins": {
       "name": "checkins",
       "schema": "",
@@ -202,180 +126,6 @@
         "checkins_note_length": {
           "name": "checkins_note_length",
           "value": "char_length(\"checkins\".\"note\") <= 400"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.crew_members": {
-      "name": "crew_members",
-      "schema": "",
-      "columns": {
-        "crew_id": {
-          "name": "crew_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'member'"
-        },
-        "joined_at": {
-          "name": "joined_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "crew_members_member_idx": {
-          "name": "crew_members_member_idx",
-          "columns": [
-            {
-              "expression": "member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "crew_members_one_owner": {
-          "name": "crew_members_one_owner",
-          "columns": [
-            {
-              "expression": "crew_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"crew_members\".\"role\" = 'owner'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "crew_members_crew_id_crews_id_fk": {
-          "name": "crew_members_crew_id_crews_id_fk",
-          "tableFrom": "crew_members",
-          "tableTo": "crews",
-          "columnsFrom": [
-            "crew_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "crew_members_member_id_members_id_fk": {
-          "name": "crew_members_member_id_members_id_fk",
-          "tableFrom": "crew_members",
-          "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "crew_members_crew_id_member_id_pk": {
-          "name": "crew_members_crew_id_member_id_pk",
-          "columns": [
-            "crew_id",
-            "member_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "crew_members_role_known": {
-          "name": "crew_members_role_known",
-          "value": "role in ('owner', 'member')"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.crews": {
-      "name": "crews",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invite_code": {
-          "name": "invite_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "home_city": {
-          "name": "home_city",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'nyc'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "crews_invite_code_unique": {
-          "name": "crews_invite_code_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "invite_code"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "crews_home_city_known": {
-          "name": "crews_home_city_known",
-          "value": "home_city in ('nyc', 'boston', 'atlanta')"
-        },
-        "crews_name_length": {
-          "name": "crews_name_length",
-          "value": "char_length(\"crews\".\"name\") between 1 and 40"
         }
       },
       "isRLSEnabled": true
@@ -585,13 +335,6 @@
           "notNull": true,
           "default": false
         },
-        "is_admin": {
-          "name": "is_admin",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "password_hash": {
           "name": "password_hash",
           "type": "text",
@@ -653,6 +396,68 @@
         }
       },
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": true
+    },
+    "public.photos": {
+      "name": "photos",
+      "schema": "",
+      "columns": {
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "photos_member": {
+          "name": "photos_member",
+          "columns": [
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "photos_member_id_members_id_fk": {
+          "name": "photos_member_id_members_id_fk",
+          "tableFrom": "photos",
+          "tableTo": "members",
+          "columnsFrom": [
+            "member_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -721,13 +526,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "crew_id": {
-          "name": "crew_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'00000000-0000-4000-8000-00000000c4e1'"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -736,23 +534,7 @@
           "default": "now()"
         }
       },
-      "indexes": {
-        "reactions_crew_idx": {
-          "name": "reactions_crew_idx",
-          "columns": [
-            {
-              "expression": "crew_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "reactions_review_id_reviews_id_fk": {
           "name": "reactions_review_id_reviews_id_fk",
@@ -779,29 +561,15 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "reactions_crew_id_crews_id_fk": {
-          "name": "reactions_crew_id_crews_id_fk",
-          "tableFrom": "reactions",
-          "tableTo": "crews",
-          "columnsFrom": [
-            "crew_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "reactions_review_id_member_id_kind_crew_id_pk": {
-          "name": "reactions_review_id_member_id_kind_crew_id_pk",
+        "reactions_review_id_member_id_kind_pk": {
+          "name": "reactions_review_id_member_id_kind_pk",
           "columns": [
             "review_id",
             "member_id",
-            "kind",
-            "crew_id"
+            "kind"
           ]
         }
       },
@@ -813,82 +581,6 @@
           "value": "kind in ('fire', 'hundred', 'laugh', 'disagree')"
         }
       },
-      "isRLSEnabled": true
-    },
-    "public.review_crews": {
-      "name": "review_crews",
-      "schema": "",
-      "columns": {
-        "review_id": {
-          "name": "review_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "crew_id": {
-          "name": "crew_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "review_crews_crew_idx": {
-          "name": "review_crews_crew_idx",
-          "columns": [
-            {
-              "expression": "crew_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "review_crews_review_id_reviews_id_fk": {
-          "name": "review_crews_review_id_reviews_id_fk",
-          "tableFrom": "review_crews",
-          "tableTo": "reviews",
-          "columnsFrom": [
-            "review_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "review_crews_crew_id_crews_id_fk": {
-          "name": "review_crews_crew_id_crews_id_fk",
-          "tableFrom": "review_crews",
-          "tableTo": "crews",
-          "columnsFrom": [
-            "crew_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "review_crews_review_id_crew_id_pk": {
-          "name": "review_crews_review_id_crew_id_pk",
-          "columns": [
-            "review_id",
-            "crew_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": true
     },
     "public.reviews": {

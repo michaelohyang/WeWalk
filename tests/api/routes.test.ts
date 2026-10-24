@@ -854,6 +854,21 @@ describe("photos", () => {
     expect(res.body.review.photoUrl).toBe(url);
   });
 
+  it("can only be someone's own upload, so nobody can get another's photo deleted", async () => {
+    const dana = await joined("Dana");
+    const sam = await joined("Sam");
+    const samsPhoto = (await upload(sam, jpeg())).body.url;
+    const id = newId();
+    const put = (photoUrl: string | null) =>
+      dana.call(putReview, "PUT", "/api/reviews/x", { params: { id }, body: review({ photoUrl }) });
+    // Attaching Sam's upload to Dana's review is refused...
+    expect((await put(samsPhoto)).status).toBe(400);
+    // ...so Dana can't then "replace" it and have the server delete Sam's photo.
+    expect((await put(null)).status).toBe(201);
+    expect((await put(samsPhoto)).status).toBe(400);
+    expect((await fetchPhoto(sam, samsPhoto)).status).toBe(200);
+  });
+
   it("is deleted when it's replaced, and when its review is", async () => {
     const dana = await joined("Dana");
     const first = (await upload(dana, jpeg())).body.url;
