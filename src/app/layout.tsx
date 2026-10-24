@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/figtree";
 import "@/ui/global.css";
-import { THEME_BOOT_SCRIPT } from "@/ui/ThemeSwitch";
+import { THEME_BOOT_SCRIPT } from "@/ui/theme";
 
 const SITE = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
