@@ -23,7 +23,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/server/db/seed/run.ts",
     "db:deploy": "tsx scripts/deploy-db.ts",
-    "photos:backfill": "tsx scripts/backfill-photo-sizes.ts",
+    "photos:backfill": "tsx --env-file-if-exists=.env.local scripts/backfill-photo-sizes.ts",
     "vercel-build": "pnpm db:deploy && next build",
     "smoke": "tsx scripts/smoke.ts"
   },
