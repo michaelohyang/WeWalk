@@ -4,7 +4,7 @@ import type { Db } from "../db/client";
 import { AppError } from "../errors";
 import * as reactionRepo from "../repos/reactions";
 import { crewSeesReview, findReview } from "../repos/reviews";
-import type { Session } from "./auth";
+import { crewOf, type Session } from "./auth";
 
 /*
  * Reactions are PUT (add) and DELETE (remove) on one URL per review and kind, so both are
@@ -14,7 +14,7 @@ import type { Session } from "./auth";
 /** React to someone else's review, in the crew you're looking at (it must see the review). */
 export async function react(db: Db, session: Session, reviewId: string, kind: ReactionKey) {
   const review = await findReview(db, reviewId);
-  if (!review || !(await crewSeesReview(db, reviewId, session.crew.id))) {
+  if (!review || !(await crewSeesReview(db, reviewId, crewOf(session).id))) {
     throw new AppError("not_found", "That review was just deleted.");
   }
   if (review.memberId === session.member.id) {
@@ -24,7 +24,7 @@ export async function react(db: Db, session: Session, reviewId: string, kind: Re
     reviewId,
     memberId: session.member.id,
     kind,
-    crewId: session.crew.id,
+    crewId: crewOf(session).id,
   });
 }
 
@@ -34,6 +34,6 @@ export async function unreact(db: Db, session: Session, reviewId: string, kind: 
     reviewId,
     memberId: session.member.id,
     kind,
-    crewId: session.crew.id,
+    crewId: crewOf(session).id,
   });
 }

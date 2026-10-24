@@ -429,3 +429,112 @@ export function HandOver({ members }: { members: { id: string; name: string }[] 
     </div>
   );
 }
+
+/** Owner: rename the crew, and make a new invite link (the old one stops working). */
+export function CrewSettings({ name }: { name: string }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [value, setValue] = useState(name);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (value.trim() === name) return;
+    setBusy(true);
+    const res = await request("PATCH", "/api/crews/current", { name: value });
+    setBusy(false);
+    if (!res.ok) {
+      setError(fieldErrors(res.error).name ?? res.error.message);
+      return;
+    }
+    toast("Crew renamed.");
+    router.refresh();
+  }
+
+  async function newInvite() {
+    const res = await request("POST", "/api/crews/current/invite");
+    if (!res.ok) {
+      toast(res.error.message);
+      return;
+    }
+    toast("New invite link made. The old one no longer works.");
+    router.refresh();
+  }
+
+  return (
+    <div className={styles.card}>
+      <form className={styles.row} onSubmit={submit} noValidate>
+        <label className={styles.field}>
+          <span>Crew name</span>
+          <input
+            className={styles.input}
+            value={value}
+            maxLength={40}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setError(null);
+            }}
+            aria-invalid={!!error}
+            aria-describedby={error ? "crew-name-error" : undefined}
+          />
+          {error && (
+            <span id="crew-name-error" className={styles.error} role="alert">
+              {error}
+            </span>
+          )}
+        </label>
+        <button
+          type="submit"
+          className={styles.secondary}
+          disabled={busy || value.trim() === name}
+          style={{ alignSelf: "end" }}
+        >
+          Rename
+        </button>
+      </form>
+      <ConfirmDialog
+        trigger={
+          <button type="button" className={styles.textBtn}>
+            Make a new invite link
+          </button>
+        }
+        title="Make a new invite link?"
+        description="The current link stops working, so nobody else can join with it. Do this after removing someone."
+        confirmLabel="Make a new link"
+        onConfirm={() => void newInvite()}
+      />
+    </div>
+  );
+}
+
+/** Leave the crew you're looking at (your posts come out of it). */
+export function LeaveCrew({ crewName }: { crewName: string }) {
+  const router = useRouter();
+  const toast = useToast();
+
+  async function leave() {
+    const res = await request("POST", "/api/crews/leave");
+    if (!res.ok) {
+      toast(res.error.message);
+      return;
+    }
+    toast(`You left ${crewName}.`);
+    router.replace("/");
+    router.refresh();
+  }
+
+  return (
+    <ConfirmDialog
+      trigger={
+        <button type="button" className={styles.textBtn}>
+          Leave {crewName}
+        </button>
+      }
+      title={`Leave ${crewName}?`}
+      description="Your reviews and check-ins come out of this crew (they stay in your other crews). You can come back with an invite link."
+      confirmLabel="Leave"
+      onConfirm={() => void leave()}
+    />
+  );
+}

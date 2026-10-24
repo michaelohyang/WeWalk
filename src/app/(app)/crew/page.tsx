@@ -9,8 +9,10 @@ import { plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import { ThemeSwitch } from "@/ui/ThemeSwitch";
 import {
+  CrewSettings,
   HandOver,
   InviteFriends,
+  LeaveCrew,
   RecoveryLinks,
   Rename,
   SetPassword,
@@ -152,6 +154,11 @@ export default async function CrewPage() {
           <HandOver members={members} />
         </Section>
       )}
+
+      <Section title={view.crew.name}>
+        {me.isOwner && <CrewSettings name={view.crew.name} />}
+        <LeaveCrew crewName={view.crew.name} />
+      </Section>
 
       <Section title="Appearance">
         <ThemeSwitch />

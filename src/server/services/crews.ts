@@ -4,7 +4,7 @@ import type { CityKey } from "@/domain/areas";
 import type { Db } from "../db/client";
 import { AppError } from "../errors";
 import * as crewsRepo from "../repos/crews";
-import type { Session } from "./auth";
+import { crewOf, ownsCrew, type Session } from "./auth";
 
 const BAD_INVITE = "That invite link doesn't work any more. Ask for a new one.";
 
@@ -29,7 +29,7 @@ export async function joinCrew(
  * New crews wait for CREWS_ENABLED=1, so a rollback never meets a second crew (older code would
  * show its posts to everyone). Turn it on once crews have been live for a deploy.
  */
-const crewCreationEnabled = () => process.env.CREWS_ENABLED === "1";
+export const crewCreationEnabled = () => process.env.CREWS_ENABLED === "1";
 
 /** A fresh invite code: 12 url-safe characters, too many to guess. */
 const newInviteCode = () => randomBytes(9).toString("base64url");
@@ -48,4 +48,42 @@ export async function createCrew(
     return created;
   });
   return { id: crew.id, name: input.name, inviteCode };
+}
+
+const OWNER_STAYS = "You run this crew. Hand it over to someone first, so it keeps an owner.";
+const OWNER_ONLY = "Only the crew owner can do that.";
+
+/**
+ * Leave the crew you're looking at: your posts and reactions come out of it (they stay in your
+ * other crews). The owner hands it over first, unless they're the last one in it; a crew left
+ * empty is deleted (the first crew always stays). With no crews left you go to /welcome.
+ */
+export async function leaveCrew(db: Db, session: Session): Promise<void> {
+  const crew = crewOf(session);
+  await db.transaction(async (tx) => {
+    await crewsRepo.lockMembershipsOf(tx, session.member.id);
+    if (
+      crew.role === "owner" &&
+      (await crewsRepo.ownedCrewsWithOthers(tx, session.member.id)).includes(crew.id)
+    ) {
+      throw new AppError("conflict", OWNER_STAYS);
+    }
+    await crewsRepo.unlinkMemberFromCrew(tx, crew.id, session.member.id);
+    await crewsRepo.removeCrewMember(tx, crew.id, session.member.id);
+    if (crew.id !== crewsRepo.FIRST_CREW_ID) await crewsRepo.deleteEmptyCrews(tx, [crew.id]);
+  });
+}
+
+/** Owner: rename the crew. */
+export async function renameCrew(db: Db, session: Session, name: string): Promise<void> {
+  if (!ownsCrew(session)) throw new AppError("forbidden", OWNER_ONLY);
+  await crewsRepo.renameCrew(db, crewOf(session).id, name);
+}
+
+/** Owner: a new invite link. The old one stops working (do this after removing someone). */
+export async function rotateInviteCode(db: Db, session: Session): Promise<string> {
+  if (!ownsCrew(session)) throw new AppError("forbidden", OWNER_ONLY);
+  const code = newInviteCode();
+  await crewsRepo.setInviteCode(db, crewOf(session).id, code);
+  return code;
 }

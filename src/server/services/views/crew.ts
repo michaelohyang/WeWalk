@@ -2,7 +2,7 @@ import "server-only";
 import { CATEGORIES } from "@/domain/categories";
 import { tasteMatch } from "@/domain/taste";
 import type { Db } from "../../db/client";
-import { isAdmin, listDevices, ownsCrew, type Session } from "../auth";
+import { crewOf, isAdmin, listDevices, ownsCrew, type Session } from "../auth";
 import { ownedCrewsWithOthers } from "../../repos/crews";
 import { listMembers } from "../../repos/members";
 import type { CrewData } from "../crew";
@@ -51,6 +51,7 @@ export interface CrewView {
 }
 
 export async function crewView(crew: CrewData, db: Db, session: Session): Promise<CrewView> {
+  const current = crewOf(session);
   const devices = await listDevices(db, session);
   const board = crew.members.map((m) => {
     const rs = crew.reviews.filter((r) => r.memberId === m.id);
@@ -91,9 +92,9 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
     .sort((a, b) => b.agreement - a.agreement || a.name.localeCompare(b.name));
   const admin = isAdmin(session);
   return {
-    crew: { id: session.crew.id, name: session.crew.name },
+    crew: { id: current.id, name: current.name },
     crews: session.crews.map((c) => ({ id: c.id, name: c.name })),
-    inviteCode: session.crew.inviteCode,
+    inviteCode: current.inviteCode,
     taste,
     me: {
       id: session.member.id,

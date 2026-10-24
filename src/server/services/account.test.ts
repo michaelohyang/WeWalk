@@ -183,7 +183,7 @@ describe("handOverOwnership", () => {
       .where(eq(crewMembers.role, "owner"));
     expect(owners).toEqual([{ id: sal.member.id }]);
     const formerOwner = (await authenticate(db, dana.token, NOW))!;
-    expect(formerOwner.crew.role).toBe("member");
+    expect(formerOwner.crew!.role).toBe("member");
     await deleteAccount(db, formerOwner, { password: PASSWORD });
     expect(await db.select({ n: count() }).from(members)).toEqual([{ n: 2 }]);
   });

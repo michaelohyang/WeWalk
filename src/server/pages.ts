@@ -1,11 +1,12 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { CITY_COOKIE, DEFAULT_CITY, isCity, type AreaKey, type CityKey } from "@/domain/areas";
 import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { crewData } from "./crew-cache";
 import { getSession } from "./session";
-import { isAdmin, peekLink } from "./services/auth";
+import { isAdmin, peekLink, type Session } from "./services/auth";
 import {
   crewView,
   exploreView,
@@ -17,8 +18,13 @@ import {
   stationView,
 } from "./services/views";
 import { inCity } from "./services/views/city";
-import { crewForInvite } from "./services/crews";
+import { crewCreationEnabled, crewForInvite } from "./services/crews";
 import { loadMyVisits } from "./services/crew";
+
+/** The crew a page is for. Someone in no crew (they left their last one) goes to /welcome. */
+function crewFor(session: Session) {
+  return session.crew ?? redirect("/welcome");
+}
 
 /** The city this phone is looking at (a cookie the city switch sets); unknown values mean NYC. */
 export async function selectedCity(): Promise<CityKey> {
@@ -35,34 +41,45 @@ export async function selectedCity(): Promise<CityKey> {
 export async function loadExplore() {
   const session = await getSession();
   if (!session) return null;
-  return exploreView(await crewData(session.crew.id), session, new Date(), await selectedCity());
+  return exploreView(
+    await crewData(crewFor(session).id),
+    session,
+    new Date(),
+    await selectedCity(),
+  );
 }
 
 /** `undefined` when signed out, `null` when the station doesn't exist (or is hidden). */
 export async function loadStation(slug: string) {
   const session = await getSession();
   if (!session) return undefined;
-  return stationView(await crewData(session.crew.id), session, slug);
+  return stationView(await crewData(crewFor(session).id), session, slug);
 }
 
 export async function loadRanks(key: RankKey, area: AreaKey | null, city: CityKey) {
   const session = await getSession();
   if (!session) return null;
-  return ranksView(inCity(await crewData(session.crew.id), city), session, key, area, new Date());
+  return ranksView(
+    inCity(await crewData(crewFor(session).id), city),
+    session,
+    key,
+    area,
+    new Date(),
+  );
 }
 
 export async function loadMap() {
   const session = await getSession();
   if (!session) return null;
   const city = await selectedCity();
-  return { ...mapView(inCity(await crewData(session.crew.id), city), session), city };
+  return { ...mapView(inCity(await crewData(crewFor(session).id), city), session), city };
 }
 
 export async function loadPassport() {
   const session = await getSession();
   if (!session) return null;
   return passportView(
-    await crewData(session.crew.id),
+    await crewData(crewFor(session).id),
     session,
     new Date(),
     await selectedCity(),
@@ -73,14 +90,14 @@ export async function loadPassport() {
 export async function loadCrew() {
   const session = await getSession();
   if (!session) return null;
-  return crewView(await crewData(session.crew.id), await getDb(), session);
+  return crewView(await crewData(crewFor(session).id), await getDb(), session);
 }
 
 export async function loadRate(stationSlug: string | undefined) {
   const session = await getSession();
   if (!session) return null;
   return rateView(
-    await crewData(session.crew.id),
+    await crewData(crewFor(session).id),
     session,
     stationSlug,
     await loadMyVisits(await getDb(), session.member.id),
@@ -114,4 +131,12 @@ export async function loadJoin(code: string) {
   const session = await getSession();
   if (!session) return { signedIn: false as const };
   return { signedIn: true as const, crew: await crewForInvite(await getDb(), code) };
+}
+
+/** /welcome, for someone in no crew: join one by link, or start one (once that's switched on). */
+export async function loadWelcome() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.crew) redirect("/");
+  return { name: session.member.name, canStartCrew: crewCreationEnabled() };
 }

@@ -10,7 +10,7 @@ import { findStation } from "../repos/stations";
 import { isOurPhoto } from "../photos";
 import { photoOwner } from "../repos/photos";
 import { releasePhoto } from "./photos";
-import type { Session } from "./auth";
+import { crewOf, type Session } from "./auth";
 
 /*
  * Writes are PUTs keyed by a client-generated id, so the offline outbox can retry any request
@@ -34,6 +34,15 @@ const GONE = "That review was just deleted.";
  * station under a new id is a conflict, and `details.existingId` tells the client which review
  * to edit instead.
  */
+/**
+ * The crews a review goes to: the one you're looking at, plus any of your other crews you ticked.
+ * A ticked crew you've since left (a queued write) is skipped, not an error.
+ */
+function shareTargets(session: Session, alsoCrews: readonly string[]): string[] {
+  const mine = new Set(session.crews.map((c) => c.id));
+  return [...new Set([crewOf(session).id, ...alsoCrews.filter((id) => mine.has(id))])];
+}
+
 export async function putReview(
   db: Db,
   session: Session,
@@ -58,7 +67,7 @@ export async function putReview(
     try {
       const created = await reviewRepo.insertReview(db, id, me, input);
       if (created) {
-        await reviewRepo.shareReview(db, id, [session.crew.id]);
+        await reviewRepo.shareReview(db, id, shareTargets(session, input.alsoCrews));
         return { review: created, created: true };
       }
       // Lost a race with a retry of this same request; fall through to update it.
@@ -83,7 +92,7 @@ export async function putReview(
   const updated = await reviewRepo.updateReview(db, id, input, now);
   if (!updated) throw new AppError("not_found", GONE);
   // Saving your review while looking at a crew shares it there too (one review, many crews).
-  await reviewRepo.shareReview(db, id, [session.crew.id]);
+  await reviewRepo.shareReview(db, id, shareTargets(session, input.alsoCrews));
   // A replaced or removed photo isn't shown anywhere any more.
   if (current.photoUrl && current.photoUrl !== updated.photoUrl) {
     await releasePhoto(db, current.photoUrl, me);
@@ -126,7 +135,7 @@ export async function putCheckin(
       const message = "A check-in can't move to another building or day.";
       throw new AppError("invalid", message, { fields: { visitedOn: [message] } });
     }
-    await checkinRepo.shareCheckin(db, id, [session.crew.id]);
+    await checkinRepo.shareCheckin(db, id, [crewOf(session).id]);
     if (existing.note === input.note) return { checkin: existing, created: false };
     const updated = await checkinRepo.updateCheckinNote(db, id, input.note);
     if (!updated) throw new AppError("not_found", "That check-in was just deleted.");
@@ -137,7 +146,7 @@ export async function putCheckin(
   try {
     const created = await checkinRepo.insertCheckin(db, id, session.member.id, input);
     if (created) {
-      await checkinRepo.shareCheckin(db, id, [session.crew.id]);
+      await checkinRepo.shareCheckin(db, id, [crewOf(session).id]);
       return { checkin: created, created: true };
     }
     return putCheckin(db, session, id, input, now); // raced with a retry of this request
@@ -150,8 +159,8 @@ export async function putCheckin(
       input.visitedOn,
     );
     // Checked in here today from another crew: share that check-in with this one instead.
-    if (today && !(await checkinRepo.checkinSharedWith(db, today.id, session.crew.id))) {
-      await checkinRepo.shareCheckin(db, today.id, [session.crew.id]);
+    if (today && !(await checkinRepo.checkinSharedWith(db, today.id, crewOf(session).id))) {
+      await checkinRepo.shareCheckin(db, today.id, [crewOf(session).id]);
       return { checkin: today, created: false };
     }
     throw new AppError("conflict", "You already checked in here today.", { existingId: today?.id });
