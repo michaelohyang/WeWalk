@@ -163,6 +163,19 @@ export const recoveryInputSchema = z.object({ memberId: idSchema }).strict();
 
 export const handOverInputSchema = z.object({ memberId: idSchema }).strict();
 
+/** Reporting a review or check-in to the crew's owner, with an optional reason. */
+export const reportInputSchema = z
+  .object({
+    kind: z.enum(["review", "checkin"], "Pick a review or check-in to report."),
+    id: idSchema,
+    reason: z.string().trim().max(300, "Keep it under 300 characters.").default(""),
+  })
+  .strict();
+
+export const handleReportInputSchema = z
+  .object({ action: z.enum(["hide", "remove", "dismiss"], "Pick what to do.") })
+  .strict();
+
 /** Deleting your account asks for your password again. */
 export const deleteAccountInputSchema = z
   .object({

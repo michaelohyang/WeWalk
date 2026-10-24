@@ -8,6 +8,7 @@ import { AppError } from "../errors";
 import { verifyPassword } from "../auth/passwords";
 import { listMemberCheckins } from "../repos/checkins";
 import * as memberRepo from "../repos/members";
+import { listReportsBy } from "../repos/moderation";
 import { listMemberReactions } from "../repos/reactions";
 import { listMemberReviews } from "../repos/reviews";
 import { deletePhoto } from "../photos";
@@ -23,11 +24,12 @@ import { crewOf, LOCKOUT_MS, MAX_FAILED_LOGINS, ownsCrew, type Session } from ".
  */
 export async function exportData(db: Db, session: Session, now: Date) {
   const me = session.member;
-  const [devices, reviews, checkins, reactions] = await Promise.all([
+  const [devices, reviews, checkins, reactions, reports] = await Promise.all([
     memberRepo.listDevices(db, me.id),
     listMemberReviews(db, me.id),
     listMemberCheckins(db, me.id),
     listMemberReactions(db, me.id),
+    listReportsBy(db, me.id),
   ]);
   return {
     exportedAt: now.toISOString(),
@@ -56,6 +58,7 @@ export async function exportData(db: Db, session: Session, now: Date) {
     })),
     checkins: checkins.map((c) => ({ ...c, createdAt: c.createdAt.toISOString() })),
     reactions: reactions.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })),
+    reports: reports.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })),
   };
 }
 

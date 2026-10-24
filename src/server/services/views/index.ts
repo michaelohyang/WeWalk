@@ -3,7 +3,7 @@
  * the rules stay in domain/. One file per screen.
  */
 export type { StationCard } from "./cards";
-export { crewView, type CrewView } from "./crew";
+export { crewView, type CrewView, type ReportView } from "./crew";
 export { exploreView, type AreaTile, type ExploreView, type FeedEntry } from "./explore";
 export { mapView, type MapView } from "./map";
 export { passportView, type PassportView } from "./passport";

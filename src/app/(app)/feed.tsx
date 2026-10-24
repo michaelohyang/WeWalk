@@ -7,6 +7,7 @@ import type { FeedEntry } from "@/server/services/views";
 import { Avatar } from "@/ui/Avatar";
 import { areaColor } from "@/ui/format";
 import { ReactionBar } from "@/ui/ReactionBar";
+import { ReportButton } from "@/ui/ReportButton";
 import { ScoreCircle } from "@/ui/ScoreCircle";
 import styles from "./feed.module.css";
 
@@ -57,7 +58,10 @@ export function Feed({ entries }: { entries: FeedEntry[] }) {
               />
             )}
             {e.hotTake && <p className={styles.take}>“{e.hotTake}”</p>}
-            <ReactionBar reviewId={e.id} reactions={e.reactions} own={e.mine} />
+            <div className={styles.foot}>
+              <ReactionBar reviewId={e.id} reactions={e.reactions} own={e.mine} />
+              {!e.mine && <ReportButton kind="review" id={e.id} by={e.by} />}
+            </div>
           </li>
         ) : (
           <li key={`c-${e.id}`} className={styles.row}>
@@ -76,6 +80,8 @@ export function Feed({ entries }: { entries: FeedEntry[] }) {
               </time>
               {e.note && <span className={styles.note}>{e.note}</span>}
             </p>
+            {/* Only a note can say something worth reporting. */}
+            {!e.mine && e.note && <ReportButton kind="checkin" id={e.id} by={e.by} />}
           </li>
         ),
       )}

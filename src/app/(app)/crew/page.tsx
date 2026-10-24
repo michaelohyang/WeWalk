@@ -14,12 +14,14 @@ import {
   InviteFriends,
   LeaveCrew,
   RecoveryLinks,
+  RemoveMember,
   Rename,
   SetPassword,
   SignOutPhone,
   YourData,
 } from "./crew-controls";
 import styles from "./crew.module.css";
+import { ReportQueue } from "./reports";
 
 export const metadata: Metadata = { title: "Crew" };
 
@@ -51,6 +53,18 @@ export default async function CrewPage() {
           </div>
         </div>
       </div>
+
+      {(me.isOwner || view.isAdmin) && (
+        <Section title="Reports" note={view.reports.length || undefined}>
+          {view.reports.length ? (
+            <ReportQueue reports={view.reports} />
+          ) : (
+            <Empty title="Nothing reported.">
+              When someone reports a post, it shows up here for you to deal with.
+            </Empty>
+          )}
+        </Section>
+      )}
 
       <Section title="Invite friends">
         <InviteFriends code={view.inviteCode} />
@@ -152,6 +166,12 @@ export default async function CrewPage() {
       {me.isOwner && members.length > 0 && (
         <Section title="Hand over the crew">
           <HandOver members={members} />
+        </Section>
+      )}
+
+      {me.isOwner && members.length > 0 && (
+        <Section title="Remove someone">
+          <RemoveMember crewId={view.crew.id} members={members} />
         </Section>
       )}
 

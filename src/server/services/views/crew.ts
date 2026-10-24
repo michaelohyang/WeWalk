@@ -1,13 +1,35 @@
 import "server-only";
 import { CATEGORIES } from "@/domain/categories";
+import { placeName } from "@/domain/place-name";
 import { tasteMatch } from "@/domain/taste";
 import type { Db } from "../../db/client";
 import { crewOf, isAdmin, listDevices, ownsCrew, type Session } from "../auth";
 import { ownedCrewsWithOthers } from "../../repos/crews";
 import { listMembers } from "../../repos/members";
 import type { CrewData } from "../crew";
+import { openReports } from "../moderation";
 
 /* The Crew screen: members, your account and your phones. */
+
+/** A report waiting on you, as the crew's owner (or the app admin, for owners' posts). */
+export interface ReportView {
+  id: string;
+  /** Set when it's from another crew (the admin's reports about owners). */
+  otherCrew: string | null;
+  author: string;
+  /** The author runs that crew, so only hide and dismiss apply. */
+  authorIsOwner: boolean;
+  /** Null once the reporter has deleted their account. */
+  reporter: string | null;
+  reason: string;
+  at: string;
+  kind: "review" | "checkin";
+  place: string;
+  hotTake: string | null;
+  body: string | null;
+  photoUrl: string | null;
+  note: string | null;
+}
 
 export interface CrewView {
   /** The crew you're looking at, and every crew you're in (for the switcher). */
@@ -28,6 +50,8 @@ export interface CrewView {
   isAdmin: boolean;
   /** This crew's other members, for the owner's hand-over. Empty for non-owners. */
   members: { id: string; name: string }[];
+  /** Reports waiting on you. Empty unless you own this crew or are the app admin. */
+  reports: ReportView[];
   /** Everyone in every crew, for the admin's recovery links. Empty for non-admins. */
   recoveryMembers: { id: string; name: string }[];
   devices: { id: string; label: string; lastSeenAt: string; current: boolean }[];
@@ -91,6 +115,21 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
     })
     .sort((a, b) => b.agreement - a.agreement || a.name.localeCompare(b.name));
   const admin = isAdmin(session);
+  const reports = (await openReports(db, session)).map((r): ReportView => ({
+    id: r.id,
+    otherCrew: r.crewId === current.id ? null : r.crewName,
+    author: r.authorName,
+    authorIsOwner: r.authorOwnsCrew,
+    reporter: r.reporterName,
+    reason: r.reason,
+    at: r.createdAt.toISOString(),
+    kind: r.kind,
+    place: placeName(r.station),
+    hotTake: r.hotTake,
+    body: r.body,
+    photoUrl: r.photoUrl,
+    note: r.note,
+  }));
   return {
     crew: { id: current.id, name: current.name },
     crews: session.crews.map((c) => ({ id: c.id, name: c.name })),
@@ -105,6 +144,7 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
     },
     isAdmin: admin,
     members: ownsCrew(session) ? crew.members.filter((m) => m.id !== session.member.id) : [],
+    reports,
     recoveryMembers: admin ? (await listMembers(db)).filter((m) => m.id !== session.member.id) : [],
     devices: devices.map((d) => ({
       id: d.id,

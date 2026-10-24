@@ -6,7 +6,7 @@ import type { ReviewRecord } from "@/domain/records";
 import type { Scores } from "@/domain/scoring";
 import type { Tag } from "@/domain/tags";
 import type { Db } from "../db/client";
-import { reviewCrews, reviews, stations } from "../db/schema";
+import { crews, reviewCrews, reviewHides, reviews, stations } from "../db/schema";
 import { stationKey } from "./stations";
 
 type ReviewRow = typeof reviews.$inferSelect & { stationSlug: string };
@@ -107,13 +107,24 @@ export async function listReviewsBy(db: Db, memberId: string): Promise<ReviewRec
   return (await select(db).where(eq(reviews.memberId, memberId))).map(toReviewRecord);
 }
 
-/** Shares a review with crews (sharing it again changes nothing). */
+/**
+ * Shares a review with crews (sharing it again changes nothing). A crew whose owner took it out
+ * (review_hides) is skipped, so editing a review never puts it back.
+ */
 export async function shareReview(db: Db, reviewId: string, crewIds: readonly string[]) {
   if (!crewIds.length) return;
-  await db
-    .insert(reviewCrews)
-    .values(crewIds.map((crewId) => ({ reviewId, crewId })))
-    .onConflictDoNothing();
+  const ids = sql.join(
+    crewIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+  await db.execute(sql`
+    insert into ${reviewCrews} (review_id, crew_id)
+    select ${reviewId}::uuid, c.id from ${crews} c
+    where c.id in (${ids})
+      and not exists (
+        select 1 from ${reviewHides} h where h.review_id = ${reviewId}::uuid and h.crew_id = c.id
+      )
+    on conflict do nothing`);
 }
 
 /** Whether a crew sees a review (it's shared with it). */

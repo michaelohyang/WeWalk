@@ -191,6 +191,24 @@ export async function unlinkMemberFromCrew(db: Db, crewId: string, memberId: str
     .where(and(eq(reactions.crewId, crewId), eq(reactions.memberId, memberId)));
 }
 
+/** A member's role in a crew, or null if they're not in it. Locks the row until the transaction ends. */
+export async function lockRole(db: Db, crewId: string, memberId: string): Promise<CrewRole | null> {
+  const [row] = await db
+    .select({ role: crewMembers.role })
+    .from(crewMembers)
+    .where(and(eq(crewMembers.crewId, crewId), eq(crewMembers.memberId, memberId)))
+    .for("update");
+  return (row?.role as CrewRole | undefined) ?? null;
+}
+
+/**
+ * Locks a crew's row until the transaction ends: "share" for a join (several can run at once),
+ * "update" for a removal, so a join and a removal never interleave.
+ */
+export async function lockCrew(db: Db, crewId: string, mode: "share" | "update"): Promise<void> {
+  await db.select({ id: crews.id }).from(crews).where(eq(crews.id, crewId)).for(mode);
+}
+
 export async function removeCrewMember(db: Db, crewId: string, memberId: string) {
   await db
     .delete(crewMembers)

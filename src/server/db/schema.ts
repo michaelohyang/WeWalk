@@ -290,6 +290,89 @@ export const checkinCrews = pgTable(
 ).enableRLS();
 
 /**
+ * A member flagging a review or check-in in one crew. The crew's owner handles it and sees who
+ * reported it; a report about the owner's own post goes to the app admin instead.
+ */
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+    /** Null once the reporter deletes their account (the report stays for the owner). */
+    reporterId: uuid("reporter_id").references(() => members.id, { onDelete: "set null" }),
+    /** Who wrote the post. */
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    reviewId: uuid("review_id").references(() => reviews.id, { onDelete: "cascade" }),
+    checkinId: uuid("checkin_id").references(() => checkins.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull().default(""),
+    status: text("status").notNull().default("open"),
+    createdAt: createdAt(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("reports_open_crew_idx")
+      .on(t.crewId)
+      .where(sql`${t.status} = 'open'`),
+    // Reporting the same post twice while it's open is one report.
+    uniqueIndex("reports_one_open_per_reporter")
+      .on(t.crewId, t.reporterId, sql`coalesce(${t.reviewId}, ${t.checkinId})`)
+      .where(sql`${t.status} = 'open'`),
+    check("reports_one_target", sql`num_nonnulls(${t.reviewId}, ${t.checkinId}) = 1`),
+    check("reports_status_known", inList("status", ["open", "hidden", "removed", "dismissed"])),
+    check("reports_reason_length", sql`char_length(${t.reason}) <= 300`),
+  ],
+).enableRLS();
+
+/** Reviews an owner took out of their crew. Sharing them to that crew again is refused. */
+export const reviewHides = pgTable(
+  "review_hides",
+  {
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.reviewId, t.crewId] })],
+).enableRLS();
+
+/** Check-ins an owner took out of their crew. */
+export const checkinHides = pgTable(
+  "checkin_hides",
+  {
+    checkinId: uuid("checkin_id")
+      .notNull()
+      .references(() => checkins.id, { onDelete: "cascade" }),
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.checkinId, t.crewId] })],
+).enableRLS();
+
+/** People an owner removed from their crew: they can't rejoin it with an invite link. */
+export const crewBans = pgTable(
+  "crew_bans",
+  {
+    crewId: uuid("crew_id")
+      .notNull()
+      .references(() => crews.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.crewId, t.memberId] })],
+).enableRLS();
+
+/**
  * Every uploaded photo and who uploaded it. A review may only use its author's own uploads, so
  * nobody can point a review at someone else's photo and then get it deleted by replacing it.
  */

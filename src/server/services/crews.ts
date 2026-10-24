@@ -4,9 +4,11 @@ import type { CityKey } from "@/domain/areas";
 import type { Db } from "../db/client";
 import { AppError, isUniqueViolation } from "../errors";
 import * as crewsRepo from "../repos/crews";
+import { isBanned } from "../repos/moderation";
 import { crewOf, ownsCrew, type Session } from "./auth";
 
 const BAD_INVITE = "That invite link doesn't work any more. Ask for a new one.";
+const BANNED = "The crew's owner removed you, so you can't rejoin it.";
 
 /** The crew an invite code names (for the join page), or null. */
 export async function crewForInvite(db: Db, code: string) {
@@ -21,7 +23,12 @@ export async function joinCrew(
 ): Promise<{ id: string; name: string }> {
   const crew = await crewsRepo.findCrewByInviteCode(db, code.trim());
   if (!crew) throw new AppError("not_found", BAD_INVITE);
-  await crewsRepo.addCrewMember(db, crew.id, session.member.id);
+  await db.transaction(async (tx) => {
+    // Under the crew's lock, so a removal can't land between the ban check and the join.
+    await crewsRepo.lockCrew(tx, crew.id, "share");
+    if (await isBanned(tx, crew.id, session.member.id)) throw new AppError("forbidden", BANNED);
+    await crewsRepo.addCrewMember(tx, crew.id, session.member.id);
+  });
   return crew;
 }
 
