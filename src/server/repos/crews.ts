@@ -1,4 +1,4 @@
-import { and, asc, count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
 import type { CityKey } from "@/domain/areas";
 import type { Db } from "../db/client";
 import { crewMembers, crews, FIRST_CREW_ID, members } from "../db/schema";
@@ -43,7 +43,8 @@ export async function addCrewMember(
   const rows = await db
     .insert(crewMembers)
     .values({ crewId, memberId, role })
-    .onConflictDoNothing()
+    // Only "already in it": a second owner must still fail (crew_members_one_owner).
+    .onConflictDoNothing({ target: [crewMembers.crewId, crewMembers.memberId] })
     .returning({ crewId: crewMembers.crewId });
   return rows.length > 0;
 }
@@ -105,9 +106,43 @@ export async function transferCrewOwnership(
 }
 
 /**
- * The crews this member owns that have someone else in them (they'd be left ownerless).
- * Locks the member's memberships, so a concurrent hand-over or join can't slip in.
+ * Locks everything that could change who owns or joins this member's crews until the
+ * transaction ends: their memberships (a hand-over updates them) and the crews themselves (a
+ * join takes a key lock on the crew row). Run before checking ownedCrewsWithOthers.
  */
+export async function lockMembershipsOf(db: Db, memberId: string): Promise<void> {
+  const mine = await db
+    .select({ crewId: crewMembers.crewId })
+    .from(crewMembers)
+    .where(eq(crewMembers.memberId, memberId))
+    .for("update");
+  if (!mine.length) return;
+  await db
+    .select({ id: crews.id })
+    .from(crews)
+    .where(
+      inArray(
+        crews.id,
+        mine.map((m) => m.crewId),
+      ),
+    )
+    .for("update");
+}
+
+/** Deletes crews nobody is in any more (their invite links stop working). */
+export async function deleteEmptyCrews(db: Db, crewIds: readonly string[]): Promise<void> {
+  if (!crewIds.length) return;
+  await db
+    .delete(crews)
+    .where(
+      and(
+        inArray(crews.id, [...crewIds]),
+        sql`not exists (select 1 from ${crewMembers} m where m.crew_id = ${crews.id})`,
+      ),
+    );
+}
+
+/** The crews this member owns that have someone else in them (they'd be left ownerless). */
 export async function ownedCrewsWithOthers(db: Db, memberId: string): Promise<string[]> {
   const rows = await db
     .select({ crewId: crewMembers.crewId })
@@ -119,8 +154,7 @@ export async function ownedCrewsWithOthers(db: Db, memberId: string): Promise<st
         // The inner table is aliased, so ${crewMembers.crewId} is the outer row.
         sql`exists (select 1 from ${crewMembers} m where m.crew_id = ${crewMembers.crewId} and m.member_id <> ${memberId})`,
       ),
-    )
-    .for("update");
+    );
   return rows.map((r) => r.crewId);
 }
 

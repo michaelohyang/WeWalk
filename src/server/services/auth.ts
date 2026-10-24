@@ -37,6 +37,7 @@ async function startDevice(db: Db, memberId: string): Promise<string> {
 }
 
 const NEEDS_INVITE = "You need an invite link from someone in the crew to join.";
+const DEAD_INVITE = "That invite link doesn't work any more. Ask for a new one.";
 
 /**
  * Which crew a sign-up joins: the one whose invite code it carries (/join/<code>), else the first
@@ -49,9 +50,11 @@ async function crewForSignup(
 ): Promise<string> {
   const crew = code ? await crewsRepo.findCrewByInviteCode(db, code.trim()) : undefined;
   if (crew) return crew.id;
-  if (signupGate && !codeMatches(code, signupGate) && (await repo.countMembers(db)) > 0) {
+  if (signupGate && codeMatches(code, signupGate)) return FIRST_CREW_ID;
+  // A code that names no crew is a dead invite link: say so rather than drop them somewhere.
+  if (code?.trim()) throw new AppError("forbidden", DEAD_INVITE);
+  if (signupGate && (await repo.countMembers(db)) > 0)
     throw new AppError("forbidden", NEEDS_INVITE);
-  }
   return FIRST_CREW_ID;
 }
 
@@ -72,21 +75,27 @@ export async function signUp(
     passwordHash: await hashPassword(input.password),
     isAdmin: (await repo.countMembers(db)) === 0,
   };
-  let member: Member;
-  try {
-    member = await repo.insertMember(db, values);
-  } catch (e) {
-    if (isUniqueViolation(e, "members_name_key_unique")) throw new AppError("conflict", NAME_TAKEN);
-    throw e;
-  }
-  const empty = (await crewsRepo.countCrewMembers(db, crewId)) === 0;
-  await crewsRepo.addCrewMember(db, crewId, member.id, empty ? "owner" : "member").catch((e) => {
-    // Two people raced into an empty crew: the loser joins as a member.
-    if (empty && isUniqueViolation(e, "crew_members_one_owner")) {
-      return crewsRepo.addCrewMember(db, crewId, member.id, "member");
-    }
-    throw e;
-  });
+  // The account and its membership together: nobody is ever left without a crew.
+  const member = await db
+    .transaction(async (tx) => {
+      const created = await repo.insertMember(tx, values);
+      const empty = (await crewsRepo.countCrewMembers(tx, crewId)) === 0;
+      try {
+        await tx.transaction((inner) =>
+          crewsRepo.addCrewMember(inner, crewId, created.id, empty ? "owner" : "member"),
+        );
+      } catch (e) {
+        // Two people raced into an empty crew: the loser joins as a member.
+        if (!empty || !isUniqueViolation(e, "crew_members_one_owner")) throw e;
+        await crewsRepo.addCrewMember(tx, crewId, created.id, "member");
+      }
+      return created;
+    })
+    .catch((e: unknown) => {
+      if (isUniqueViolation(e, "members_name_key_unique"))
+        throw new AppError("conflict", NAME_TAKEN);
+      throw e;
+    });
   return { member, token: await startDevice(db, member.id), crewId };
 }
 
@@ -154,7 +163,8 @@ export async function authenticate(
   await repo.touchDevice(db, found.device.id, now, TOUCH_EVERY_MS);
   let crews = await crewsRepo.listMemberCrews(db, found.member.id);
   if (!crews.length) {
-    // Everyone is in a crew (sign-up and the migration see to it); heal anyone who isn't.
+    // Sign-up and the migration put everyone in a crew. Only someone who signed up through
+    // older code mid-deploy (which knew one crew: the first) can arrive without one.
     await crewsRepo.addCrewMember(db, FIRST_CREW_ID, found.member.id);
     crews = await crewsRepo.listMemberCrews(db, found.member.id);
   }

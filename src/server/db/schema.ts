@@ -248,7 +248,8 @@ export const reactions = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
-    primaryKey({ columns: [t.reviewId, t.memberId, t.kind] }),
+    // Per crew: the same reaction can be made on a shared review in each crew that sees it.
+    primaryKey({ columns: [t.reviewId, t.memberId, t.kind, t.crewId] }),
     index("reactions_crew_idx").on(t.crewId),
     check("reactions_kind_known", inList("kind", REACTION_KEYS)),
   ],

@@ -18,20 +18,19 @@ export async function addReaction(db: Db, value: ReactionRecord & { crewId: stri
   await db.insert(reactions).values(value).onConflictDoNothing();
 }
 
-/** Removes a reaction; removing one that isn't there does nothing. */
+/** Removes a reaction in one crew; removing one that isn't there does nothing. */
 export async function removeReaction(
   db: Db,
-  reviewId: string,
-  memberId: string,
-  kind: ReactionKey,
+  value: { reviewId: string; memberId: string; kind: ReactionKey; crewId: string },
 ) {
   await db
     .delete(reactions)
     .where(
       and(
-        eq(reactions.reviewId, reviewId),
-        eq(reactions.memberId, memberId),
-        eq(reactions.kind, kind),
+        eq(reactions.reviewId, value.reviewId),
+        eq(reactions.memberId, value.memberId),
+        eq(reactions.kind, value.kind),
+        eq(reactions.crewId, value.crewId),
       ),
     );
 }

@@ -33,6 +33,8 @@ import {
 import { inCity } from "@/server/services/views/city";
 import { STATIONS } from "@/domain/stations";
 import { insertReview } from "@/server/repos/reviews";
+import { insertCrew, listMemberCrews } from "@/server/repos/crews";
+import { crews as crewsTable } from "@/server/db/schema";
 import { reviewInputSchema } from "@/domain/schemas";
 import { signUp } from "@/server/services/auth";
 import { Phone } from "./client";
@@ -1181,5 +1183,73 @@ describe("crews", () => {
       "sesame",
     );
     expect(fresh.crewId).toBe(crewB.id);
+  });
+
+  it("keeps reactions per crew: the same one in two crews, taken back in one", async () => {
+    const { dana, sam, crewB } = await twoCrews();
+    await sam.call(joinCrewRoute, "POST", "/api/crews/join", { body: { code: crewB.inviteCode } });
+    const id = newId();
+    await reviewIn(dana, FIRST_CREW_ID, "dock-72", id);
+    await reviewIn(dana, crewB.id, "dock-72", id); // shared with Brooklyn too
+    const reactIn = (crewId: string, handler = react, method = "PUT") =>
+      sam.call(handler, method, "/api/reviews/x/reactions/y", {
+        params: { id, kind: "fire" },
+        headers: { [CREW]: crewId },
+      });
+    await reactIn(FIRST_CREW_ID);
+    await reactIn(crewB.id);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reactions).toHaveLength(1);
+    expect((await loadCrew(db, crewB.id)).reactions).toHaveLength(1);
+    await reactIn(crewB.id, unreact, "DELETE");
+    expect((await loadCrew(db, crewB.id)).reactions).toHaveLength(0);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reactions).toHaveLength(1);
+  });
+
+  it("puts everyone who races into an empty crew in it, with exactly one owner", async () => {
+    await joined("Dana");
+    const empty = await insertCrew(db, {
+      name: "Fresh",
+      homeCity: "nyc",
+      inviteCode: "fresh-code",
+    });
+    const people = await Promise.all(
+      ["A", "B", "C"].map((name) =>
+        signUp(db, { name, password: PASSWORD, code: "fresh-code" }, null),
+      ),
+    );
+    const roles = await Promise.all(
+      people.map(async (p) => (await listMemberCrews(db, p.member.id)).map((c) => [c.id, c.role])),
+    );
+    expect(roles.every((r) => r.length === 1 && r[0]![0] === empty.id)).toBe(true);
+    expect(roles.filter((r) => r[0]![1] === "owner")).toHaveLength(1);
+  });
+
+  it("refuses a sign-up with an invite code that doesn't work", async () => {
+    await joined("Dana");
+    const res = await new Phone().call(signup, "POST", "/api/signup", {
+      body: { name: "Lost", password: PASSWORD, code: "expired-code" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("deletes a crew along with its last member", async () => {
+    const { dana, crewB } = await twoCrews();
+    expect(
+      (await dana.call(deleteMe, "DELETE", "/api/me", { body: { password: PASSWORD } })).status,
+    ).toBe(409); // she owns the first crew, which has others
+    const alone = await joined("Alone");
+    vi.stubEnv("CREWS_ENABLED", "1");
+    const solo = (
+      await alone.call(createCrewRoute, "POST", "/api/crews", {
+        body: { name: "Solo", homeCity: "boston" },
+      })
+    ).body.crew as { id: string };
+    vi.unstubAllEnvs();
+    expect(
+      (await alone.call(deleteMe, "DELETE", "/api/me", { body: { password: PASSWORD } })).status,
+    ).toBe(204);
+    const left = await db.select({ id: crewsTable.id }).from(crewsTable);
+    expect(left.map((c) => c.id)).not.toContain(solo.id);
+    expect(left.map((c) => c.id)).toContain(crewB.id);
   });
 });

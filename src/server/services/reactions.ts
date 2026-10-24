@@ -28,7 +28,12 @@ export async function react(db: Db, session: Session, reviewId: string, kind: Re
   });
 }
 
-/** Take back your reaction. Taking back one that isn't there succeeds. */
+/** Take back your reaction in this crew. Taking back one that isn't there succeeds. */
 export async function unreact(db: Db, session: Session, reviewId: string, kind: ReactionKey) {
-  await reactionRepo.removeReaction(db, reviewId, session.member.id, kind);
+  await reactionRepo.removeReaction(db, {
+    reviewId,
+    memberId: session.member.id,
+    kind,
+    crewId: session.crew.id,
+  });
 }

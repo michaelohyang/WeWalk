@@ -1,5 +1,5 @@
 {
-  "id": "337fb54c-9e6c-4621-b6db-06110d91c502",
+  "id": "50a0da39-1587-43e3-a55c-005bc9458f05",
   "prevId": "22464860-8bb1-4c5f-ac1e-08cbde49edec",
   "version": "7",
   "dialect": "postgresql",
@@ -795,12 +795,13 @@
         }
       },
       "compositePrimaryKeys": {
-        "reactions_review_id_member_id_kind_pk": {
-          "name": "reactions_review_id_member_id_kind_pk",
+        "reactions_review_id_member_id_kind_crew_id_pk": {
+          "name": "reactions_review_id_member_id_kind_crew_id_pk",
           "columns": [
             "review_id",
             "member_id",
-            "kind"
+            "kind",
+            "crew_id"
           ]
         }
       },

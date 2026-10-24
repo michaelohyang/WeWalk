@@ -1,5 +1,6 @@
 import "server-only";
 import * as crewsRepo from "../repos/crews";
+import { FIRST_CREW_ID } from "../db/schema";
 import type { Db } from "../db/client";
 import { AppError } from "../errors";
 import { verifyPassword } from "../auth/passwords";
@@ -84,11 +85,19 @@ export async function deleteAccount(
     if (!(await memberRepo.lockMember(tx, me))) {
       throw new AppError("unauthorized", "You're signed out.");
     }
+    await crewsRepo.lockMembershipsOf(tx, me);
     if ((await crewsRepo.ownedCrewsWithOthers(tx, me)).length) {
       throw new AppError("conflict", OWNER_STAYS);
     }
+    const myCrews = (await crewsRepo.listMemberCrews(tx, me)).map((c) => c.id);
     const urls = (await listMemberReviews(tx, me)).flatMap((r) => r.photoUrl ?? []);
     await memberRepo.deleteMember(tx, me);
+    // A crew you were the last one in goes with you (it would otherwise keep a live invite link
+    // and no owner).
+    await crewsRepo.deleteEmptyCrews(
+      tx,
+      myCrews.filter((id) => id !== FIRST_CREW_ID),
+    );
     return urls;
   });
   // Only once the reviews are gone for sure: a rolled-back delete would leave broken photos.
