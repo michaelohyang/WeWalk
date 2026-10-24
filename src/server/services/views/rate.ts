@@ -10,7 +10,7 @@ import type { CrewData, MyVisits } from "../crew";
 
 export interface RateView {
   /** Everything you can rate, A–Z. */
-  stations: { slug: string; name: string; neighborhood: string; city: CityKey }[];
+  stations: { slug: string; name: string; address: string; neighborhood: string; city: CityKey }[];
   /** The station being rated, if the URL named a real one. */
   stationSlug: string | null;
   /** Your existing review of it: the form opens in edit mode. */
@@ -46,6 +46,7 @@ export async function rateView(
       .map((s) => ({
         slug: s.slug,
         name: s.name,
+        address: s.address,
         neighborhood: s.neighborhood,
         city: isArea(s.area) ? cityOf(s.area) : DEFAULT_CITY,
       })),

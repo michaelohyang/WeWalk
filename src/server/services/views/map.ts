@@ -9,6 +9,7 @@ export type MapStation = Pick<
   StationCard,
   | "slug"
   | "name"
+  | "address"
   | "short"
   | "neighborhood"
   | "area"
@@ -35,6 +36,7 @@ export function mapStations(crew: CrewData, stationCards: StationCard[]): MapSta
       slug: c.slug,
       name: c.name,
       short: c.short,
+      address: c.address,
       neighborhood: c.neighborhood,
       area: c.area,
       overall: c.overall,
