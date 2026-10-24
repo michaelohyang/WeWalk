@@ -133,4 +133,13 @@ export const renameInputSchema = z.object({ name: displayNameSchema }).strict();
 
 export const recoveryInputSchema = z.object({ memberId: idSchema }).strict();
 
+export const handOverInputSchema = z.object({ memberId: idSchema }).strict();
+
+/** Deleting your account asks for your password again. */
+export const deleteAccountInputSchema = z
+  .object({
+    password: z.string("Enter your password.").min(1, "Enter your password.").max(200),
+  })
+  .strict();
+
 export const redeemLinkSchema = z.object({ token: z.string().min(20).max(100) }).strict();

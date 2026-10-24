@@ -15,6 +15,7 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel = "Cancel",
   onConfirm,
+  children,
 }: {
   /** The button that opens the dialog. */
   trigger: React.ReactElement;
@@ -22,7 +23,10 @@ export function ConfirmDialog({
   description: string;
   confirmLabel: string;
   cancelLabel?: string;
-  onConfirm: () => void;
+  /** Closes the dialog unless it calls `event.preventDefault()` (e.g. to show an error). */
+  onConfirm: (event: React.MouseEvent) => void;
+  /** Extra content between the description and the buttons, such as a password field. */
+  children?: React.ReactNode;
 }) {
   return (
     <AlertDialog.Root>
@@ -34,6 +38,7 @@ export function ConfirmDialog({
           <AlertDialog.Description className={styles.description}>
             {description}
           </AlertDialog.Description>
+          {children && <div className={styles.extra}>{children}</div>}
           <div className={styles.actions}>
             <AlertDialog.Cancel className={`${btn.btn} ${btn.sm} ${btn.plain}`}>
               {cancelLabel}

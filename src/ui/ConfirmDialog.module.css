@@ -28,6 +28,9 @@
   color: var(--fg-2);
   font-size: 14.5px;
 }
+.extra {
+  margin-top: 14px;
+}
 .actions {
   display: flex;
   justify-content: flex-end;

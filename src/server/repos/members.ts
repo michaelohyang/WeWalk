@@ -110,6 +110,51 @@ export async function renameMember(db: Db, id: string, name: string, nameKey: st
   return row;
 }
 
+/**
+ * Deletes a member. The foreign keys cascade (schema.ts), so their phones, recovery links,
+ * reviews (and everyone's reactions to them), check-ins and the reactions they gave go too.
+ */
+export async function deleteMember(db: Db, id: string): Promise<boolean> {
+  const rows = await db.delete(members).where(eq(members.id, id)).returning({ id: members.id });
+  return rows.length > 0;
+}
+
+/**
+ * Moves the crew's owner flag. Clears it first (the database allows one owner), so run it in a
+ * transaction and roll back unless it returns "moved".
+ */
+export async function transferOwnership(
+  db: Db,
+  fromId: string,
+  toId: string,
+): Promise<"moved" | "not_owner" | "no_member"> {
+  const was = await db
+    .update(members)
+    .set({ isOwner: false })
+    .where(and(eq(members.id, fromId), eq(members.isOwner, true)))
+    .returning({ id: members.id });
+  if (!was.length) return "not_owner";
+  const now = await db
+    .update(members)
+    .set({ isOwner: true })
+    .where(eq(members.id, toId))
+    .returning({ id: members.id });
+  return now.length ? "moved" : "no_member";
+}
+
+/**
+ * Whether a member is the owner, locking their row until the transaction ends, so a hand-over
+ * to them can't land between this check and deleting them. Undefined if they're gone.
+ */
+export async function lockMemberIsOwner(db: Db, id: string): Promise<boolean | undefined> {
+  const [row] = await db
+    .select({ isOwner: members.isOwner })
+    .from(members)
+    .where(eq(members.id, id))
+    .for("update");
+  return row?.isOwner;
+}
+
 export async function insertDevice(db: Db, memberId: string, tokenHash: string, label = "") {
   const [row] = await db.insert(devices).values({ memberId, tokenHash, label }).returning();
   return row!;
