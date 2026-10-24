@@ -1150,17 +1150,24 @@ describe("crews", () => {
     expect((await at(crewB.id)).status).toBe(409); // already shared here
   });
 
-  it("counts posts written with no crew (older code, mid-deploy) as the first crew's", async () => {
-    const { sam, crewB } = await twoCrews();
-    const samId = (await sam.call(me, "GET", "/api/me")).body.member.id as string;
+  it("a post left behind in no crew (its author left them all) is seen by nobody", async () => {
+    const { ben, crewB } = await twoCrews();
+    const id = newId();
+    await reviewIn(ben, crewB.id, "dock-72", id); // Brooklyn only
+    // Ben leaves the first crew, then Brooklyn (Dana leaves it first, so it can go).
+    await ben.call(leaveCrewRoute, "POST", "/api/crews/leave", {
+      headers: { [CREW]: FIRST_CREW_ID },
+    });
+    const benId = (await ben.call(me, "GET", "/api/me")).body.member.id as string;
+    expect((await listMemberCrews(db, benId)).map((c) => c.id)).toEqual([crewB.id]);
     await insertReview(
       db,
       newId(),
-      samId,
-      reviewInputSchema.parse(review({ stationSlug: "dock-72" })),
+      benId,
+      reviewInputSchema.parse(review({ stationSlug: "33-irving-pl" })),
     );
-    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
-    expect((await loadCrew(db, crewB.id)).reviews).toHaveLength(0);
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
+    expect((await loadCrew(db, crewB.id)).reviews.map((r) => r.id)).toEqual([id]);
   });
 
   it("lets only the app admin make recovery links, not crew owners", async () => {
