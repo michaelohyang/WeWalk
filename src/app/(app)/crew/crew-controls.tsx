@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { fieldErrors, request } from "@/client/api";
+import { clearMemberDrafts } from "@/client/draft";
+import { dropMemberWrites } from "@/client/outbox";
 import styles from "@/ui/forms.module.css";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
 import { focusSection } from "@/ui/focus";
@@ -290,5 +292,142 @@ export function RecoveryLinks({ members }: { members: { id: string; name: string
       )}
       {error && <p className={styles.error}>{error}</p>}
     </form>
+  );
+}
+
+/** A JSON copy of everything that's yours, and deleting your account. */
+export function YourData({
+  memberId,
+  hasPassword,
+  mustHandOver,
+}: {
+  memberId: string;
+  hasPassword: boolean;
+  /** The owner, while anyone else is in the crew. */
+  mustHandOver: boolean;
+}) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function deleteAccount(e: React.MouseEvent) {
+    e.preventDefault(); // stay open until it's done, to show a wrong password
+    if (busy) return;
+    setBusy(true);
+    const res = await request("DELETE", "/api/me", { password });
+    setBusy(false);
+    if (!res.ok) {
+      setError(fieldErrors(res.error).password ?? res.error.message);
+      return;
+    }
+    clearMemberDrafts(memberId);
+    dropMemberWrites(memberId);
+    // A full load, so nothing of the old session stays in memory: shows the login screen.
+    location.replace("/");
+  }
+
+  return (
+    <div className={styles.card}>
+      <p className={styles.lede}>
+        Take a copy of your reviews, check-ins and reactions with you, as a JSON file.
+      </p>
+      <a className={styles.secondary} href="/api/me/export" download>
+        Download my data
+      </a>
+      {mustHandOver ? (
+        <p className={styles.lede}>
+          To delete your account, first hand the crew over to someone else (below).
+        </p>
+      ) : !hasPassword ? (
+        <p className={styles.lede}>To delete your account, set a password first (below).</p>
+      ) : (
+        <ConfirmDialog
+          trigger={
+            <button type="button" className={styles.textBtn} style={{ justifySelf: "start" }}>
+              Delete my account
+            </button>
+          }
+          title="Delete your account?"
+          description="Your reviews, photos, check-ins and reactions go for good, and you're signed out everywhere. This can't be undone."
+          confirmLabel={busy ? "Deleting…" : "Delete everything"}
+          onConfirm={deleteAccount}
+        >
+          <label className={styles.field}>
+            <span>Your password</span>
+            <input
+              type="password"
+              className={styles.input}
+              value={password}
+              autoComplete="current-password"
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError(null);
+              }}
+              aria-invalid={!!error}
+              aria-describedby={error ? "delete-error" : undefined}
+            />
+            {error && (
+              <span id="delete-error" className={styles.error} role="alert">
+                {error}
+              </span>
+            )}
+          </label>
+        </ConfirmDialog>
+      )}
+    </div>
+  );
+}
+
+/** Owner only: make someone else the crew's owner. */
+export function HandOver({ members }: { members: { id: string; name: string }[] }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [memberId, setMemberId] = useState("");
+  const name = members.find((m) => m.id === memberId)?.name;
+
+  async function handOver() {
+    const res = await request("PUT", "/api/admin/owner", { memberId });
+    if (!res.ok) {
+      toast(res.error.message);
+      return;
+    }
+    toast(`${name} runs the crew now.`);
+    router.refresh();
+  }
+
+  return (
+    <div className={styles.card}>
+      <p className={styles.lede}>
+        Make someone else the crew&apos;s owner. They&apos;ll make the recovery links from then on.
+      </p>
+      <div className={styles.row}>
+        <label className={styles.field}>
+          <span>New owner</span>
+          <Select
+            className={styles.input}
+            value={memberId}
+            onValueChange={setMemberId}
+            placeholder="Pick someone…"
+            groups={[{ label: "", options: members.map((m) => ({ value: m.id, label: m.name })) }]}
+          />
+        </label>
+        <ConfirmDialog
+          trigger={
+            <button
+              type="button"
+              className={styles.secondary}
+              disabled={!memberId}
+              style={{ alignSelf: "end" }}
+            >
+              Hand over
+            </button>
+          }
+          title={`Make ${name ?? "them"} the owner?`}
+          description="You'll be a regular member. Only they can hand it back."
+          confirmLabel="Hand it over"
+          onConfirm={handOver}
+        />
+      </div>
+    </div>
   );
 }

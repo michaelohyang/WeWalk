@@ -13,6 +13,7 @@ export interface Reply {
   status: number;
   body: any; // eslint-disable-line @typescript-eslint/no-explicit-any -- test convenience
   setCookie: string | null;
+  headers: Headers;
 }
 
 export class Phone {
@@ -65,9 +66,19 @@ export class Phone {
     }
     // JSON for API replies; the raw bytes for anything else (a photo).
     if (!res.headers.get("content-type")?.includes("json") && res.ok) {
-      return { status: res.status, body: new Uint8Array(await res.arrayBuffer()), setCookie };
+      return {
+        status: res.status,
+        body: new Uint8Array(await res.arrayBuffer()),
+        setCookie,
+        headers: res.headers,
+      };
     }
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null, setCookie };
+    return {
+      status: res.status,
+      body: text ? JSON.parse(text) : null,
+      setCookie,
+      headers: res.headers,
+    };
   }
 }

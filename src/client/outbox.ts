@@ -123,6 +123,14 @@ export async function send(job: Omit<Job, "queuedAt" | "memberId">): Promise<Sen
   }
 }
 
+/**
+ * Forget a deleted member's queued writes. They'd never be sent anyway (nobody can sign in as
+ * them again), but they'd sit in this phone's storage forever.
+ */
+export function dropMemberWrites(memberId: string): void {
+  save(pending().filter((j) => j.memberId !== memberId));
+}
+
 let flushing: Promise<void> | null = null;
 
 /** Retry everything queued, oldest first. Safe to call often; runs one flush at a time. */

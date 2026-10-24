@@ -94,3 +94,18 @@ export async function deleteReview(db: Db, id: string) {
 export async function listReviews(db: Db): Promise<ReviewRecord[]> {
   return (await select(db)).map(toReviewRecord);
 }
+
+/** One member's reviews with both timestamps and the station's name, oldest first (data export). */
+export async function listMemberReviews(db: Db, memberId: string) {
+  const rows = await db
+    .select({ ...getTableColumns(reviews), stationSlug: stations.slug, stationName: stations.name })
+    .from(reviews)
+    .innerJoin(stations, eq(reviews.stationId, stations.id))
+    .where(eq(reviews.memberId, memberId))
+    .orderBy(reviews.createdAt);
+  return rows.map((row) => ({
+    ...toReviewRecord(row),
+    stationName: row.stationName,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}

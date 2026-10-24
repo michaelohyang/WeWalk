@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TIMEOUT_MS } from "./api";
-import { loadDraft, saveDraft } from "./draft";
-import { flush, outcome, pending, send, subscribe, waiting } from "./outbox";
+import { clearMemberDrafts, loadDraft, saveDraft } from "./draft";
+import { dropMemberWrites, flush, outcome, pending, send, subscribe, waiting } from "./outbox";
 
 const job = (key = "k1") => ({
   key,
@@ -252,6 +252,26 @@ describe("outbox", () => {
   it("keeps drafts per member", () => {
     saveDraft("review:x", { hotTake: "alice's" });
     signIn("bob");
+    expect(loadDraft("review:x")).toBeNull();
+  });
+
+  it("forgets a deleted member's queued writes and drafts, and nobody else's", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => reply(503)),
+    );
+    await send(job("a1"));
+    saveDraft("review:x", { hotTake: "alice's" });
+    signIn("bob");
+    await send(job("b1"));
+    saveDraft("review:x", { hotTake: "bob's" });
+
+    dropMemberWrites("alice");
+    clearMemberDrafts("alice");
+
+    expect(pending().map((j) => j.key)).toEqual(["b1"]);
+    expect(loadDraft("review:x")).toEqual({ hotTake: "bob's" });
+    signIn("alice");
     expect(loadDraft("review:x")).toBeNull();
   });
 });

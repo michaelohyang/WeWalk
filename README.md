@@ -227,6 +227,11 @@ before building the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the step-by-
   index it. Set `SIGNUP_CODE` so only people with the crew's invite link can create an account.
 - **Logins:** an expired lockout starts a fresh count, and after logging in you're only ever
   sent to a page on this site.
+- **Your data is yours.** On the Crew screen, **Download my data** saves a JSON file of your
+  profile, phones, reviews, check-ins and the reactions you gave (no password or session hashes,
+  and nothing about other members). **Delete my account**, confirmed with your password, removes
+  you and everything that's yours, including your photos and the reactions on your reviews, and
+  signs you out everywhere. The crew's owner hands the crew to someone else first.
 - **Map tiles come from OpenFreeMap.** Opening the map sends your IP address and the part of
   the city you're viewing to OpenFreeMap, as with any web map. No referrer is sent, and no crew
   data leaves the app.

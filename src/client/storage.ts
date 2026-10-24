@@ -22,4 +22,11 @@ export const store = {
       // as above
     }
   },
+  keys(): string[] {
+    try {
+      return Object.keys(localStorage);
+    } catch {
+      return [];
+    }
+  },
 };
