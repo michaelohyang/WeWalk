@@ -4,7 +4,7 @@ import { rateLimits } from "../db/schema";
 import { createTestDb, resetTestDb } from "../db/testing";
 import { AppError } from "../errors";
 import { countRequest } from "../repos/rate-limits";
-import { limit, LIMITS, spend } from "./rate-limits";
+import { limit, LIMITS, limitsOff, spend } from "./rate-limits";
 
 let db: Db;
 beforeAll(async () => {
@@ -75,5 +75,17 @@ describe("spend", () => {
     const keys = (await db.select({ key: rateLimits.key }).from(rateLimits)).map((r) => r.key);
     expect(keys).toHaveLength(2);
     expect(keys.join()).not.toContain(ip);
+  });
+});
+
+describe("limitsOff", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("is on only with RATE_LIMITS=off, and never on Vercel", () => {
+    expect(limitsOff()).toBe(false);
+    vi.stubEnv("RATE_LIMITS", "off");
+    expect(limitsOff()).toBe(true);
+    vi.stubEnv("VERCEL", "1");
+    expect(limitsOff()).toBe(false);
   });
 });

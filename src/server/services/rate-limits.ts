@@ -82,11 +82,18 @@ export async function limit(
 }
 
 /**
+ * RATE_LIMITS=off turns the limits off for the browser tests, which sign up dozens of people from
+ * one local address (playwright.config.ts). Ignored on Vercel, so production always has them.
+ */
+export const limitsOff = () => process.env.RATE_LIMITS === "off" && process.env.VERCEL !== "1";
+
+/**
  * Counts one request against a named limit. `subject` is the client IP or member id; only its
  * hash is stored, so IP addresses aren't readable at a glance. The hash is unsalted, so it
  * slows down recovery of an address but doesn't prevent it; rows are deleted after two days.
  */
-export function spend(db: Db, name: LimitName, subject: string, now: Date): Promise<void> {
+export async function spend(db: Db, name: LimitName, subject: string, now: Date): Promise<void> {
+  if (limitsOff()) return;
   const { max, windowMs, message } = LIMITS[name];
   const hashed = createHash("sha256").update(subject).digest("base64url").slice(0, 22);
   return limit(db, `${name}:${hashed}`, max, windowMs, now, message);
