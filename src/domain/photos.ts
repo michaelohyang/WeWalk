@@ -4,6 +4,25 @@
  * jump) without storing it anywhere else.
  */
 
+/** The largest photo the server takes. The phone lowers JPEG quality to stay under it. */
+export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Encodes at each quality in turn until the result fits `maxBytes`, so a detailed photo is
+ * saved a little softer instead of being refused. Null if even the lowest doesn't fit.
+ */
+export async function encodeUnder(
+  encode: (quality: number) => Promise<Blob | null>,
+  qualities: readonly number[],
+  maxBytes: number,
+): Promise<Blob | null> {
+  for (const quality of qualities) {
+    const blob = await encode(quality);
+    if (blob && blob.size <= maxBytes) return blob;
+  }
+  return null;
+}
+
 export interface PhotoSize {
   width: number;
   height: number;

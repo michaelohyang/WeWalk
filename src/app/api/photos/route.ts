@@ -1,6 +1,6 @@
 import { authedRoute, json } from "@/server/http";
 import { AppError } from "@/server/errors";
-import { MAX_PHOTO_BYTES } from "@/server/photos";
+import { MAX_PHOTO_BYTES } from "@/domain/photos";
 import { uploadPhoto } from "@/server/services/photos";
 import { spend } from "@/server/services/rate-limits";
 
