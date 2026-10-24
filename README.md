@@ -81,6 +81,8 @@ building in one city, and each area has its own "All of" badge.
 
 - Username and password sign-in, one shared crew, and an owner who can issue one-time recovery
   links for forgotten passwords.
+- The owner adds, edits and hides buildings at `/admin/stations` (linked from Crew), with no
+  deploy needed.
 - Light and dark mode, designed for phones and usable on any screen.
 
 ## Tech stack
@@ -157,7 +159,7 @@ Never commit real connection strings or tokens. `.env.local` is ignored by git.
 | `pnpm format`                    | Format all files with Prettier                                                                                                                                      |
 | `pnpm db:generate`               | Generate a SQL migration after changing `src/server/db/schema.ts`                                                                                                   |
 | `pnpm db:migrate`                | Apply migrations to `DIRECT_URL`                                                                                                                                    |
-| `pnpm db:seed`                   | Add new buildings and update existing ones from `src/domain/stations.ts`                                                                                            |
+| `pnpm db:seed`                   | Add buildings from `src/domain/stations.ts` that aren't in the database yet (never changes existing ones; edit those at `/admin/stations`)                          |
 | `pnpm db:deploy`                 | Migrate, seed and verify row-level security (runs on production deploys)                                                                                            |
 | `pnpm smoke <url>`               | Read-only health checks against a deployed site                                                                                                                     |
 | `pnpm photos:backfill [--apply]` | One-time: give photos uploaded before sizes were kept a sized address (dry run without `--apply`; reads `DIRECT_URL` and `BLOB_READ_WRITE_TOKEN` from `.env.local`) |
@@ -209,7 +211,8 @@ production build and the browser tests on every push.
 ## Deployment
 
 WeWalk runs on Vercel with a Supabase Postgres database and a Vercel Blob store. Each production
-deploy applies database migrations, seeds the building list and verifies row-level security
+deploy applies database migrations, adds any new buildings from the seed file (existing ones,
+which the owner edits in the app, are left alone) and verifies row-level security
 before building the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the step-by-step guide.
 
 ## Security and privacy

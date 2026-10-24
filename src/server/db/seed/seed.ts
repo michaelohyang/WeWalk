@@ -1,24 +1,22 @@
-import { eq } from "drizzle-orm";
 import type { Db } from "../client";
 import { stations } from "../schema";
 import { STATIONS } from "@/domain/stations";
 
 /**
- * Brings the stations table in line with the seed file: new slugs are inserted, existing ones
- * updated in place (their integer ids never change). Stations missing from the file are left
- * alone. Inserting only what's new also keeps the id sequence free of gaps (an upsert would use
- * up an id for every row it merely updates).
+ * Adds stations from the seed file whose slugs aren't in the database yet, and returns how many
+ * it added. Existing rows are never touched: the database is the source of truth, and the owner
+ * edits and hides buildings at /admin/stations, so a deploy must not undo those edits (or
+ * un-hide a station). Inserting only what's new also keeps the id sequence free of gaps.
  */
 export async function seedStations(db: Db): Promise<number> {
-  // The integer key is assigned by the database.
-  const rows = STATIONS.map((s) => ({ ...s, hidden: s.hidden ?? false }));
   const existing = new Set(
     (await db.select({ slug: stations.slug }).from(stations)).map((r) => r.slug),
   );
-  const fresh = rows.filter((r) => !existing.has(r.slug));
+  // The integer key is assigned by the database.
+  const fresh = STATIONS.filter((s) => !existing.has(s.slug)).map((s) => ({
+    ...s,
+    hidden: s.hidden ?? false,
+  }));
   if (fresh.length) await db.insert(stations).values(fresh);
-  for (const { slug, ...fields } of rows.filter((r) => existing.has(r.slug))) {
-    await db.update(stations).set(fields).where(eq(stations.slug, slug));
-  }
-  return rows.length;
+  return fresh.length;
 }

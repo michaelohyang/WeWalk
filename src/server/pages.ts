@@ -5,7 +5,7 @@ import type { RankKey } from "@/domain/ranking";
 import { getDb } from "./db/client";
 import { crewData } from "./crew-cache";
 import { getSession } from "./session";
-import { peekLink } from "./services/auth";
+import { isAdmin, peekLink } from "./services/auth";
 import {
   crewView,
   exploreView,
@@ -13,6 +13,7 @@ import {
   passportView,
   ranksView,
   rateView,
+  stationAdminView,
   stationView,
 } from "./services/views";
 import { inCity } from "./services/views/city";
@@ -71,6 +72,14 @@ export async function loadRate(stationSlug: string | undefined) {
   const session = await getSession();
   if (!session) return null;
   return rateView(await crewData(), session, stationSlug);
+}
+
+/** The building admin: `undefined` when signed out, `null` for anyone who isn't an admin. */
+export async function loadStationAdmin() {
+  const session = await getSession();
+  if (!session) return undefined;
+  if (!isAdmin(session)) return null;
+  return stationAdminView(await getDb(), session);
 }
 
 /** The recovery page: who the link signs in as (null if it's dead), and who's signed in now. */

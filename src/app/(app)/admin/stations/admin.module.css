@@ -1,0 +1,64 @@
+.area {
+  margin-top: 14px;
+}
+.area h3 {
+  font-size: 15px;
+  color: var(--fg-2);
+  margin: 0 0 4px;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item {
+  display: grid;
+  gap: 10px;
+  padding-block: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.list li:last-child .item {
+  border-bottom: 0;
+}
+.summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.meta {
+  color: var(--fg-2);
+  font-size: 13px;
+}
+.hidden {
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg-2);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 9px;
+}
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.check input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--brand);
+}

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { loadCrew } from "@/server/pages";
 import { Avatar } from "@/ui/Avatar";
+import formStyles from "@/ui/forms.module.css";
 import { Empty } from "@/ui/Empty";
 import { plural } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
@@ -107,6 +109,11 @@ export default async function CrewPage() {
       <Section title="You">
         <div className={styles.stack}>
           <Rename name={me.name} />
+          {view.canManageStations && (
+            <Link href="/admin/stations" className={formStyles.inlineLink}>
+              Manage buildings
+            </Link>
+          )}
           <YourData
             memberId={me.id}
             hasPassword={me.hasPassword}

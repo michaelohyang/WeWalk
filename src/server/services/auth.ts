@@ -130,6 +130,12 @@ export async function authenticate(
   return { member: found.member, deviceId: found.device.id };
 }
 
+/**
+ * Who may run app-wide admin (the building list at /admin/stations). Today that's the crew
+ * owner; check through this, not `isOwner`, so only this changes when admin becomes its own role.
+ */
+export const isAdmin = (session: Session): boolean => session.member.isOwner;
+
 /** Owner only: a one-time link for a member who lost every phone. */
 export async function createRecoveryLink(
   db: Db,

@@ -9,4 +9,5 @@ export { mapView, type MapView } from "./map";
 export { passportView, type PassportView } from "./passport";
 export { ranksView, type RanksView } from "./ranks";
 export { rateView, type RateView } from "./rate";
+export { stationAdminView, type StationAdminView } from "./station-admin";
 export { stationView, type ReviewView, type StationView } from "./station";

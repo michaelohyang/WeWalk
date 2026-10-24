@@ -1,4 +1,4 @@
-/* `pnpm db:seed`: upsert the station list into the database at DIRECT_URL. */
+/* `pnpm db:seed`: add new stations from the seed file to the database at DIRECT_URL (existing ones are left alone). */
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../schema";
@@ -11,7 +11,7 @@ async function main() {
   const client = postgres(url, { max: 1 });
   try {
     const count = await seedStations(drizzle(client, { schema }));
-    console.log(`Seeded ${count} stations.`);
+    console.log(`Added ${count} new stations.`);
   } finally {
     await client.end();
   }
