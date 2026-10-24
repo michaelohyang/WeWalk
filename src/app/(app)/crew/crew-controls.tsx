@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { fieldErrors, request } from "@/client/api";
 import styles from "@/ui/forms.module.css";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { focusSection } from "@/ui/focus";
 import { Select } from "@/ui/Select";
 import { useToast } from "@/ui/Toast";
 
@@ -212,6 +213,8 @@ export function SignOutPhone({ deviceId, current }: { deviceId: string; current:
       return;
     }
     toast(current ? "Signed out. See you around." : "That phone is signed out.");
+    // That phone's row (and this button) goes away; signing out here shows the login screen.
+    if (!current) focusSection("Signed in on");
     router.refresh();
   }
 

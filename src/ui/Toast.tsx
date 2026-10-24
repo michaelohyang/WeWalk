@@ -23,6 +23,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {message && (
           <RadixToast.Root
             key={message.id}
+            type="background"
             className={styles.toast}
             onOpenChange={(open) => {
               if (!open) setMessage((m) => (m?.id === message.id ? null : m));

@@ -8,6 +8,7 @@ import { localToday, newId } from "@/client/ids";
 import { queuedCheckin, sendCheckin } from "@/client/checkin";
 import { send, waiting } from "@/client/outbox";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { focusSection } from "@/ui/focus";
 import { useToast } from "@/ui/Toast";
 import styles from "./actions.module.css";
 
@@ -140,6 +141,8 @@ export function ReviewActions({
   const router = useRouter();
   const toast = useToast();
   const [queued, setQueued] = useState(false);
+  // The dialog closes on confirm; this keeps Delete from being confirmed twice meanwhile.
+  const [busy, setBusy] = useState(false);
   const key = `delete-review:${reviewId}`;
 
   // Deleted offline (now or before a reload): grey the review out until it syncs.
@@ -155,14 +158,21 @@ export function ReviewActions({
   }
 
   async function remove() {
+    setBusy(true);
     const result = await send({
       key,
       method: "DELETE",
       url: `/api/reviews/${reviewId}`,
       label: "Deleting your review",
     });
-    if (result.status === "rejected") toast(result.error.message);
-    else if (result.status === "queued") {
+    setBusy(false);
+    if (result.status === "rejected") {
+      toast(result.error.message);
+      return;
+    }
+    // Either way the Delete button goes away: keep focus on the page.
+    focusSection("Reviews");
+    if (result.status === "queued") {
       setQueued(true);
       toast("Deleted on this phone. It'll sync when you're back online.");
     } else {
@@ -178,7 +188,7 @@ export function ReviewActions({
       </Link>
       <ConfirmDialog
         trigger={
-          <button type="button" className={styles.textBtn}>
+          <button type="button" className={styles.textBtn} disabled={busy}>
             Delete
           </button>
         }
