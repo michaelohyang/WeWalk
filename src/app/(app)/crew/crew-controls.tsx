@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { fieldErrors, request } from "@/client/api";
+import { CREW_HEADER } from "@/client/crew";
 import { clearMemberDrafts } from "@/client/draft";
 import { dropMemberWrites } from "@/client/outbox";
 import styles from "@/ui/forms.module.css";
@@ -430,8 +431,14 @@ export function HandOver({ members }: { members: { id: string; name: string }[] 
   );
 }
 
+/**
+ * Names the crew on screen, so these act on it even if the phone's crew changed since (another
+ * tab, or a second tap after leaving); the server refuses a crew you're not in.
+ */
+const crewHeader = (crewId: string) => ({ [CREW_HEADER]: crewId });
+
 /** Owner: rename the crew, and make a new invite link (the old one stops working). */
-export function CrewSettings({ name }: { name: string }) {
+export function CrewSettings({ crewId, name }: { crewId: string; name: string }) {
   const router = useRouter();
   const toast = useToast();
   const [value, setValue] = useState(name);
@@ -442,7 +449,7 @@ export function CrewSettings({ name }: { name: string }) {
     e.preventDefault();
     if (value.trim() === name) return;
     setBusy(true);
-    const res = await request("PATCH", "/api/crews/current", { name: value });
+    const res = await request("PATCH", "/api/crews/current", { name: value }, crewHeader(crewId));
     setBusy(false);
     if (!res.ok) {
       setError(fieldErrors(res.error).name ?? res.error.message);
@@ -453,7 +460,7 @@ export function CrewSettings({ name }: { name: string }) {
   }
 
   async function newInvite() {
-    const res = await request("POST", "/api/crews/current/invite");
+    const res = await request("POST", "/api/crews/current/invite", undefined, crewHeader(crewId));
     if (!res.ok) {
       toast(res.error.message);
       return;
@@ -509,12 +516,12 @@ export function CrewSettings({ name }: { name: string }) {
 }
 
 /** Leave the crew you're looking at (your posts come out of it). */
-export function LeaveCrew({ crewName }: { crewName: string }) {
+export function LeaveCrew({ crewId, crewName }: { crewId: string; crewName: string }) {
   const router = useRouter();
   const toast = useToast();
 
   async function leave() {
-    const res = await request("POST", "/api/crews/leave");
+    const res = await request("POST", "/api/crews/leave", undefined, crewHeader(crewId));
     if (!res.ok) {
       toast(res.error.message);
       return;

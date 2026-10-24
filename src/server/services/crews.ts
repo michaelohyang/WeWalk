@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { CityKey } from "@/domain/areas";
 import type { Db } from "../db/client";
-import { AppError } from "../errors";
+import { AppError, isUniqueViolation } from "../errors";
 import * as crewsRepo from "../repos/crews";
 import { crewOf, ownsCrew, type Session } from "./auth";
 
@@ -62,10 +62,8 @@ export async function leaveCrew(db: Db, session: Session): Promise<void> {
   const crew = crewOf(session);
   await db.transaction(async (tx) => {
     await crewsRepo.lockMembershipsOf(tx, session.member.id);
-    if (
-      crew.role === "owner" &&
-      (await crewsRepo.ownedCrewsWithOthers(tx, session.member.id)).includes(crew.id)
-    ) {
+    // Roles read under the lock, not from the session (a hand-over may have just landed).
+    if ((await crewsRepo.ownedCrewsWithOthers(tx, session.member.id)).includes(crew.id)) {
       throw new AppError("conflict", OWNER_STAYS);
     }
     await crewsRepo.unlinkMemberFromCrew(tx, crew.id, session.member.id);
@@ -83,7 +81,14 @@ export async function renameCrew(db: Db, session: Session, name: string): Promis
 /** Owner: a new invite link. The old one stops working (do this after removing someone). */
 export async function rotateInviteCode(db: Db, session: Session): Promise<string> {
   if (!ownsCrew(session)) throw new AppError("forbidden", OWNER_ONLY);
-  const code = newInviteCode();
-  await crewsRepo.setInviteCode(db, crewOf(session).id, code);
-  return code;
+  // 72 random bits: a clash is next to impossible, but one would just mean drawing again.
+  for (let attempt = 0; ; attempt++) {
+    const code = newInviteCode();
+    try {
+      await crewsRepo.setInviteCode(db, crewOf(session).id, code);
+      return code;
+    } catch (e) {
+      if (attempt > 0 || !isUniqueViolation(e, "crews_invite_code_unique")) throw e;
+    }
+  }
 }

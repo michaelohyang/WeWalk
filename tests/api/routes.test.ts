@@ -1341,6 +1341,17 @@ describe("crews", () => {
     expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
   });
 
+  it("leaving the first crew takes your posts out of it too", async () => {
+    const { sam } = await twoCrews();
+    await reviewIn(sam, FIRST_CREW_ID, "dock-72");
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toHaveLength(1);
+    await sam.call(leaveCrewRoute, "POST", "/api/crews/leave", {
+      headers: { [CREW]: FIRST_CREW_ID },
+    });
+    expect((await loadCrew(db, FIRST_CREW_ID)).reviews).toEqual([]);
+    expect((await sam.call(me, "GET", "/api/me")).body.crew).toBeNull();
+  });
+
   it("deletes a crew along with its last member", async () => {
     const { dana, crewB } = await twoCrews();
     expect(

@@ -156,8 +156,8 @@ export default async function CrewPage() {
       )}
 
       <Section title={view.crew.name}>
-        {me.isOwner && <CrewSettings name={view.crew.name} />}
-        <LeaveCrew crewName={view.crew.name} />
+        {me.isOwner && <CrewSettings crewId={view.crew.id} name={view.crew.name} />}
+        <LeaveCrew crewId={view.crew.id} crewName={view.crew.name} />
       </Section>
 
       <Section title="Appearance">
