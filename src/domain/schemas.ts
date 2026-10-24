@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AREA_KEYS } from "./areas";
 import { CATEGORY_KEYS, type CategoryKey } from "./categories";
 import { isIsoDate } from "./dates";
 import { displayNameProblem, normalizeDisplayName } from "./names";
@@ -11,7 +12,7 @@ import { TAGS } from "./tags";
  * name already taken) live in the services.
  */
 
-const stationSlugSchema = z
+export const stationSlugSchema = z
   .string("Pick a building.")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "That building isn't on the map.");
 export const idSchema = z.uuid("That id isn't valid.");
@@ -134,3 +135,47 @@ export const renameInputSchema = z.object({ name: displayNameSchema }).strict();
 export const recoveryInputSchema = z.object({ memberId: idSchema }).strict();
 
 export const redeemLinkSchema = z.object({ token: z.string().min(20).max(100) }).strict();
+
+/**
+ * A new station's slug, from its name: "1 Seaport Sq." → "1-seaport-sq". Accents are dropped and
+ * anything that isn't a letter or digit becomes a hyphen, matching the slug check constraint.
+ * Empty when the name has no letters or digits.
+ */
+export const slugFromName = (name: string) =>
+  name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const requiredText = (max: number, message: string) =>
+  text(max).refine((s) => s.length > 0, message);
+
+const coordinate = (label: "Latitude" | "Longitude", limit: number) => {
+  const range = `${label} goes from -${limit} to ${limit}.`;
+  return z
+    .number(`Enter the ${label.toLowerCase()} as a number.`)
+    .min(-limit, range)
+    .max(limit, range);
+};
+
+/**
+ * A building, as the owner adds or edits it at /admin/stations. No slug: a new station's comes
+ * from its name, and an existing one's never changes (URLs and reviews point to it).
+ */
+export const stationInputSchema = z
+  .object({
+    name: requiredText(80, "Give the building a name."),
+    /** "450 Lex". Empty means the map and stamps use the name. */
+    short: text(30).transform((s) => s || null),
+    address: requiredText(200, "Add the street address."),
+    neighborhood: requiredText(60, "Add the neighborhood."),
+    area: z.enum(AREA_KEYS, "Pick an area."),
+    lat: coordinate("Latitude", 90),
+    lng: coordinate("Longitude", 180),
+    /** Required, so an edit that leaves it out can't un-hide a station by accident. */
+    hidden: z.boolean("Say whether the building is hidden."),
+  })
+  .strict();
+export type StationInput = z.infer<typeof stationInputSchema>;

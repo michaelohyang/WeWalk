@@ -2,7 +2,8 @@
  * `pnpm db:deploy`: run before `next build` on Vercel production deploys (see vercel.json).
  *
  * 1. Applies pending migrations over the direct connection (DIRECT_URL, port 5432).
- * 2. Upserts the station list (idempotent).
+ * 2. Adds stations from the seed file that aren't in the database yet. Existing stations are
+ *    never updated: the owner edits them at /admin/stations.
  * 3. Fails the deploy if any table in `public` lacks row-level security. Supabase exposes
  *    `public` through its REST API; with RLS on and no policies, nothing leaks that way. Our
  *    server connects as the owner role and isn't affected.
@@ -31,7 +32,7 @@ async function main() {
     const db = drizzle(client, { schema });
     await migrate(db, { migrationsFolder: "src/server/db/migrations" });
     console.log("db:deploy: migrations applied.");
-    console.log(`db:deploy: seeded ${await seedStations(db)} stations.`);
+    console.log(`db:deploy: added ${await seedStations(db)} new stations.`);
 
     const open = await db.execute<{ tablename: string }>(
       sql`select tablename from pg_tables where schemaname = 'public' and not rowsecurity`,

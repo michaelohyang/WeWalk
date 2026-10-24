@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as adminRecovery } from "@/app/api/admin/recovery-links/route";
+import { PUT as editStation } from "@/app/api/admin/stations/[slug]/route";
+import { POST as addStation } from "@/app/api/admin/stations/route";
 import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
 import { POST as login } from "@/app/api/login/route";
 import { DELETE as signOutDevice } from "@/app/api/me/devices/[id]/route";
@@ -36,6 +38,18 @@ const review = (over: Record<string, unknown> = {}) => ({
   stationSlug: "18-w-18th-st",
   visitedOn: today(),
   scores: { coffee: 4, wifi: 5 },
+  ...over,
+});
+
+const building = (over: Record<string, unknown> = {}) => ({
+  name: "1 Seaport Sq",
+  short: "1 Seaport",
+  address: "1 Seaport Sq, Boston, MA 02210",
+  neighborhood: "Seaport",
+  area: "seaport",
+  lat: 42.3505,
+  lng: -71.0445,
+  hidden: false,
   ...over,
 });
 
@@ -150,6 +164,18 @@ describe("every member route needs a session", () => {
       () =>
         new Phone().call(setPassword, "PUT", "/api/me/password", {
           body: { password: "new password" },
+        }),
+    ],
+    [
+      "POST station",
+      () => new Phone().call(addStation, "POST", "/api/admin/stations", { body: building() }),
+    ],
+    [
+      "PUT station",
+      () =>
+        new Phone().call(editStation, "PUT", "/api/admin/stations/x", {
+          params: { slug: "250-broadway" },
+          body: building(),
         }),
     ],
     [
@@ -402,6 +428,66 @@ describe("devices and accounts", () => {
     expect(
       (await new Phone().call(recover, "POST", "/api/recover", { body: { token } })).status,
     ).toBe(410);
+  });
+});
+
+describe("station admin", () => {
+  it("is owner-only (403)", async () => {
+    await joined("Owner");
+    const dana = await joined("Dana");
+    const add = await dana.call(addStation, "POST", "/api/admin/stations", { body: building() });
+    expect(add.status).toBe(403);
+    const edit = await dana.call(editStation, "PUT", "/api/admin/stations/250-broadway", {
+      params: { slug: "250-broadway" },
+      body: building({ hidden: true }),
+    });
+    expect(edit.status).toBe(403);
+  });
+
+  it("adds a building (201), then refuses the same name again (409)", async () => {
+    const owner = await joined("Owner");
+    const res = await owner.call(addStation, "POST", "/api/admin/stations", { body: building() });
+    expect(res.status).toBe(201);
+    expect(res.body.station).toMatchObject({ slug: "1-seaport-sq", short: "1 Seaport" });
+    expect((await loadCrew(db)).stations.map((s) => s.slug)).toContain("1-seaport-sq");
+
+    const again = await owner.call(addStation, "POST", "/api/admin/stations", {
+      body: building({ name: "1 Seaport Sq." }),
+    });
+    expect(again.status).toBe(409);
+    expect(again.body.error.details.fields.name[0]).toMatch(/\/stations\/1-seaport-sq/);
+  });
+
+  it("validates fields (400)", async () => {
+    const owner = await joined("Owner");
+    const res = await owner.call(addStation, "POST", "/api/admin/stations", {
+      body: building({ lat: 120, area: "mars" }),
+    });
+    expect(res.status).toBe(400);
+    expect(Object.keys(res.body.error.details.fields).sort()).toEqual(["area", "lat"]);
+  });
+
+  it("edits and hides a building; its slug stays (200, 404 for unknown)", async () => {
+    const owner = await joined("Owner");
+    const res = await owner.call(editStation, "PUT", "/api/admin/stations/250-broadway", {
+      params: { slug: "250-broadway" },
+      body: building({ name: "250 Broadway", area: "downtown", hidden: true }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.station).toMatchObject({ slug: "250-broadway", hidden: true });
+    expect((await loadCrew(db)).stations.map((s) => s.slug)).not.toContain("250-broadway");
+
+    const slugChange = await owner.call(editStation, "PUT", "/api/admin/stations/250-broadway", {
+      params: { slug: "250-broadway" },
+      body: building({ slug: "elsewhere" }),
+    });
+    expect(slugChange.status).toBe(400);
+
+    const missing = await owner.call(editStation, "PUT", "/api/admin/stations/nowhere", {
+      params: { slug: "nowhere" },
+      body: building(),
+    });
+    expect(missing.status).toBe(404);
   });
 });
 

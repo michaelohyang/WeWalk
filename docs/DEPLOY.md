@@ -34,7 +34,7 @@ that every table has row-level security on.
 3. **Deploy.** The build log should show:
    ```
    db:deploy: migrations applied.
-   db:deploy: seeded 41 stations.
+   db:deploy: added 41 new stations.
    db:deploy: row-level security is on for every public table.
    ```
    Preview deployments print `db:deploy: skipped` and have no database; that's expected.
@@ -51,8 +51,10 @@ that every table has row-level security on.
 
 ## Later
 
-- **New stations:** edit `src/domain/stations.ts` and deploy; the seed upserts them. To retire
-  one, set `hidden: true` (its reviews are kept, frozen).
+- **Stations:** the owner adds, edits and hides buildings at Crew → "Manage buildings"
+  (`/admin/stations`); no deploy needed. To retire one, hide it (its reviews are kept, frozen).
+  The seed only adds slugs from `src/domain/stations.ts` that the database doesn't have yet;
+  it never overwrites an edit or un-hides a station.
 - **Schema changes:** edit `src/server/db/schema.ts`, run `pnpm db:generate`, commit the new
   migration; the next production deploy applies it.
 - **Someone forgot their password:** the owner opens Crew → "Forgot password help" and sends

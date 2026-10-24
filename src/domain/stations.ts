@@ -1,9 +1,12 @@
 import type { AreaKey } from "./areas";
 
 /**
- * The owner's station list (docs/PLAN.md, appendix A). This file is the source of truth:
- * edit it, then run `pnpm db:seed`, to add, fix or hide a station. Never delete an entry that has reviews;
- * set `hidden: true` instead so reviews and stamps are kept.
+ * The starting station list (docs/PLAN.md, appendix A). The database is the source of truth:
+ * the owner adds, edits and hides buildings at /admin/stations. The seed (`pnpm db:seed`, and
+ * every production deploy) only inserts slugs from this file that the database doesn't have
+ * yet; it never updates or un-hides an existing station, so editing an entry here changes
+ * nothing for a database that already has it. Never delete a station that has reviews; hide it
+ * so reviews and stamps are kept.
  *
  * lat/lng place each pin on the street map (/map). They were checked against OpenStreetMap
  * geocoding in October 2026; keep new entries within about 100 m of the building.
@@ -435,8 +438,3 @@ export const STATIONS: readonly StationSeed[] = [
     lng: -84.2969,
   },
 ];
-
-const SHORT = new Map(STATIONS.map((s) => [s.slug, s.short]));
-
-/** The short name for a station slug, falling back to its full name. */
-export const shortName = (slug: string, name: string) => SHORT.get(slug) ?? name;

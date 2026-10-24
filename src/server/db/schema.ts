@@ -36,6 +36,8 @@ export const stations = pgTable(
     /** Readable and stable, for links (/stations/dock-72) and the seed file. */
     slug: text("slug").notNull().unique(),
     name: text("name").notNull(),
+    /** How locals say it ("450 Lex"), for the map and stamps. Null means use the name. */
+    short: text("short"),
     address: text("address").notNull(),
     neighborhood: text("neighborhood").notNull(),
     area: text("area").notNull(),

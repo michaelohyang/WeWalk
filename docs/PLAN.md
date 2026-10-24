@@ -110,7 +110,7 @@ src/
                             # the station list, map projection
   server/
     db/schema.ts, db/client.ts, db/migrations/   # client: postgres-js → Supabase pooler
-    db/seed/                # `pnpm db:seed`: upserts domain/stations.ts (the station list)
+    db/seed/                # `pnpm db:seed`: inserts new slugs from domain/stations.ts
     auth/tokens.ts          # random tokens, hashing, constant-time compare
     http.ts                 # route plumbing: session cookie, JSON validation, errors → status, same-origin
     repos/                  # stations, members, reviews, checkins (SQL lives here only)
@@ -339,7 +339,7 @@ tap targets.
 | 2 | Scoring | One scale: tap 1–5, every score shown out of 5 (section 5) |
 | 3 | Passport | Personal, with crew coverage as a secondary stat. The map stays crew-wide |
 | 4 | Identity | Username + password (scrypt-hashed), device sign-out, owner-issued recovery links. Replaced the original invite code and pairing links after launch |
-| 5 | Stations | Owner only, through the seed file. Removing a station hides it and keeps its data. "Suggest a building" comes later |
+| 5 | Stations | Owner only, at /admin/stations (the seed file only adds new slugs). Removing a station hides it and keeps its data. "Suggest a building" comes later |
 | 6 | Building list | The owner's list of 29 (appendix A) |
 | 7 | Size budget | First-load JS + CSS ≤ 230 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Raised from 200 KB in October 2026: Radix Primitives took Home to ~211 KB, which the owner accepted. The map library on Home (~286 KB) loads after the page is usable and is not counted. Revisit if performance becomes a problem |
 

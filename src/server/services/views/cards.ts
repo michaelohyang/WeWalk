@@ -1,7 +1,6 @@
 import "server-only";
 import { summarizeStation, type StationSummary } from "@/domain/activity";
 import type { AreaKey } from "@/domain/areas";
-import { shortName } from "@/domain/stations";
 import type { IsoDate } from "@/domain/dates";
 import type { Tag } from "@/domain/tags";
 import type { CrewData, Station } from "../crew";
@@ -43,7 +42,7 @@ export function cards(
     return {
       slug: s.slug,
       name: s.name,
-      short: shortName(s.slug, s.name),
+      short: s.short ?? s.name,
       address: s.address,
       neighborhood: s.neighborhood,
       area: s.area as AreaKey,

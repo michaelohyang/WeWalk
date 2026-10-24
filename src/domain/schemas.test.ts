@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { checkinInputSchema, reviewInputSchema, signupInputSchema } from "./schemas";
+import {
+  checkinInputSchema,
+  reviewInputSchema,
+  signupInputSchema,
+  slugFromName,
+  stationInputSchema,
+} from "./schemas";
 
 const base = { stationSlug: "18-w-18th-st", visitedOn: "2026-10-01", scores: { coffee: 4 } };
 
@@ -93,5 +99,56 @@ describe("free text", () => {
     expect(issue({ ...base, tags: ["free beer"] })).toBe("That tag isn't on the list.");
     expect(issue({ ...base, hotTake: "x".repeat(121) })).toBe("Keep it under 120 characters.");
     expect(issue({ ...base, visitedOn: "nope" })).toBe("That date isn't valid.");
+  });
+});
+
+describe("slugFromName", () => {
+  it.each([
+    ["450 Lexington Ave", "450-lexington-ave"],
+    ["  1 Seaport Sq.  ", "1-seaport-sq"],
+    ["Café Építő — 12th & Main!", "cafe-epito-12th-main"],
+    ["!!!", ""],
+  ])("%s → %s", (name, slug) => {
+    expect(slugFromName(name)).toBe(slug);
+    // Whatever it makes passes the database's slug check.
+    if (slug) expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+  });
+});
+
+describe("stationInputSchema", () => {
+  const station = {
+    name: "Dock 72",
+    address: "68 Cumberland St, Brooklyn, NY 11205",
+    neighborhood: "Navy Yard",
+    area: "brooklyn",
+    lat: 40.6995,
+    lng: -73.9745,
+    hidden: false,
+  };
+
+  it("trims text and treats a blank short name as none", () => {
+    expect(stationInputSchema.parse({ ...station, name: " Dock 72 ", short: " " })).toEqual({
+      ...station,
+      short: null,
+    });
+  });
+
+  it.each([
+    [{ name: "  " }, "name"],
+    [{ address: "" }, "address"],
+    [{ area: "queens" }, "area"],
+    [{ lat: 91 }, "lat"],
+    [{ lat: null }, "lat"],
+    [{ lng: -181 }, "lng"],
+    [{ lng: "-73.9" }, "lng"],
+    [{ hidden: undefined }, "hidden"],
+  ])("rejects %o", (over, field) => {
+    const result = stationInputSchema.safeParse({ ...station, ...over });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual([field]);
+  });
+
+  it("doesn't take a slug: it comes from the name and never changes", () => {
+    expect(stationInputSchema.safeParse({ ...station, slug: "elsewhere" }).success).toBe(false);
   });
 });

@@ -3,7 +3,7 @@ import { signupCode } from "../../invite";
 import { CATEGORIES } from "@/domain/categories";
 import { tasteMatch } from "@/domain/taste";
 import type { Db } from "../../db/client";
-import { listDevices, type Session } from "../auth";
+import { isAdmin, listDevices, type Session } from "../auth";
 import type { CrewData } from "../crew";
 
 /* The Crew screen: members, your account and your phones. */
@@ -12,6 +12,8 @@ export interface CrewView {
   /** Goes into the invite link; null when signup is open. */
   inviteCode: string | null;
   me: { id: string; name: string; isOwner: boolean; hasPassword: boolean };
+  /** Shows the link to the building admin (/admin/stations). */
+  canManageStations: boolean;
   /** Everyone, for the owner's recovery links. Empty for non-owners. */
   members: { id: string; name: string }[];
   devices: { id: string; label: string; lastSeenAt: string; current: boolean }[];
@@ -82,6 +84,7 @@ export async function crewView(crew: CrewData, db: Db, session: Session): Promis
       isOwner: session.member.isOwner,
       hasPassword: session.member.hasPassword,
     },
+    canManageStations: isAdmin(session),
     members: session.member.isOwner ? crew.members.filter((m) => m.id !== session.member.id) : [],
     devices: devices.map((d) => ({
       id: d.id,

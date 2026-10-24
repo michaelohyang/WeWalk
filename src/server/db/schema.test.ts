@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "./client";
 import { checkins, members, reviews, stations } from "./schema";
@@ -46,16 +46,45 @@ describe("migrations + seed", () => {
     expect(Object.fromEntries(perCity)).toEqual({ nyc: 29, boston: 7, atlanta: 5 });
   });
 
-  it("seeding again is a no-op upsert: same rows, same integer ids", async () => {
+  it("seeding again is a no-op: same rows, same integer ids", async () => {
     const before = await db.select({ id: stations.id, slug: stations.slug }).from(stations);
     const { seedStations } = await import("./seed/seed");
-    await seedStations(db);
+    expect(await seedStations(db)).toBe(0);
     const after = await db.select({ id: stations.id, slug: stations.slug }).from(stations);
     expect(after).toHaveLength(STATIONS.length);
     expect(new Map(after.map((r) => [r.slug, r.id]))).toEqual(
       new Map(before.map((r) => [r.slug, r.id])),
     );
     expect(after.every((r) => Number.isInteger(r.id))).toBe(true);
+  });
+
+  it("stores each station's short name", async () => {
+    const [row] = await db
+      .select({ short: stations.short })
+      .from(stations)
+      .where(eq(stations.slug, "450-lexington-ave"));
+    expect(row?.short).toBe("450 Lex");
+  });
+
+  it("re-seeding never overwrites an edit or un-hides a station, but adds missing slugs", async () => {
+    const { seedStations } = await import("./seed/seed");
+    await db
+      .update(stations)
+      .set({ name: "250 Broadway (edited)", short: null, lat: 40.7 })
+      .where(eq(stations.slug, "250-broadway"));
+    await db.update(stations).set({ hidden: true }).where(eq(stations.slug, "199-water-st"));
+    await db.delete(stations).where(eq(stations.slug, "450-lexington-ave"));
+
+    expect(await seedStations(db)).toBe(1);
+
+    const bySlug = new Map((await db.select().from(stations)).map((r) => [r.slug, r]));
+    expect(bySlug.get("250-broadway")).toMatchObject({
+      name: "250 Broadway (edited)",
+      short: null,
+      lat: 40.7,
+    });
+    expect(bySlug.get("199-water-st")?.hidden).toBe(true);
+    expect(bySlug.get("450-lexington-ave")).toMatchObject({ name: "450 Lexington Ave" });
   });
 
   it("has row-level security on every table", async () => {
