@@ -1,10 +1,12 @@
-import "server-only";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { jpegSize, photoSize, type PhotoSize } from "@/domain/photos";
 import type { Db } from "./db/client";
 import { reviews } from "./db/schema";
 
 /*
+ * Run by scripts/backfill-photo-sizes.ts with tsx, outside Next.js, so no "server-only" guard
+ * here (it throws outside a React Server Component). ESLint already keeps ui/ and client/ out.
+ *
  * One-time: give photos uploaded before sizes were kept a size-carrying address (see
  * domain/photos.ts), so their cards stop jumping as they load. Each photo is downloaded,
  * measured, stored again under a sized name, and its review is pointed at the new copy.

@@ -2,8 +2,8 @@
  * `pnpm photos:backfill` (dry run) / `pnpm photos:backfill --apply`
  *
  * Gives review photos uploaded before photo sizes were kept a size-carrying address, so their
- * cards stop jumping as they load. Needs DATABASE_URL (or DIRECT_URL) and Blob credentials
- * (BLOB_READ_WRITE_TOKEN): `vercel env pull .env.local` gets both. Run it once, after the
+ * cards stop jumping as they load. Needs DIRECT_URL (or DATABASE_URL) and BLOB_READ_WRITE_TOKEN,
+ * read from .env.local: the Supabase session pooler string and the Blob store's token. Run it once, after the
  * deploy that records sizes on upload. Old photo files are left in place.
  */
 import { put } from "@vercel/blob";
@@ -18,7 +18,9 @@ async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) throw new Error("photos:backfill needs DIRECT_URL or DATABASE_URL.");
   if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
-    throw new Error("photos:backfill needs Blob credentials: run `vercel env pull .env.local`.");
+    throw new Error(
+      "photos:backfill needs BLOB_READ_WRITE_TOKEN in .env.local (Vercel → Storage → your Blob store).",
+    );
   }
   const apply = process.argv.includes("--apply");
   const client = postgres(url, { ...scriptConnectionOptions(url), onnotice: () => {} });
