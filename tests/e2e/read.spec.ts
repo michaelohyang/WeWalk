@@ -271,7 +271,8 @@ test.describe("signed in", () => {
     const ours = sum([...app].filter(([url]) => !signedOut.has(url)).map(([, size]) => size));
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     console.log(`first-load JS + CSS: ${kb(total)} gzipped (our code: ${kb(ours)})`);
-    expect(total, "total budget").toBeLessThan(200 * 1024);
+    // Raised from 200 KB in October 2026 for Radix Primitives (toasts load on every page).
+    expect(total, "total budget").toBeLessThan(230 * 1024);
     expect(ours, "our own code").toBeLessThan(40 * 1024);
   });
 });

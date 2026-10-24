@@ -270,7 +270,7 @@ nothing to rewire later.
   - deep links work, and back restores filters and scroll position
   - no horizontal scroll
   - no accessibility violations from axe
-  - first-load JS + CSS under 200 KB gzipped, of which our own code (beyond React and Next.js)
+  - first-load JS + CSS under 230 KB gzipped (200 KB until the Radix move), of which our own code (beyond React and Next.js)
     under 40 KB; first render under 3 seconds on Slow 3G
   - screenshots side by side with the prototype.
 - **Product review:** walk journeys B and D.
@@ -338,7 +338,7 @@ tap targets.
 | 4 | Identity | Username + password (scrypt-hashed), device sign-out, owner-issued recovery links. Replaced the original invite code and pairing links after launch |
 | 5 | Stations | Owner only, through the seed file. Removing a station hides it and keeps its data. "Suggest a building" comes later |
 | 6 | Building list | The owner's list of 29 (appendix A) |
-| 7 | Size budget | First-load JS + CSS ≤ 200 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Revisit if performance becomes a problem |
+| 7 | Size budget | First-load JS + CSS ≤ 230 KB gzipped (React and Next.js alone are ~120 KB), with our own code ≤ 40 KB. Enforced by an e2e test. Raised from 200 KB in October 2026: Radix Primitives took Home to ~211 KB, which the owner accepted. Revisit if performance becomes a problem |
 
 ## Appendix A: Stations (seed data, from the owner)
 
