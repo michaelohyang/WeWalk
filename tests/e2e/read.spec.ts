@@ -139,15 +139,14 @@ test.describe("signed in", () => {
   }, info) => {
     const other = await (await browser.newContext({ ...info.project.use })).newPage();
     await joinAs(other);
-    await review(other.request, "dumbo-heights", {
-      scores: { vibe: 5 },
-      hotTake: "Feed me a view",
-    });
+    // Unique per run: the phone-light and phone-dark projects share one server and database.
+    const hotTake = uniqueName("Feed me a view");
+    await review(other.request, "dumbo-heights", { scores: { vibe: 5 }, hotTake });
     await page.goto("/");
     const card = page
       .getByRole("list", { name: "Latest from the crew" })
       .getByRole("listitem")
-      .filter({ hasText: "Feed me a view" });
+      .filter({ hasText: hotTake });
     await expect(card).toBeVisible();
     const fire = card.getByRole("button", { name: /^Fire/ });
     await fire.click();
@@ -158,7 +157,7 @@ test.describe("signed in", () => {
       page
         .getByRole("list", { name: "Latest from the crew" })
         .getByRole("listitem")
-        .filter({ hasText: "Feed me a view" })
+        .filter({ hasText: hotTake })
         .getByRole("button", { name: /^Fire/ }),
     ).toHaveAttribute("aria-pressed", "true");
   });
