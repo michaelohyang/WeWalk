@@ -17,7 +17,7 @@ export interface RanksView {
   stationOfMonth: { station: StationCard; fresh: boolean } | null;
   rows: { rank: number; value: number; station: StationCard }[];
   unrated: number;
-  /** The buildings that split the crew most (crew-wide, like Station of the Month). */
+  /** The buildings that split the crew most, in the city shown (like Station of the Month). */
   divisive: {
     station: StationCard;
     spread: number;
@@ -26,7 +26,10 @@ export interface RanksView {
   }[];
 }
 
-/** Rankings by `key`, optionally within one area. Station of the Month is always crew-wide. */
+/**
+ * Rankings by `key`, optionally within one area. Give it one city's data (`inCity`): rows,
+ * Station of the Month and Most divisive are then all for that city.
+ */
 export async function ranksView(
   crew: CrewData,
   session: Session,

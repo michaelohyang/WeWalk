@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AREAS, isArea, type AreaKey } from "@/domain/areas";
+import { areaIn, areasIn, type AreaKey, type CityKey } from "@/domain/areas";
 import { CITY_TIME_ZONE } from "@/domain/dates";
 import type { Tag } from "@/domain/tags";
 import type { ExploreView, StationCard } from "@/server/services/views";
@@ -14,6 +14,7 @@ import { areaColor } from "@/ui/format";
 import { Icon } from "@/ui/Icon";
 import { Page, Section } from "@/ui/Page";
 import { StationRow } from "@/ui/StationRow";
+import { CitySwitch } from "@/ui/CitySwitch";
 import { StationMap } from "@/ui/StationMap";
 import { ThemeToggle } from "@/ui/ThemeToggle";
 import { AreaTiles } from "./area-tiles";
@@ -22,6 +23,12 @@ import { Feed } from "./feed";
 import { HereToday } from "./here-today";
 
 type Filters = { q: string; area: AreaKey | null; tag: Tag | null };
+
+const SEARCH_HINT: Record<CityKey, string> = {
+  nyc: "Search 1460 Broadway, Dumbo, Irving Pl…",
+  boston: "Search Back Bay, Seaport, One Lincoln…",
+  atlanta: "Search Midtown, Buckhead, Colony Square…",
+};
 
 const nyHour = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
@@ -45,12 +52,13 @@ function outToday(here: ExploreView["hereToday"]) {
   return `${others[0]}, ${others[1]} and ${others.length - 2} more are out today.`;
 }
 
-function parseFilters(params: URLSearchParams, tags: readonly Tag[]): Filters {
+function parseFilters(params: URLSearchParams, tags: readonly Tag[], city: CityKey): Filters {
   const area = params.get("area");
   const tag = params.get("tag");
   return {
     q: params.get("q") ?? "",
-    area: isArea(area) ? area : null,
+    // An area from another city (an old or shared link) is ignored rather than showing nothing.
+    area: areaIn(city, area),
     tag: tags.includes(tag as Tag) ? (tag as Tag) : null,
   };
 }
@@ -67,11 +75,11 @@ function toQuery(f: Filters): string {
  * Filters live in React state (so quick taps never read a stale URL) and are mirrored into the
  * URL (?q=&area=&tag=), so Back and shared links restore them.
  */
-function useFilters(tags: readonly Tag[]) {
+function useFilters(tags: readonly Tag[], city: CityKey) {
   const params = useSearchParams();
   const router = useRouter();
   const path = usePathname();
-  const [filters, setFilters] = useState(() => parseFilters(params, tags));
+  const [filters, setFilters] = useState(() => parseFilters(params, tags, city));
   useEffect(() => {
     const next = toQuery(filters);
     if (next !== params.toString())
@@ -88,11 +96,11 @@ const matcher = (f: Filters) => (s: StationCard) =>
     `${s.name} ${s.address} ${s.neighborhood}`.toLowerCase().includes(f.q.trim().toLowerCase()));
 
 /**
- * Home. Browsing: who's out today, the five areas as tiles, then the crew's latest reviews and
+ * Home. Browsing: who's out today, the map and areas of the city you picked, then the crew's latest reviews and
  * check-ins. Searching or picking an area or tag: the matching buildings as a list.
  */
 export function Explore({ view }: { view: ExploreView }) {
-  const [filters, setFilters] = useFilters(view.tags);
+  const [filters, setFilters] = useFilters(view.tags, view.city);
   const filtering = !!(filters.q || filters.area || filters.tag);
   const shown = view.stations
     .filter(matcher(filters))
@@ -114,6 +122,7 @@ export function Explore({ view }: { view: ExploreView }) {
             {greeting(new Date())}, {view.me.name}
           </h1>
           <p className={styles.summary}>{outToday(view.hereToday)}</p>
+          <CitySwitch city={view.city} />
         </div>
         <ThemeToggle />
       </header>
@@ -133,7 +142,7 @@ export function Explore({ view }: { view: ExploreView }) {
           name="q"
           value={filters.q}
           onChange={(e) => setFilters({ q: e.target.value })}
-          placeholder="Search 1460 Broadway, Dumbo, Irving Pl…"
+          placeholder={SEARCH_HINT[view.city]}
           aria-label="Search stations"
           autoComplete="off"
           enterKeyHint="search"
@@ -152,7 +161,7 @@ export function Explore({ view }: { view: ExploreView }) {
             >
               All
             </Chip>
-            {AREAS.map((a) => {
+            {areasIn(view.city).map((a) => {
               const area = filters.area === a.key ? null : a.key;
               return (
                 <Chip

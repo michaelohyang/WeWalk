@@ -34,7 +34,7 @@ that every table has row-level security on.
 3. **Deploy.** The build log should show:
    ```
    db:deploy: migrations applied.
-   db:deploy: seeded 29 stations.
+   db:deploy: seeded 41 stations.
    db:deploy: row-level security is on for every public table.
    ```
    Preview deployments print `db:deploy: skipped` and have no database; that's expected.
@@ -60,3 +60,13 @@ that every table has row-level security on.
 - **Passwords** are stored as salted scrypt hashes (`members.password_hash`); nobody, including
   whoever can read the database, can see them. Five wrong passwords in a row lock the account for
   15 minutes.
+
+## Rolling back past the multi-city release
+
+Boston and Atlanta (12 stations) arrived with migration `0005_more_cities`. Code from before it
+would show their pins in New York's screens and count them toward Completionist. Before
+redeploying older code, hide them (reviews and check-ins are kept):
+
+```sql
+update stations set hidden = true where area not in ('uptown', 'midtown', 'flatiron', 'downtown', 'brooklyn');
+```

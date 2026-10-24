@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { CITIES } from "@/domain/areas";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fieldErrors } from "@/client/api";
 import { clearDraft, loadDraft, saveDraft } from "@/client/draft";
@@ -223,7 +224,7 @@ export function RateForm({ view }: { view: RateView }) {
             triggerRef={stationRef}
             className={styles.input}
             value={station?.slug ?? ""}
-            // Recent buildings repeat in "All buildings"; their values carry a prefix to stay unique.
+            // Recent buildings repeat in their city's group; their values carry a prefix to stay unique.
             onValueChange={(v) => pickStation(v.replace(RECENT, ""))}
             placeholder="Pick a building…"
             invalid={!!errors.stationSlug}
@@ -240,13 +241,13 @@ export function RateForm({ view }: { view: RateView }) {
                     },
                   ]
                 : []),
-              {
-                label: "All buildings",
-                options: view.stations.map((s) => ({
-                  value: s.slug,
-                  label: `${s.name} · ${s.neighborhood}`,
-                })),
-              },
+              // Then every building, grouped by city.
+              ...CITIES.map((c) => ({
+                label: c.name,
+                options: view.stations
+                  .filter((s) => s.city === c.key)
+                  .map((s) => ({ value: s.slug, label: `${s.name} · ${s.neighborhood}` })),
+              })).filter((g) => g.options.length),
             ]}
           />
           {errors.stationSlug && (

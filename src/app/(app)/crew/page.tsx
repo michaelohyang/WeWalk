@@ -64,7 +64,7 @@ export default async function CrewPage() {
           </ol>
         ) : (
           <Empty title="Leaderboard's empty.">
-            Post one review and you&apos;re number one. Easiest win in New York.
+            Post one review and you&apos;re number one. Easiest win in town.
           </Empty>
         )}
       </Section>

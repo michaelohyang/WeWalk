@@ -2,11 +2,19 @@
 
 [![CI](https://github.com/michaelohyang/WeWalk/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelohyang/WeWalk/actions/workflows/ci.yml)
 
-**NYC WeWorks, rated by people who care too much.**
+**WeWorks in NYC, Boston and Atlanta, rated by people who care too much.**
 
 WeWalk is a small, private web app for a group of friends who work out of WeWork buildings in
-New York City. Check in when you arrive, rate the coffee, Wi-Fi and phone booths, see who else
-is out today, and find out which of the city's 29 buildings the crew actually likes.
+New York City, Boston and Atlanta. Check in when you arrive, rate the coffee, Wi-Fi and phone
+booths, see who else is out today, and find out which buildings the crew actually likes: 29 in
+New York, 7 in Boston and Cambridge, and 5 in Atlanta and Decatur.
+
+### Cities
+
+A **NYC | Boston | Atlanta** switch on Home, Map, Ranks and Passport picks the city those
+screens show. It's remembered on each phone (default NYC). The crew feed, "Here today" and the
+Crew page stay crew-wide. Badges that count visits count every city; Completionist means every
+building in one city, and each area has its own "All of" badge.
 
 > WeWalk is an independent personal project. It is not affiliated with, endorsed by or
 > sponsored by WeWork.
@@ -32,9 +40,8 @@ is out today, and find out which of the city's 29 buildings the crew actually li
 
 - **Here today:** who in the crew has checked in where today, and since when. One tap on
   **Join** checks you in at the same building.
-- **Area tiles:** Uptown, Midtown, Flatiron, Downtown and Brooklyn at a glance, each with its
-  building count, how many you've visited and its best-rated building. A tile opens that area's
-  buildings as a list.
+- **Neighborhoods:** the city's areas (in New York: Uptown, Midtown, Flatiron, Downtown and
+  Brooklyn) as chips with how many you've visited. A chip opens that area's buildings as a list.
 - **Crew feed:** the latest reviews and check-ins, newest first, with photos, scores, hot takes
   and reactions.
 - **Search and filters:** find a building by name, address or neighborhood, or by "Best for"
@@ -114,7 +121,7 @@ DATABASE_URL=pglite:.data/dev   # embedded Postgres, kept between restarts
 DATABASE_URL=pglite:memory      # embedded Postgres, wiped on restart
 ```
 
-It is created, migrated and seeded with the 29 buildings on first use. Then start the app:
+It is created, migrated and seeded with every building on first use. Then start the app:
 
 ```sh
 pnpm dev

@@ -5,7 +5,7 @@ import { ImageResponse } from "next/og";
  * the same for every page: link previews are fetched signed out, so it never shows crew data.
  */
 
-export const alt = "WeWalk: NYC WeWorks, rated by people who care too much";
+export const alt = "WeWalk: WeWorks in NYC, Boston and Atlanta, rated by people who care too much";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -50,7 +50,7 @@ export default function OpenGraphImage() {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ fontSize: 76, fontWeight: 800, letterSpacing: -3, lineHeight: 1.02 }}>
-          NYC WeWorks, rated by people who care too much.
+          WeWorks in NYC, Boston and Atlanta, rated by people who care too much.
         </div>
         <div style={{ fontSize: 32, color: "#aab3b0" }}>
           You&apos;re invited. Pick a name, start judging.

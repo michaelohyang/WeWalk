@@ -6,7 +6,7 @@ import type { AreaTile } from "@/server/services/views";
 import { areaColor } from "@/ui/format";
 import styles from "./area-tiles.module.css";
 
-/** The five areas as slim chips: name and how many you've been to. A chip lists its buildings. */
+/** The city's areas as slim chips: name and how many you've been to. A chip lists its buildings. */
 export function AreaTiles({
   areas,
   href,

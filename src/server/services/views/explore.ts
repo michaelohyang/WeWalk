@@ -1,5 +1,5 @@
 import "server-only";
-import { AREAS, type AreaKey } from "@/domain/areas";
+import { areasIn, cityOf, DEFAULT_CITY, type AreaKey, type CityKey } from "@/domain/areas";
 import { cityDate } from "@/domain/dates";
 import { crewFeed } from "@/domain/feed";
 import { summarizeReactions, type ReactionSummary } from "@/domain/reactions";
@@ -47,6 +47,8 @@ export interface AreaTile {
 }
 
 export interface ExploreView {
+  /** The city the map, areas and search show; the feed and Here today are crew-wide. */
+  city: CityKey;
   /** Your name, for the greeting. */
   me: { name: string };
   stations: StationCard[];
@@ -73,10 +75,14 @@ export async function exploreView(
   crew: CrewData,
   session: Session,
   now: Date,
+  city: CityKey = DEFAULT_CITY,
 ): Promise<ExploreView> {
   const me = session.member.id;
-  const { cards: stations, summaries } = cards(crew, me);
-  const bySlug = new Map(stations.map((s) => [s.slug, s]));
+  const { cards: everywhere, summaries } = cards(crew, me);
+  // The feed and Here today can name any city's building; the rest is this city's.
+  const bySlug = new Map(everywhere.map((s) => [s.slug, s]));
+  const stations = everywhere.filter((s) => cityOf(s.area) === city);
+  const local = new Set(stations.map((s) => s.slug));
   const names = new Map(crew.members.map((m) => [m.id, m.name]));
   const nameOf = (id: string) => names.get(id) ?? "someone";
   const who = (memberId: string): Who => ({
@@ -91,10 +97,12 @@ export async function exploreView(
   const scores = new Map([...summaries].map(([slug, s]) => [slug, s.score]));
 
   const tagCounts = new Map<Tag, number>();
-  for (const s of summaries.values())
-    for (const t of s.tags) tagCounts.set(t.tag, (tagCounts.get(t.tag) ?? 0) + t.count);
+  for (const [slug, s] of summaries)
+    if (local.has(slug))
+      for (const t of s.tags) tagCounts.set(t.tag, (tagCounts.get(t.tag) ?? 0) + t.count);
 
   return {
+    city,
     me: { name: session.member.name },
     stations,
     pins: mapStations(crew, stations),
@@ -113,18 +121,20 @@ export async function exploreView(
         },
       ];
     }),
-    areas: AREAS.map((a) => {
-      const here = crew.stations.filter((s) => s.area === a.key);
-      const top = rankStations(here, scores, "overall")[0];
-      const best = top && bySlug.get(top.stationSlug)!;
-      return {
-        key: a.key,
-        label: a.label,
-        total: here.length,
-        mine: here.filter((s) => bySlug.get(s.slug)!.mine).length,
-        best: best ? { slug: best.slug, name: best.short, overall: best.overall! } : null,
-      };
-    }).filter((a) => a.total > 0),
+    areas: areasIn(city)
+      .map((a) => {
+        const here = crew.stations.filter((s) => s.area === a.key);
+        const top = rankStations(here, scores, "overall")[0];
+        const best = top && bySlug.get(top.stationSlug)!;
+        return {
+          key: a.key,
+          label: a.label,
+          total: here.length,
+          mine: here.filter((s) => bySlug.get(s.slug)!.mine).length,
+          best: best ? { slug: best.slug, name: best.short, overall: best.overall! } : null,
+        };
+      })
+      .filter((a) => a.total > 0),
     feed: crewFeed(crew.reviews, crew.checkins).map((item): FeedEntry => {
       if (item.kind === "review") {
         const r = item.review;

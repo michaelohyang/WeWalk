@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             We<span style={{ color: "var(--brand)" }}>Walk</span>
           </>
         }
-        subtitle="NYC WeWorks, rated by people who care too much"
+        subtitle="WeWorks in NYC, Boston and Atlanta, rated by people who care too much"
       >
         <AuthForm mode="login" />
       </Page>

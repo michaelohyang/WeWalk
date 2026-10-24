@@ -30,7 +30,11 @@ export function monthOf(date: IsoDate): string {
   return date.slice(0, 7);
 }
 
-/** The crew's city: "today" for crew-wide things (who's here today) is New York's date. */
+/**
+ * "Today" for crew-wide things (who's here today, streaks, the month) is New York's date.
+ * Every city WeWalk covers (NYC, Boston, Atlanta) is on Eastern time; a city elsewhere would
+ * need its own zone.
+ */
 export const CITY_TIME_ZONE = "America/New_York";
 
 /** The calendar date in New York at an instant. */

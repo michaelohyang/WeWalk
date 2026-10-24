@@ -5,6 +5,7 @@ import { Empty } from "@/ui/Empty";
 import { areaColor, formatDate, tileText } from "@/ui/format";
 import { Page, Section } from "@/ui/Page";
 import styles from "./passport.module.css";
+import { CitySwitch } from "@/ui/CitySwitch";
 
 export const metadata: Metadata = { title: "Passport" };
 
@@ -32,6 +33,7 @@ export default async function PassportPage() {
 
   return (
     <Page title="Passport">
+      <CitySwitch city={view.city} />
       <div className={styles.summary}>
         <svg
           viewBox="0 0 100 100"

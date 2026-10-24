@@ -16,7 +16,14 @@ import { createTestDb, resetTestDb } from "@/server/db/testing";
 import { cityDate } from "@/domain/dates";
 import type { Session } from "@/server/services/auth";
 import { loadCrew } from "@/server/services/crew";
-import { exploreView, mapView, ranksView, stationView } from "@/server/services/views";
+import {
+  exploreView,
+  mapView,
+  passportView,
+  ranksView,
+  stationView,
+} from "@/server/services/views";
+import { inCity } from "@/server/services/views/city";
 import { STATIONS } from "@/domain/stations";
 import { Phone } from "./client";
 
@@ -673,5 +680,72 @@ describe("ranks: Station of the Month", () => {
       halloweenNight,
     );
     expect(view.month).toBe("2026-10");
+  });
+});
+
+describe("cities", () => {
+  async function crewWithReviews() {
+    const dana = await joined("Dana");
+    for (const slug of ["dock-72", "501-boylston-st", "coda"]) {
+      const res = await dana.call(putReview, "PUT", "/api/reviews/x", {
+        params: { id: newId() },
+        body: review({ stationSlug: slug, scores: { coffee: 5, wifi: 4 } }),
+      });
+      expect(res.status, slug).toBe(201);
+    }
+    const crew = await loadCrew(db);
+    const me = crew.members.find((m) => m.name === "Dana")!;
+    return { crew, session: { member: me, deviceId: "d" } as unknown as Session };
+  }
+
+  it("Home shows the picked city's areas and map, and the whole crew's feed", async () => {
+    const { crew, session } = await crewWithReviews();
+    const view = await exploreView(crew, session, new Date(), "boston");
+    expect(view.city).toBe("boston");
+    expect(view.areas.map((a) => a.label)).toEqual([
+      "Back Bay",
+      "Downtown",
+      "Seaport",
+      "North Station",
+      "Cambridge",
+    ]);
+    expect(view.pins.map((p) => p.slug)).toContain("501-boylston-st");
+    expect(view.pins.map((p) => p.slug)).not.toContain("dock-72");
+    expect(view.stations).toHaveLength(7);
+    // The feed is crew-wide: reviews from every city.
+    const fed = view.feed.map((f) => f.station.slug).sort();
+    expect(fed).toEqual(["501-boylston-st", "coda", "dock-72"]);
+
+    const atl = await exploreView(crew, session, new Date(), "atlanta");
+    expect(atl.areas.map((a) => a.label)).toEqual(["Midtown", "Buckhead", "Perimeter", "Decatur"]);
+    expect(atl.pins).toHaveLength(5);
+  });
+
+  it("Ranks and the map only show the picked city", async () => {
+    const { crew, session } = await crewWithReviews();
+    const ranks = await ranksView(inCity(crew, "boston"), session, "overall", null, new Date());
+    expect(ranks.rows.map((r) => r.station.slug)).toEqual(["501-boylston-st"]);
+    expect(ranks.stationOfMonth?.station.slug).toBe("501-boylston-st");
+    expect(mapView(inCity(crew, "atlanta"), session).stations.map((s) => s.slug)).toContain("coda");
+    expect(mapView(inCity(crew, "atlanta"), session).stations).toHaveLength(5);
+  });
+
+  it("Passport counts the picked city, with only its area badges", async () => {
+    const { crew, session } = await crewWithReviews();
+    const view = await passportView(crew, session, new Date(), "boston");
+    expect(view.total).toBe(7);
+    expect(view.stamps.map((s) => s.station.slug)).toEqual(["501-boylston-st"]);
+    const areaBadges = view.badges.filter((b) => b.key.startsWith("area-")).map((b) => b.key);
+    expect(areaBadges.sort()).toEqual(
+      [
+        "area-back-bay",
+        "area-boston-downtown",
+        "area-cambridge",
+        "area-north-station",
+        "area-seaport",
+      ].sort(),
+    );
+    // Milestones count every city: three buildings so far.
+    expect(view.badges.find((b) => b.key === "regular")?.progress.have).toBe(3);
   });
 });

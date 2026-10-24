@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "./client";
 import { checkins, members, reviews, stations } from "./schema";
+import { cityOf, isArea } from "@/domain/areas";
 import { STATIONS } from "@/domain/stations";
 import { createTestDb, resetTestDb } from "./testing";
 import { stationKey } from "../repos/stations";
@@ -34,7 +35,15 @@ describe("migrations + seed", () => {
   it("seeds every station from the seed file", async () => {
     const rows = await db.select().from(stations);
     expect(rows).toHaveLength(STATIONS.length);
-    expect(rows).toHaveLength(29);
+    // Every station's area is a known one, in one of the cities (the check constraint agrees).
+    const perCity = new Map<string, number>();
+    for (const r of rows) {
+      expect(isArea(r.area), r.slug).toBe(true);
+      if (!isArea(r.area)) continue;
+      const city = cityOf(r.area);
+      perCity.set(city, (perCity.get(city) ?? 0) + 1);
+    }
+    expect(Object.fromEntries(perCity)).toEqual({ nyc: 29, boston: 7, atlanta: 5 });
   });
 
   it("seeding again is a no-op upsert: same rows, same integer ids", async () => {
@@ -42,7 +51,7 @@ describe("migrations + seed", () => {
     const { seedStations } = await import("./seed/seed");
     await seedStations(db);
     const after = await db.select({ id: stations.id, slug: stations.slug }).from(stations);
-    expect(after).toHaveLength(29);
+    expect(after).toHaveLength(STATIONS.length);
     expect(new Map(after.map((r) => [r.slug, r.id]))).toEqual(
       new Map(before.map((r) => [r.slug, r.id])),
     );

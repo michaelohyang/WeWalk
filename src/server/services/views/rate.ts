@@ -1,4 +1,5 @@
 import "server-only";
+import { cityOf, DEFAULT_CITY, isArea, type CityKey } from "@/domain/areas";
 import type { IsoDate } from "@/domain/dates";
 import type { ReviewRecord } from "@/domain/records";
 import type { Tag } from "@/domain/tags";
@@ -9,7 +10,7 @@ import type { CrewData } from "../crew";
 
 export interface RateView {
   /** Everything you can rate, A–Z. */
-  stations: { slug: string; name: string; neighborhood: string }[];
+  stations: { slug: string; name: string; neighborhood: string; city: CityKey }[];
   /** The station being rated, if the URL named a real one. */
   stationSlug: string | null;
   /** Your existing review of it: the form opens in edit mode. */
@@ -43,7 +44,12 @@ export async function rateView(
   return {
     stations: [...crew.stations]
       .sort((a, b) => a.name.localeCompare(b.name, "en-US", { numeric: true }))
-      .map((s) => ({ slug: s.slug, name: s.name, neighborhood: s.neighborhood })),
+      .map((s) => ({
+        slug: s.slug,
+        name: s.name,
+        neighborhood: s.neighborhood,
+        city: isArea(s.area) ? cityOf(s.area) : DEFAULT_CITY,
+      })),
     stationSlug: station?.slug ?? null,
     existing: mine
       ? {

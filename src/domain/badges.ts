@@ -1,4 +1,4 @@
-import { AREAS, type AreaKey } from "./areas";
+import { AREAS, CITIES, cityOf, isArea, type AreaKey } from "./areas";
 import type { IsoDate } from "./dates";
 import type { ReviewRecord, Visit } from "./records";
 
@@ -23,6 +23,15 @@ const AREA_EMOJI: Record<AreaKey, string> = {
   flatiron: "📐",
   downtown: "🗽",
   brooklyn: "🌉",
+  "back-bay": "🏛️",
+  "boston-downtown": "🦞",
+  seaport: "⚓",
+  "north-station": "🚉",
+  cambridge: "🎓",
+  "atl-midtown": "🍑",
+  buckhead: "🌆",
+  perimeter: "🛣️",
+  decatur: "⛲",
 };
 
 const MILESTONES = [
@@ -71,12 +80,23 @@ export function badgesFor(
       progress: { have: onMap, need: m.need },
     }),
   );
+  // Every building in one city: adding a city never takes the badge away.
+  const perCity = CITIES.map((c) => {
+    const here = stations.filter((s) => isArea(s.area) && cityOf(s.area) === c.key);
+    return { name: c.name, have: here.filter((s) => been.has(s.slug)).length, need: here.length };
+  })
+    .filter((c) => c.need > 0)
+    .sort((a, b) => b.have / b.need - a.have / a.need || b.have - a.have);
+  const closest = perCity[0] ?? { name: "", have: 0, need: 0 };
   const completionist = badge({
     key: "completionist",
     emoji: "🏆",
     title: "Completionist",
-    detail: `Visit all ${stations.length} buildings`,
-    progress: { have: onMap, need: stations.length },
+    detail:
+      closest.have >= closest.need
+        ? `Visit every building in a city (all ${closest.need} in ${closest.name})`
+        : `Visit every building in a city (${closest.have} of ${closest.need} in ${closest.name})`,
+    progress: { have: closest.have, need: closest.need },
   });
   const areas = AREAS.map((a) => {
     const here = stations.filter((s) => s.area === a.key);

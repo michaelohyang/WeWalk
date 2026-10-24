@@ -36,6 +36,13 @@
       "when": 1791313438459,
       "tag": "0004_review_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792815080746,
+      "tag": "0005_more_cities",
+      "breakpoints": true
     }
   ]
 }

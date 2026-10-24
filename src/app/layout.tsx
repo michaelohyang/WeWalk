@@ -10,12 +10,13 @@ const SITE = process.env.VERCEL_PROJECT_PRODUCTION_URL
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   title: { default: "WeWalk", template: "%s · WeWalk" },
-  description: "NYC WeWorks, rated by people who care too much.",
+  description: "WeWorks in NYC, Boston and Atlanta, rated by people who care too much.",
   // The link preview a group chat shows for an invite. Generic on purpose: no crew data.
   openGraph: {
     siteName: "WeWalk",
     title: "You're invited to the WeWalk crew",
-    description: "NYC WeWorks, rated by people who care too much. Coffee, Wi-Fi, phone booths.",
+    description:
+      "WeWorks in NYC, Boston and Atlanta, rated by people who care too much. Coffee, Wi-Fi, phone booths.",
     type: "website",
   },
   twitter: { card: "summary_large_image" },
