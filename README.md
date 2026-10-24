@@ -230,6 +230,10 @@ before building the app. See [`docs/DEPLOY.md`](docs/DEPLOY.md) for the step-by-
 - **Map tiles come from OpenFreeMap.** Opening the map sends your IP address and the part of
   the city you're viewing to OpenFreeMap, as with any web map. No referrer is sent, and no crew
   data leaves the app.
+- **Content Security Policy:** every page only runs scripts carrying a fresh per-request nonce
+  (set in `src/proxy.ts`, policy in `src/server/csp.ts`). Images, map tiles and connections are
+  limited to the app, OpenFreeMap and the photo store; the site can't be framed and plugins are
+  off.
 
 ## Contributing
 
