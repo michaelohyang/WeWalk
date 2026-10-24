@@ -135,7 +135,11 @@ test.describe("rating", () => {
   test("scores tapped before picking the building are kept", async ({ page }) => {
     await page.goto("/rate");
     await score(page, "Coffee", 2).click();
-    await page.getByLabel("Building").selectOption("1460-broadway");
+    await page.getByRole("combobox", { name: "Building" }).click();
+    await page
+      .getByRole("option", { name: /^1460 Broadway/ })
+      .last()
+      .click();
     await expect(page).toHaveURL(/\/rate\/1460-broadway$/);
     await expect(score(page, "Coffee", 2)).toHaveAttribute("aria-checked", "true");
     await expect(page.getByText("Picked up where you left off.")).toHaveCount(0);

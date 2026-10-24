@@ -1,0 +1,64 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font: inherit;
+  color: var(--fg);
+  text-align: start;
+  cursor: pointer;
+}
+.trigger[data-placeholder] {
+  color: var(--muted);
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+.icon {
+  flex: none;
+  color: var(--muted);
+}
+
+.content {
+  z-index: 80;
+  width: var(--radix-select-trigger-width);
+  max-height: min(60vh, var(--radix-select-content-available-height));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+}
+.viewport {
+  padding: 6px;
+}
+.label {
+  padding: 10px 10px 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+.item[data-highlighted] {
+  background: var(--surface);
+}
+.item[data-state="checked"] {
+  font-weight: 700;
+}
+.check {
+  color: var(--brand);
+}

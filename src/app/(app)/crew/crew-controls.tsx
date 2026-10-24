@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { fieldErrors, request } from "@/client/api";
 import styles from "@/ui/forms.module.css";
 import { ConfirmDialog } from "@/ui/ConfirmDialog";
+import { Select } from "@/ui/Select";
 import { useToast } from "@/ui/Toast";
 
 /** A link with Copy (and Share, where the phone has it). */
@@ -256,18 +257,13 @@ export function RecoveryLinks({ members }: { members: { id: string; name: string
       <div className={styles.row}>
         <label className={styles.field}>
           <span>Crew member</span>
-          <select
+          <Select
             className={styles.input}
             value={memberId}
-            onChange={(e) => setMemberId(e.target.value)}
-          >
-            <option value="">Pick someone…</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setMemberId}
+            placeholder="Pick someone…"
+            groups={[{ label: "", options: members.map((m) => ({ value: m.id, label: m.name })) }]}
+          />
         </label>
         <button
           type="submit"

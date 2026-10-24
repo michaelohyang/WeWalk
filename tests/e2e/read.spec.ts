@@ -166,7 +166,8 @@ test.describe("signed in", () => {
   test("ranks sort by a category, then narrow to a neighborhood", async ({ page }) => {
     await review(page.request, "524-broadway", { scores: { coffee: 5 } });
     await page.goto("/ranks");
-    await page.getByLabel("Rank by").selectOption("coffee");
+    await page.getByRole("combobox", { name: "Rank by" }).click();
+    await page.getByRole("option", { name: "Coffee" }).click();
     await expect(page).toHaveURL(/by=coffee/);
     await expect(page.getByRole("heading", { name: "Best coffee" })).toBeVisible();
     // The ranked list's own section (the page has other sections that can name buildings).

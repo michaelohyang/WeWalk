@@ -85,7 +85,6 @@ export default async function RanksPage({
         <RankBy
           options={SORTS.map((s) => ({ key: s.key, label: s.label, href: ranksHref(s.key, area) }))}
           current={sort.key}
-          area={area}
         />
         <ChipRow label="Neighborhood">
           <Chip current={!area} href={ranksHref(sort.key, null)}>
