@@ -10,6 +10,6 @@ export function createTestDb(): Promise<Db> {
 /** Empties everything except stations, between tests. */
 export async function resetTestDb(db: Db): Promise<void> {
   await db.execute(
-    sql`truncate reviews, checkins, links, devices, members restart identity cascade`,
+    sql`truncate reviews, checkins, links, devices, members, rate_limits restart identity cascade`,
   );
 }

@@ -189,3 +189,19 @@ export const reactions = pgTable(
     check("reactions_kind_known", inList("kind", REACTION_KEYS)),
   ],
 ).enableRLS();
+
+/**
+ * Request counters for abuse limits (server/services/rate-limits.ts), one row per key and fixed
+ * window. Kept in Postgres because serverless functions share no memory. Old windows are deleted
+ * as the app runs, so the table stays small.
+ */
+export const rateLimits = pgTable(
+  "rate_limits",
+  {
+    /** What is counted and for whom, e.g. "signup:<hashed IP>" or "posts:<hashed member id>". */
+    key: text("key").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(1),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.windowStart] })],
+).enableRLS();
