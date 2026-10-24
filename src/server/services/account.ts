@@ -1,4 +1,6 @@
 import "server-only";
+import { listMemberPhotos } from "../repos/photos";
+import { photoInUse } from "../repos/reviews";
 import type { Db } from "../db/client";
 import { AppError } from "../errors";
 import { verifyPassword } from "../auth/passwords";
@@ -77,12 +79,14 @@ export async function deleteAccount(
     if (isOwner && (await memberRepo.countMembers(tx)) > 1) {
       throw new AppError("conflict", OWNER_STAYS);
     }
-    const urls = (await listMemberReviews(tx, me)).flatMap((r) => r.photoUrl ?? []);
+    // Your uploads, attached or not (the records go with the account, so read them first).
+    const urls = await listMemberPhotos(tx, me);
     await memberRepo.deleteMember(tx, me);
     return urls;
   });
   // Only once the reviews are gone for sure: a rolled-back delete would leave broken photos.
-  await Promise.all(photos.map(deletePhoto));
+  // A photo still on someone else's review (shared before uploads were recorded) stays.
+  for (const url of photos) if (!(await photoInUse(db, url))) await deletePhoto(url);
 }
 
 const passwordProblem = (message: string) =>

@@ -12,7 +12,7 @@ import { deleteAccount, exportData, handOverOwnership } from "./account";
 import { authenticate, createRecoveryLink, logIn, MAX_FAILED_LOGINS, type Session } from "./auth";
 import { react } from "./reactions";
 import { NOW, PASSWORD, newId, signIn } from "./testing";
-import { putCheckin, putReview } from "./visits";
+import { deleteReview, putCheckin, putReview } from "./visits";
 
 let db: Db;
 let dana: Session & { token: string }; // the owner (first to sign up)
@@ -251,5 +251,38 @@ describe("exportData", () => {
     }
     expect(text).not.toContain(sal.member.id);
     expect(text).not.toMatch(/scrypt|token|hash|password/i);
+  });
+});
+
+describe("photos shared before uploads were recorded", () => {
+  /** Sam's upload, and Dana's review pointing at it (what the old exploit could do). */
+  async function sharedPhoto() {
+    const photo = await storePhoto(jpeg());
+    await recordPhoto(db, photo, sal.member.id);
+    const id = newId();
+    await putReview(db, dana, id, reviewAt("dock-72"), NOW);
+    await db.update(reviews).set({ photoUrl: photo }).where(eq(reviews.id, id));
+    return { photo, id };
+  }
+
+  it("deleting the other person's review leaves the uploader's photo alone", async () => {
+    const { photo, id } = await sharedPhoto();
+    await deleteReview(db, dana, id);
+    expect(memoryPhoto(photoId(photo))).toBeDefined();
+  });
+
+  it("deleting the uploader's account keeps it while another review still shows it", async () => {
+    const { photo } = await sharedPhoto();
+    await deleteAccount(db, sal, { password: PASSWORD }, NOW);
+    expect(memoryPhoto(photoId(photo))).toBeDefined();
+  });
+});
+
+describe("deleting your account removes your uploads", () => {
+  it("including ones that never made it onto a review", async () => {
+    const draftPhoto = await storePhoto(jpeg());
+    await recordPhoto(db, draftPhoto, sal.member.id);
+    await deleteAccount(db, sal, { password: PASSWORD }, NOW);
+    expect(memoryPhoto(photoId(draftPhoto))).toBeUndefined();
   });
 });

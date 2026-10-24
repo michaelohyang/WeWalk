@@ -19,3 +19,12 @@ export async function photoOwner(db: Db, url: string): Promise<string | undefine
 export async function forgetPhoto(db: Db, url: string) {
   await db.delete(photos).where(eq(photos.url, url));
 }
+
+/** Every photo a member uploaded, attached or not. */
+export async function listMemberPhotos(db: Db, memberId: string): Promise<string[]> {
+  const rows = await db
+    .select({ url: photos.url })
+    .from(photos)
+    .where(eq(photos.memberId, memberId));
+  return rows.map((r) => r.url);
+}

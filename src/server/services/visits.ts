@@ -7,8 +7,9 @@ import { AppError, isUniqueViolation } from "../errors";
 import * as checkinRepo from "../repos/checkins";
 import * as reviewRepo from "../repos/reviews";
 import { findStation } from "../repos/stations";
-import { deletePhoto, isOurPhoto } from "../photos";
-import { forgetPhoto, photoOwner } from "../repos/photos";
+import { isOurPhoto } from "../photos";
+import { photoOwner } from "../repos/photos";
+import { releasePhoto } from "./photos";
 import type { Session } from "./auth";
 
 /*
@@ -80,8 +81,7 @@ export async function putReview(
   if (!updated) throw new AppError("not_found", GONE);
   // A replaced or removed photo isn't shown anywhere any more.
   if (current.photoUrl && current.photoUrl !== updated.photoUrl) {
-    await deletePhoto(current.photoUrl);
-    await forgetPhoto(db, current.photoUrl);
+    await releasePhoto(db, current.photoUrl, me);
   }
   return { review: updated, created: false };
 }
@@ -95,8 +95,7 @@ export async function deleteReview(db: Db, session: Session, id: string): Promis
   }
   await reviewRepo.deleteReview(db, id);
   if (existing.photoUrl) {
-    await deletePhoto(existing.photoUrl);
-    await forgetPhoto(db, existing.photoUrl);
+    await releasePhoto(db, existing.photoUrl, session.member.id);
   }
 }
 
