@@ -1,0 +1,21 @@
+.picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block: 12px 4px;
+}
+.label {
+  color: var(--fg-2);
+  font-size: 14px;
+  font-weight: 700;
+}
+.trigger {
+  min-height: 44px;
+  min-width: 160px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  font-weight: 700;
+  font-size: 15px;
+}

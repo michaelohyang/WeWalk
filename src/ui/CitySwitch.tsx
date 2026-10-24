@@ -1,32 +1,43 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useId } from "react";
 import { CITIES, CITY_COOKIE, type CityKey } from "@/domain/areas";
-import { SegmentedButtons } from "./SegmentedButtons";
+import styles from "./CitySwitch.module.css";
+import { Select } from "./Select";
 
 /**
- * NYC | Boston | Atlanta. Remembered on this phone (a cookie the pages read), and shared by
- * Home, Map, Ranks and Passport. Switching drops the area filter (an area from another city
- * would show nothing), keeps the rest (e.g. Ranks' sort) and reloads the page's data.
+ * The city picker: a compact dropdown (it grows with the city list, unlike a row of buttons).
+ * Remembered on this phone (a cookie the pages read), and shared by Home, Map, Ranks and
+ * Passport. Switching drops the area filter (an area from another city would show nothing),
+ * keeps the rest (e.g. Ranks' sort) and reloads the page's data.
  */
 export function CitySwitch({ city }: { city: CityKey }) {
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
+  const id = useId();
   return (
-    <SegmentedButtons
-      label="City"
-      value={city}
-      options={CITIES.map((c) => ({ value: c.key, label: c.label }))}
-      onChange={(next) => {
-        const secure = location.protocol === "https:" ? "; secure" : "";
-        document.cookie = `${CITY_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax${secure}`;
-        const kept = new URLSearchParams(params);
-        kept.delete("area");
-        const query = kept.toString();
-        router.replace(query ? `${path}?${query}` : path, { scroll: false });
-        router.refresh();
-      }}
-    />
+    <div className={styles.picker}>
+      <label htmlFor={id} className={styles.label}>
+        City
+      </label>
+      <Select
+        id={id}
+        className={styles.trigger}
+        value={city}
+        onValueChange={(next) => {
+          if (next === city) return;
+          const secure = location.protocol === "https:" ? "; secure" : "";
+          document.cookie = `${CITY_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax${secure}`;
+          const kept = new URLSearchParams(params);
+          kept.delete("area");
+          const query = kept.toString();
+          router.replace(query ? `${path}?${query}` : path, { scroll: false });
+          router.refresh();
+        }}
+        groups={[{ label: "", options: CITIES.map((c) => ({ value: c.key, label: c.name })) }]}
+      />
+    </div>
   );
 }
