@@ -4,6 +4,7 @@ import type { Db } from "./db/client";
 import { reviews } from "./db/schema";
 import { createTestDb, resetTestDb } from "./db/testing";
 import { backfillPhotoSizes, type BackfillDeps } from "./photo-backfill";
+import { recordPhoto } from "./repos/photos";
 import { reviewInputSchema } from "@/domain/schemas";
 import { NOW, signIn } from "./services/testing";
 import { putReview } from "./services/visits";
@@ -29,6 +30,7 @@ async function reviewWithPhoto(photoUrl: string) {
     scores: { coffee: 4 },
     photoUrl,
   });
+  await recordPhoto(db, photoUrl, me.member.id); // as the upload route does
   await putReview(db, me, id, input, NOW);
   return id;
 }

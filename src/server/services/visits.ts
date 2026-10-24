@@ -8,6 +8,7 @@ import * as checkinRepo from "../repos/checkins";
 import * as reviewRepo from "../repos/reviews";
 import { findStation } from "../repos/stations";
 import { deletePhoto, isOurPhoto } from "../photos";
+import { forgetPhoto, photoOwner } from "../repos/photos";
 import type { Session } from "./auth";
 
 /*
@@ -40,11 +41,16 @@ export async function putReview(
   now: Date,
 ): Promise<{ review: ReviewRecord; created: boolean }> {
   const me = session.member.id;
-  if (input.photoUrl && !isOurPhoto(input.photoUrl)) {
+  const existing = await reviewRepo.findReview(db, id);
+  // A new photo must be one you uploaded here. (Keeping the review's current photo is fine.)
+  if (
+    input.photoUrl &&
+    input.photoUrl !== existing?.photoUrl &&
+    (!isOurPhoto(input.photoUrl) || (await photoOwner(db, input.photoUrl)) !== me)
+  ) {
     const message = "That photo didn't upload here.";
     throw new AppError("invalid", message, { fields: { photoUrl: [message] } });
   }
-  const existing = await reviewRepo.findReview(db, id);
 
   if (!existing) {
     await assertVisitable(db, input.stationSlug, input.visitedOn, now);
@@ -73,8 +79,10 @@ export async function putReview(
   const updated = await reviewRepo.updateReview(db, id, input, now);
   if (!updated) throw new AppError("not_found", GONE);
   // A replaced or removed photo isn't shown anywhere any more.
-  if (current.photoUrl && current.photoUrl !== updated.photoUrl)
+  if (current.photoUrl && current.photoUrl !== updated.photoUrl) {
     await deletePhoto(current.photoUrl);
+    await forgetPhoto(db, current.photoUrl);
+  }
   return { review: updated, created: false };
 }
 
@@ -86,7 +94,10 @@ export async function deleteReview(db: Db, session: Session, id: string): Promis
     throw new AppError("forbidden", "That's someone else's review.");
   }
   await reviewRepo.deleteReview(db, id);
-  if (existing.photoUrl) await deletePhoto(existing.photoUrl);
+  if (existing.photoUrl) {
+    await deletePhoto(existing.photoUrl);
+    await forgetPhoto(db, existing.photoUrl);
+  }
 }
 
 /**

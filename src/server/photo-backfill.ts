@@ -2,6 +2,7 @@ import { and, eq, isNotNull } from "drizzle-orm";
 import { jpegSize, photoSize, type PhotoSize } from "@/domain/photos";
 import type { Db } from "./db/client";
 import { reviews } from "./db/schema";
+import { recordPhoto } from "./repos/photos";
 
 /*
  * Run by scripts/backfill-photo-sizes.ts with tsx, outside Next.js, so no "server-only" guard
@@ -24,7 +25,7 @@ export interface BackfillDeps {
 
 export async function backfillPhotoSizes(db: Db, deps: BackfillDeps) {
   const rows = await db
-    .select({ id: reviews.id, photoUrl: reviews.photoUrl })
+    .select({ id: reviews.id, memberId: reviews.memberId, photoUrl: reviews.photoUrl })
     .from(reviews)
     .where(isNotNull(reviews.photoUrl));
   const todo = rows.filter((r) => !photoSize(r.photoUrl!));
@@ -45,6 +46,7 @@ export async function backfillPhotoSizes(db: Db, deps: BackfillDeps) {
           .update(reviews)
           .set({ photoUrl: url })
           .where(and(eq(reviews.id, r.id), eq(reviews.photoUrl, r.photoUrl!)));
+        await recordPhoto(db, url, r.memberId);
       }
       deps.log(`review ${r.id}: ${size.width}x${size.height}${deps.apply ? "" : " (dry run)"}`);
       result.updated++;

@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { recordPhoto } from "../repos/photos";
 import { count, eq } from "drizzle-orm";
 import { checkinInputSchema, reviewInputSchema } from "@/domain/schemas";
 import type { Db } from "../db/client";
@@ -49,6 +50,7 @@ const photoId = (url: string) => url.split("/").pop()!;
 /** Each member reviews and checks in at their own station, and reacts to everyone else. */
 async function busyCrew() {
   const photo = await storePhoto(jpeg());
+  await recordPhoto(db, photo, sal.member.id); // as the upload route does
   const ids = { dana: newId(), sal: newId(), kim: newId() };
   await putReview(db, dana, ids.dana, reviewAt("dock-72"), NOW);
   await putReview(db, sal, ids.sal, reviewAt("18-w-18th-st", photo), NOW);

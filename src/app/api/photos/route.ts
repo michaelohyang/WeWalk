@@ -1,6 +1,7 @@
 import { authedRoute, json } from "@/server/http";
 import { AppError } from "@/server/errors";
-import { MAX_PHOTO_BYTES, storePhoto } from "@/server/photos";
+import { MAX_PHOTO_BYTES } from "@/server/photos";
+import { uploadPhoto } from "@/server/services/photos";
 import { spend } from "@/server/services/rate-limits";
 
 /** Upload a review photo (the raw JPEG as the body) → `{ url }` to put on the review. */
@@ -13,6 +14,6 @@ export const POST = authedRoute(async ({ req, db, now, session }) => {
   if (Number(req.headers.get("content-length") ?? 0) > MAX_PHOTO_BYTES) {
     throw new AppError("too_large", "That photo is too big.");
   }
-  const url = await storePhoto(new Uint8Array(await req.arrayBuffer()));
+  const url = await uploadPhoto(db, session, new Uint8Array(await req.arrayBuffer()));
   return json({ url }, 201);
 });

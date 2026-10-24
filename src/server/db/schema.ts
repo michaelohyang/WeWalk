@@ -197,6 +197,22 @@ export const reactions = pgTable(
  * window. Kept in Postgres because serverless functions share no memory. Old windows are deleted
  * as the app runs, so the table stays small.
  */
+/**
+ * Every uploaded photo and who uploaded it. A review may only use its author's own uploads, so
+ * nobody can point a review at someone else's photo and then get it deleted by replacing it.
+ */
+export const photos = pgTable(
+  "photos",
+  {
+    url: text("url").primaryKey(),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("photos_member").on(t.memberId)],
+).enableRLS();
+
 export const rateLimits = pgTable(
   "rate_limits",
   {
