@@ -2,7 +2,8 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useId } from "react";
-import { CITIES, CITY_COOKIE, type CityKey } from "@/domain/areas";
+import { rememberCity } from "@/client/city";
+import { CITIES, type CityKey } from "@/domain/areas";
 import styles from "./CitySwitch.module.css";
 import { Select } from "./Select";
 
@@ -28,8 +29,7 @@ export function CitySwitch({ city }: { city: CityKey }) {
         value={city}
         onValueChange={(next) => {
           if (next === city) return;
-          const secure = location.protocol === "https:" ? "; secure" : "";
-          document.cookie = `${CITY_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax${secure}`;
+          rememberCity(next as CityKey);
           const kept = new URLSearchParams(params);
           kept.delete("area");
           const query = kept.toString();

@@ -6,64 +6,49 @@ import { fieldErrors, request } from "@/client/api";
 import { CITIES, type CityKey } from "@/domain/areas";
 import styles from "@/ui/forms.module.css";
 import { Select } from "@/ui/Select";
+import welcome from "./welcome.module.css";
 
 /** "https://…/join/abc123" or just "abc123" → "abc123". */
 const inviteCodeFrom = (text: string) => text.trim().split("/join/").pop()!.split(/[?#]/)[0]!;
 
-export function JoinOrStart({ canStartCrew }: { canStartCrew: boolean }) {
+type Joined = { crew: { id: string; name: string } };
+
+/**
+ * Start a crew (once that's switched on), or join one by an invite link someone sent (folded
+ * away: picking from the list is the usual way in). `onJoined` gets the crew's name; without it
+ * the phone goes to Home.
+ */
+export function JoinOrStart({
+  canStartCrew,
+  onJoined,
+  defaultCity = "nyc",
+}: {
+  canStartCrew: boolean;
+  onJoined?: (crewName: string) => void;
+  /** The new crew's home city to start with (the one they just picked). */
+  defaultCity?: CityKey;
+}) {
   const router = useRouter();
   const cityId = useId();
   const [link, setLink] = useState("");
   const [name, setName] = useState("");
-  const [city, setCity] = useState<CityKey>("nyc");
+  const [city, setCity] = useState<CityKey>(defaultCity);
   const [error, setError] = useState<{ join?: string; start?: string }>({});
   const [busy, setBusy] = useState(false);
 
-  async function done(res: Awaited<ReturnType<typeof request>>, which: "join" | "start") {
+  async function done(res: Awaited<ReturnType<typeof request<Joined>>>, which: "join" | "start") {
     setBusy(false);
     if (!res.ok) {
       setError({ [which]: fieldErrors(res.error).name ?? res.error.message });
       return;
     }
+    if (onJoined) return onJoined(res.data.crew.name);
     router.replace("/");
     router.refresh();
   }
 
   return (
     <>
-      <form
-        className={styles.card}
-        noValidate
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          await done(
-            await request("POST", "/api/crews/join", { code: inviteCodeFrom(link) }),
-            "join",
-          );
-        }}
-      >
-        <label className={styles.field}>
-          <span>Got an invite link? Paste it here</span>
-          <input
-            className={styles.input}
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            placeholder="https://…/join/…"
-            aria-invalid={!!error.join}
-            aria-describedby={error.join ? "join-error" : undefined}
-          />
-          {error.join && (
-            <span id="join-error" className={styles.error} role="alert">
-              {error.join}
-            </span>
-          )}
-        </label>
-        <button type="submit" className={styles.primary} disabled={busy || !link.trim()}>
-          Join the crew
-        </button>
-      </form>
-
       {canStartCrew && (
         <form
           className={styles.card}
@@ -71,11 +56,14 @@ export function JoinOrStart({ canStartCrew }: { canStartCrew: boolean }) {
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
-            await done(await request("POST", "/api/crews", { name, homeCity: city }), "start");
+            await done(
+              await request<Joined>("POST", "/api/crews", { name, homeCity: city }),
+              "start",
+            );
           }}
         >
           <label className={styles.field}>
-            <span>Or start your own crew</span>
+            <span>Start your own crew</span>
             <input
               className={styles.input}
               value={name}
@@ -106,6 +94,42 @@ export function JoinOrStart({ canStartCrew }: { canStartCrew: boolean }) {
           </button>
         </form>
       )}
+
+      <details className={welcome.invite}>
+        <summary>Got an invite link instead?</summary>
+        <form
+          className={styles.card}
+          noValidate
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setBusy(true);
+            await done(
+              await request<Joined>("POST", "/api/crews/join", { code: inviteCodeFrom(link) }),
+              "join",
+            );
+          }}
+        >
+          <label className={styles.field}>
+            <span>Paste it here</span>
+            <input
+              className={styles.input}
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="https://…/join/…"
+              aria-invalid={!!error.join}
+              aria-describedby={error.join ? "join-error" : undefined}
+            />
+            {error.join && (
+              <span id="join-error" className={styles.error} role="alert">
+                {error.join}
+              </span>
+            )}
+          </label>
+          <button type="submit" className={styles.secondary} disabled={busy || !link.trim()}>
+            Join with the link
+          </button>
+        </form>
+      </details>
     </>
   );
 }

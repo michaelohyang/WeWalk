@@ -50,7 +50,7 @@ function Report({ report: r }: { report: ReportView }) {
       action === "hide"
         ? `${r.author}'s ${what} is out of the crew.`
         : action === "remove"
-          ? `${r.author} is out. Make a new invite link so they can't rejoin with a new account.`
+          ? `${r.author} is out and can't rejoin.`
           : "Report dismissed.",
     );
     router.refresh();
@@ -107,7 +107,7 @@ function Report({ report: r }: { report: ReportView }) {
               </button>
             }
             title={`Remove ${r.author} from the crew?`}
-            description={`Their posts come out of the crew and they can't rejoin with an invite link. Make a new invite link afterwards, so they can't come back with a new account.`}
+            description="Their posts come out of the crew, and they can't rejoin it."
             confirmLabel={`Remove ${r.author}`}
             onConfirm={() => void act("remove")}
           />

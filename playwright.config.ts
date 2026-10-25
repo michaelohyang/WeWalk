@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
 export const BASE_URL = `http://localhost:${PORT}`;
+/** The shared sign-up code the test server runs with: signing up with it joins the first crew. */
+export const SIGNUP_CODE = "e2e-crew";
 const isCI = !!process.env.CI;
 
 /** Phones first: every e2e test runs at 390×844 in light and dark. */
@@ -27,7 +29,8 @@ export default defineConfig({
     url: BASE_URL,
     // An embedded, in-memory Postgres: every run starts from the seeded stations only.
     // Limits off: the tests sign up dozens of people from one address (see services/rate-limits.ts).
-    env: { DATABASE_URL: "pglite:memory", RATE_LIMITS: "off" },
+    // SIGNUP_CODE: test people sign up with it (helpers.ts), which puts them in the first crew.
+    env: { DATABASE_URL: "pglite:memory", RATE_LIMITS: "off", SIGNUP_CODE },
     reuseExistingServer: !isCI,
     timeout: 120_000,
   },

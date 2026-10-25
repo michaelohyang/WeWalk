@@ -507,7 +507,7 @@ export function CrewSettings({ crewId, name }: { crewId: string; name: string })
           </button>
         }
         title="Make a new invite link?"
-        description="The current link stops working, so nobody else can join with it. Do this after removing someone."
+        description="The current link stops working, so nobody else can join with it."
         confirmLabel="Make a new link"
         onConfirm={() => void newInvite()}
       />
@@ -539,14 +539,14 @@ export function LeaveCrew({ crewId, crewName }: { crewId: string; crewName: stri
         </button>
       }
       title={`Leave ${crewName}?`}
-      description="Your reviews and check-ins come out of this crew (they stay in your other crews). You can come back with an invite link."
+      description="Your reviews and check-ins come out of this crew (they stay in your other crews). You can rejoin from Find a crew."
       confirmLabel="Leave"
       onConfirm={() => void leave()}
     />
   );
 }
 
-/** Owner: take someone out of the crew. They can't rejoin it with an invite link. */
+/** Owner: take someone out of the crew. They can't rejoin it. */
 export function RemoveMember({
   crewId,
   members,
@@ -570,7 +570,7 @@ export function RemoveMember({
       toast(res.error.message);
       return;
     }
-    toast(`${name} is out. Make a new invite link so they can't rejoin with a new account.`);
+    toast(`${name} is out and can't rejoin.`);
     setMemberId("");
     router.refresh();
   }
@@ -604,7 +604,7 @@ export function RemoveMember({
             </button>
           }
           title={`Remove ${name ?? "them"} from the crew?`}
-          description="Their posts come out of the crew and they can't rejoin with an invite link. Make a new invite link afterwards, so they can't come back with a new account."
+          description="Their posts come out of the crew, and they can't rejoin it."
           confirmLabel={`Remove ${name ?? "them"}`}
           onConfirm={() => void remove()}
         />

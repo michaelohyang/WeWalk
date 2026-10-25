@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN "onboarded_at" timestamp with time zone DEFAULT now();

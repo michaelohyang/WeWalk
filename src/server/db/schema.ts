@@ -70,6 +70,12 @@ export const members = pgTable(
     /** Wrong passwords in a row, and the lockout they trigger (slows down guessing). */
     failedLogins: smallint("failed_logins").notNull().default(0),
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    /**
+     * When they finished the welcome steps (city, crew, first rating). Null until then, and pages
+     * send them to /welcome. The default marks everyone from before onboarding as done; sign-up
+     * writes null.
+     */
+    onboardedAt: timestamp("onboarded_at", { withTimezone: true }).defaultNow(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -357,7 +363,7 @@ export const checkinHides = pgTable(
   (t) => [primaryKey({ columns: [t.checkinId, t.crewId] })],
 ).enableRLS();
 
-/** People an owner removed from their crew: they can't rejoin it with an invite link. */
+/** People an owner removed from their crew: they can't rejoin it (or see it in the list). */
 export const crewBans = pgTable(
   "crew_bans",
   {

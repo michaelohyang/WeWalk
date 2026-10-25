@@ -1,9 +1,10 @@
-import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import type { CityKey } from "@/domain/areas";
 import type { Db } from "../db/client";
 import {
   checkinCrews,
   checkins,
+  crewBans,
   crewMembers,
   crews,
   FIRST_CREW_ID,
@@ -65,6 +66,45 @@ export async function countCrewMembers(db: Db, crewId: string): Promise<number> 
     .from(crewMembers)
     .where(eq(crewMembers.crewId, crewId));
   return row?.n ?? 0;
+}
+
+/** Most crews a directory lists: plenty for a group app, and never an unbounded read. */
+const MAX_DIRECTORY = 200;
+
+/**
+ * The crews someone can see in the directory, with each one's size and whether they're in it:
+ * those in `city` first, then the biggest, then A–Z, sorted before the cap so it drops the least
+ * relevant. Crews whose owner removed them are left out (they can't rejoin those).
+ */
+export async function listCrewDirectory(
+  db: Db,
+  memberId: string,
+  city: CityKey,
+  max = MAX_DIRECTORY,
+) {
+  const members = sql<number>`(select count(*)::int from ${crewMembers} m where m.crew_id = ${crews.id})`;
+  return db
+    .select({
+      id: crews.id,
+      name: crews.name,
+      homeCity: crews.homeCity,
+      members,
+      joined: sql<boolean>`exists (select 1 from ${crewMembers} m where m.crew_id = ${crews.id} and m.member_id = ${memberId})`,
+    })
+    .from(crews)
+    .where(
+      sql`not exists (select 1 from ${crewBans} b where b.crew_id = ${crews.id} and b.member_id = ${memberId})`,
+    )
+    .orderBy(sql`${crews.homeCity} = ${city} desc`, desc(members), asc(crews.name))
+    .limit(max);
+}
+
+export async function findCrew(db: Db, id: string) {
+  const [row] = await db
+    .select({ id: crews.id, name: crews.name })
+    .from(crews)
+    .where(eq(crews.id, id));
+  return row;
 }
 
 export async function findCrewByInviteCode(db: Db, inviteCode: string) {

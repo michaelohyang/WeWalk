@@ -1,0 +1,46 @@
+.step {
+  display: grid;
+  gap: 14px;
+}
+.progress {
+  margin: 0;
+  color: var(--fg-2);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+.title:focus {
+  outline: none;
+}
+.actions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.signOut {
+  margin: 12px 0 0;
+  color: var(--fg-2);
+  font-size: 14px;
+}
+.invite {
+  display: grid;
+  gap: 10px;
+}
+.invite > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--fg-2);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.invite[open] > summary {
+  margin-bottom: 10px;
+}

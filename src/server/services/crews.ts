@@ -9,6 +9,29 @@ import { crewOf, ownsCrew, type Session } from "./auth";
 
 const BAD_INVITE = "That invite link doesn't work any more. Ask for a new one.";
 const BANNED = "The crew's owner removed you, so you can't rejoin it.";
+const NO_CREW = "That crew isn't around any more.";
+
+export interface CrewListing {
+  id: string;
+  name: string;
+  homeCity: CityKey;
+  members: number;
+  /** You're in it already. */
+  joined: boolean;
+}
+
+/**
+ * The crews you can join, for the welcome steps and Find a crew: the city you picked first, then
+ * the biggest. Crews you were removed from aren't listed.
+ */
+export async function crewDirectory(
+  db: Db,
+  session: Session,
+  city: CityKey,
+  max?: number,
+): Promise<CrewListing[]> {
+  return (await crewsRepo.listCrewDirectory(db, session.member.id, city, max)) as CrewListing[];
+}
 
 /** The crew an invite code names (for the join page), or null. */
 export async function crewForInvite(db: Db, code: string) {
@@ -23,6 +46,21 @@ export async function joinCrew(
 ): Promise<{ id: string; name: string }> {
   const crew = await crewsRepo.findCrewByInviteCode(db, code.trim());
   if (!crew) throw new AppError("not_found", BAD_INVITE);
+  return join(db, session, crew);
+}
+
+/** Join a crew picked from the directory. Crews are open: anyone can join, unless removed from it. */
+export async function joinCrewById(
+  db: Db,
+  session: Session,
+  crewId: string,
+): Promise<{ id: string; name: string }> {
+  const crew = await crewsRepo.findCrew(db, crewId);
+  if (!crew) throw new AppError("not_found", NO_CREW);
+  return join(db, session, crew);
+}
+
+async function join(db: Db, session: Session, crew: { id: string; name: string }) {
   await db.transaction(async (tx) => {
     // Under the crew's lock, so a removal can't land between the ban check and the join.
     await crewsRepo.lockCrew(tx, crew.id, "share");
@@ -85,7 +123,7 @@ export async function renameCrew(db: Db, session: Session, name: string): Promis
   await crewsRepo.renameCrew(db, crewOf(session).id, name);
 }
 
-/** Owner: a new invite link. The old one stops working (do this after removing someone). */
+/** Owner: a new invite link. The old one stops working. */
 export async function rotateInviteCode(db: Db, session: Session): Promise<string> {
   if (!ownsCrew(session)) throw new AppError("forbidden", OWNER_ONLY);
   // 72 random bits: a clash is next to impossible, but one would just mean drawing again.
