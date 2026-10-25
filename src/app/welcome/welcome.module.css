@@ -28,3 +28,19 @@
   color: var(--fg-2);
   font-size: 14px;
 }
+.invite {
+  display: grid;
+  gap: 10px;
+}
+.invite > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--fg-2);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.invite[open] > summary {
+  margin-bottom: 10px;
+}

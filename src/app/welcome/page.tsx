@@ -22,6 +22,7 @@ export default async function WelcomePage() {
         city={view.city}
         canStartCrew={view.canStartCrew}
         deviceId={view.deviceId}
+        directory={view.directory}
       />
     </Page>
   );

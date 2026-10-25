@@ -363,7 +363,7 @@ export const checkinHides = pgTable(
   (t) => [primaryKey({ columns: [t.checkinId, t.crewId] })],
 ).enableRLS();
 
-/** People an owner removed from their crew: they can't rejoin it with an invite link. */
+/** People an owner removed from their crew: they can't rejoin it (or see it in the list). */
 export const crewBans = pgTable(
   "crew_bans",
   {

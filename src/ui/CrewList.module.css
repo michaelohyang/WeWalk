@@ -1,0 +1,37 @@
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.crew {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.crew:last-child {
+  border-bottom: 0;
+}
+.about {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.name {
+  overflow-wrap: anywhere;
+}
+.sub {
+  color: var(--fg-2);
+  font-size: 13px;
+}
+.joined {
+  color: var(--fg-2);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}

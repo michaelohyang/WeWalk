@@ -6,6 +6,7 @@ import { request } from "@/client/api";
 import { rememberCity } from "@/client/city";
 import { CITIES, type CityKey } from "@/domain/areas";
 import styles from "@/ui/forms.module.css";
+import { CrewList, type CrewListItem } from "@/ui/CrewList";
 import { Select } from "@/ui/Select";
 import { JoinOrStart } from "./join-or-start";
 import welcome from "./welcome.module.css";
@@ -23,12 +24,15 @@ export function WelcomeSteps({
   city: initialCity,
   canStartCrew,
   deviceId,
+  directory,
 }: {
   onboarded: boolean;
   crew: { name: string } | null;
   city: CityKey;
   canStartCrew: boolean;
   deviceId: string;
+  /** Crews to pick from (for someone in none). */
+  directory: CrewListItem[];
 }) {
   const router = useRouter();
   const cityId = useId();
@@ -137,12 +141,20 @@ export function WelcomeSteps({
       {step === "crew" && (
         <>
           <h2 id="step-title" ref={heading} tabIndex={-1} className={welcome.title}>
-            Find your crew
+            Pick a crew
           </h2>
           <p className={styles.lede}>
-            A crew is the friends you rate buildings with: one feed, one leaderboard.
-            {!canStartCrew && " Ask someone in a crew for their invite link, then paste it here."}
+            A crew is the people you rate buildings with: one feed, one leaderboard. Join one
+            {canStartCrew ? ", or start your own." : "."} You can join more later.
           </p>
+          <CrewList
+            // The city they just picked first (the server sorted by the one it knew).
+            crews={[...directory].sort((a, b) => +(a.homeCity !== city) - +(b.homeCity !== city))}
+            onJoined={(c) => {
+              setCrewName(c.name);
+              next();
+            }}
+          />
           <JoinOrStart
             canStartCrew={canStartCrew}
             defaultCity={city}

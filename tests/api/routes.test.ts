@@ -6,6 +6,7 @@ import { PUT as editStation } from "@/app/api/admin/stations/[slug]/route";
 import { POST as addStation } from "@/app/api/admin/stations/route";
 import { PUT as putCheckin } from "@/app/api/checkins/[id]/route";
 import { POST as joinCrewRoute } from "@/app/api/crews/join/route";
+import { POST as joinListedCrew } from "@/app/api/crews/[id]/join/route";
 import { POST as createCrewRoute } from "@/app/api/crews/route";
 import { POST as leaveCrewRoute } from "@/app/api/crews/leave/route";
 import { PATCH as renameCrewRoute } from "@/app/api/crews/current/route";
@@ -206,6 +207,11 @@ describe("every member route needs a session", () => {
     ],
     ["GET export", () => new Phone().call(exportMe, "GET", "/api/me/export")],
     ["POST onboarded", () => new Phone().call(onboarded, "POST", "/api/me/onboarded")],
+    [
+      "POST join listed crew",
+      () =>
+        new Phone().call(joinListedCrew, "POST", "/api/crews/x/join", { params: { id: newId() } }),
+    ],
     [
       "DELETE /api/me",
       () => new Phone().call(deleteMe, "DELETE", "/api/me", { body: { password: PASSWORD } }),
@@ -1469,10 +1475,12 @@ describe("welcome steps", () => {
     ).toBe(201);
     expect((await sam.call(me, "GET", "/api/me")).body.crew).toBeNull();
     expect(sam.cookie).not.toContain("ww_crew=");
-    const code = await firstCrewInvite(db);
-    expect(
-      (await sam.call(joinCrewRoute, "POST", "/api/crews/join", { body: { code } })).status,
-    ).toBe(200);
+    // Picked from the crew list: no invite link needed.
+    const joinedCrew = await sam.call(joinListedCrew, "POST", "/api/crews/x/join", {
+      params: { id: FIRST_CREW_ID },
+    });
+    expect(joinedCrew.status).toBe(200);
+    expect(sam.cookie).toContain(`ww_crew=${FIRST_CREW_ID}`);
     expect((await sam.call(onboarded, "POST", "/api/me/onboarded")).status).toBe(204);
     expect((await sam.call(me, "GET", "/api/me")).body.crew.id).toBe(FIRST_CREW_ID);
   });

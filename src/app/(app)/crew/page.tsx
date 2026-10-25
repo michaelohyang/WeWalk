@@ -44,6 +44,9 @@ export default async function CrewPage() {
   return (
     <Page title={view.crew.name} subtitle="Your crew">
       <CrewSwitch crew={view.crew.id} crews={view.crews} />
+      <Link href="/crews" className={formStyles.inlineLink}>
+        Find more crews
+      </Link>
       <div className={styles.me}>
         <Avatar name={me.name} seed={me.id} />
         <div>

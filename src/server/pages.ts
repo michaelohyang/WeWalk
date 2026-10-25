@@ -18,7 +18,7 @@ import {
   stationView,
 } from "./services/views";
 import { inCity } from "./services/views/city";
-import { crewCreationEnabled, crewForInvite } from "./services/crews";
+import { crewCreationEnabled, crewDirectory, crewForInvite } from "./services/crews";
 import { loadMyVisits } from "./services/crew";
 
 /**
@@ -147,6 +147,9 @@ export async function loadWelcome() {
   if (!session) redirect("/login");
   const onboarded = !!session.member.onboardedAt;
   if (session.crew && onboarded) redirect("/");
+  const city = (await hasCityCookie())
+    ? await selectedCity()
+    : (session.crew?.homeCity ?? DEFAULT_CITY);
   return {
     name: session.member.name,
     /** This phone's sign-in, so they can sign out from here. */
@@ -157,6 +160,21 @@ export async function loadWelcome() {
     /** The crew they're in already (they came from an invite link): the crew step is skipped. */
     crew: session.crew && { name: session.crew.name },
     /** The phone's city, or the crew's home city if the phone hasn't picked one. */
-    city: (await hasCityCookie()) ? await selectedCity() : (session.crew?.homeCity ?? DEFAULT_CITY),
+    city,
+    /** Crews to pick from, for someone in none yet. */
+    directory: session.crew ? [] : await crewDirectory(await getDb(), session, city),
+  };
+}
+
+/** Find a crew: every crew you can join, the phone's city first. */
+export async function loadCrewDirectory() {
+  const session = await getSession();
+  if (!session) return null;
+  if (!session.member.onboardedAt) redirect("/welcome");
+  const city = await selectedCity();
+  return {
+    crews: await crewDirectory(await getDb(), session, city),
+    canStartCrew: crewCreationEnabled(),
+    city,
   };
 }
